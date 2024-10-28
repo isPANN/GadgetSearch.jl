@@ -1,0 +1,562 @@
+[
+    {
+        "degeneration": [
+            "00"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "01"
+        ],
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "01"
+        ],
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            },
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "10"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 2.0,
+                "id": 2
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "10"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 2.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            },
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "01",
+            "10"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "01",
+            "10"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 2
+            },
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 3.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 2.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "01",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 2.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "01",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    },
+    {
+        "degeneration": [
+            "10",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 2.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "work_nodes": [
+            2,
+            1
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "10",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "work_nodes": [
+            2,
+            1
+        ]
+    },
+    {
+        "degeneration": [
+            "01",
+            "10",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "work_nodes": [
+            2,
+            3
+        ]
+    },
+    {
+        "degeneration": [
+            "00",
+            "01",
+            "10",
+            "11"
+        ],
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "work_nodes": [
+            1,
+            2
+        ]
+    }
+]
