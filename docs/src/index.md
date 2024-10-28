@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = GadgetFinding
+CurrentModule = GadgetSearch
 ```
 
-# GadgetFinding
+# GadgetSearch
 
-Documentation for [GadgetFinding](https://github.com/isPANN/GadgetFinding.jl).
+Documentation for [GadgetSearch](https://github.com/isPANN/GadgetSearch.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [GadgetFinding]
+Modules = [GadgetSearch]
 ```

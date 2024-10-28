@@ -1,0 +1,120 @@
+function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneration::Vector{Int}, dir_path::String, save_path::String)
+    all_graph_data_for_degeneration = []
+    for vertex_num in vertex_nums
+        graph_path = dir_path * "graph$(vertex_num).g6"
+        graph_dict = readGraphDictFile(graph_path)
+        gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneration)
+        isnothing(gname) && continue
+
+        g = graph_dict[gname]
+        nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
+        edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
+    
+        push!(all_graph_data_for_degeneration, Dict(
+            "vertex_num" => vertex_num,
+            "nodes" => nodes,
+            "edges" => edges,
+            "work_nodes" => candidate
+        ))
+    end
+    filename = save_path * "$(bit_num)bits_$(degeneration).json"
+    open(filename, "w") do file
+        write(file, JSON.json(all_graph_data_for_degeneration))
+    end
+end
+
+function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path::String, save_path::String)
+    all_graph_data = []
+    for degeneration in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
+        found = false
+        
+        for vertex_num in vertex_nums
+            graph_path = dir_path * "graph$(vertex_num).g6"
+            graph_dict = readGraphDictFile(graph_path)
+            gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneration)
+            isnothing(gname) && continue
+
+            g = graph_dict[gname]
+            nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
+            edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
+            
+            push!(all_graph_data, Dict(
+                "degeneration" => [join(bin(elem, bit_num), "") for elem in degeneration],
+                "nodes" => nodes,
+                "edges" => edges,
+                "work_nodes" => candidate
+            ))
+            found = true
+            break 
+        end
+        
+        !found && @info "No suitable graph found for degeneration $(degeneration)"
+    end
+
+    filename = save_path * "$(bit_num)bits_any_constraint.json"
+    open(filename, "w") do file
+        write(file, JSON.json(all_graph_data))
+    end
+end
+
+function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneration::Vector{Int})
+    @assert length(degeneration) > 0 && maximum(degeneration) < 2^bit_num
+    for gname in sort(collect(keys(graphs)))
+        # Find Maximal Independent Sets for each graph using GenericTensorNetworks.jl(https://queracomputing.github.io/GenericTensorNetworks.jl/dev/generated/MaximalIS/)
+        is_connected(graphs[gname]) || continue
+        vertex_num = nv(graphs[gname])
+        maximalis = MaximalIS(graphs[gname])
+        mis_problem = GenericTensorNetwork(maximalis)
+        mis_result = read_config(solve(mis_problem, ConfigsAll())[])
+        mis_num = length(mis_result)
+        
+        all_candidates = collect(permutations(1:vertex_num, bit_num))
+        
+        for candidate in all_candidates 
+            candidate_value = [[Int(mis_result[i][j]) for j in candidate] for i in 1:mis_num]
+            candidate_value_decimal = [decimal(candidate_value[i]) for i in 1:mis_num]
+
+            is_subset = all(x -> x in candidate_value_decimal, degeneration)
+            is_subset || continue
+
+            target_mis_indices = [findfirst(==(x), candidate_value_decimal) for x in degeneration]
+            wrong_mis_indices = setdiff(1:mis_num, target_mis_indices)
+            target_mis_sets = mis_result[target_mis_indices]
+            wrong_mis_sets = mis_result[wrong_mis_indices]
+
+            model = Model(HiGHS.Optimizer)
+            set_silent(model)
+            # The number of variables = the number of vertices in the graph.
+            @variable(model, x[1:vertex_num])
+            all_mis_combinations = collect(combinations(target_mis_sets, 2))
+            for mis in all_mis_combinations
+                # @info "Adding constraint for $(mis)."
+                @constraint(model, sum((Int(mis[1][i]) - Int(mis[2][i])) * x[i] for i in 1:vertex_num) == 0)
+            end 
+
+            ϵ = -1
+            for wrong_mis in wrong_mis_sets
+                for mis in target_mis_sets
+                    # @info "Adding constraint for $(wrong_mis)_$(mis)."
+                    @constraint(model, sum((Int(mis[i]) - Int(wrong_mis[i])) * x[i] for i in 1:vertex_num) <= ϵ)
+                end
+            end
+
+            for i in 1:vertex_num
+                @constraint(model, 1 <= x[i])
+            end
+            
+            @objective(model, Min, sum(x[i] for i in 1:vertex_num))
+            optimize!(model)
+            if is_solved_and_feasible(model)
+                @info "Optimization successful for $(vertex_num)_$(gname)_$(candidate)."
+                @info "Optimal objective value: $([value(x[i]) for i in 1:length(x)])"
+                return gname, candidate, [value(x[i]) for i in 1:length(x)]
+            end
+            for con in all_constraints(model; include_variable_in_set_constraints = false)
+                delete(model, con)
+            end
+        end
+    end
+    return nothing, nothing, nothing
+end

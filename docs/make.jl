@@ -1,14 +1,14 @@
-using GadgetFinding
+using GadgetSearch
 using Documenter
 
-DocMeta.setdocmeta!(GadgetFinding, :DocTestSetup, :(using GadgetFinding); recursive=true)
+DocMeta.setdocmeta!(GadgetSearch, :DocTestSetup, :(using GadgetSearch); recursive=true)
 
 makedocs(;
-    modules=[GadgetFinding],
+    modules=[GadgetSearch],
     authors="Xiwei Pan",
-    sitename="GadgetFinding.jl",
+    sitename="GadgetSearch.jl",
     format=Documenter.HTML(;
-        canonical="https://isPANN.github.io/GadgetFinding.jl",
+        canonical="https://isPANN.github.io/GadgetSearch.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/isPANN/GadgetFinding.jl",
+    repo="github.com/isPANN/GadgetSearch.jl",
     devbranch="main",
 )

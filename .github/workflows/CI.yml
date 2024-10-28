@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
+          - '1.11'
           - 'pre'
         os:
           - ubuntu-latest
@@ -73,6 +73,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using GadgetFinding
-          DocMeta.setdocmeta!(GadgetFinding, :DocTestSetup, :(using GadgetFinding); recursive=true)
-          doctest(GadgetFinding)
+          using GadgetSearch
+          DocMeta.setdocmeta!(GadgetSearch, :DocTestSetup, :(using GadgetSearch); recursive=true)
+          doctest(GadgetSearch)
