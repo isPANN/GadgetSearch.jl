@@ -1,4 +1,4 @@
-module GadgetDesign
+module GadgetSearch
 
 using JuMP, HiGHS
 using GenericTensorNetworks
@@ -8,11 +8,7 @@ using Graphs, GraphIO, JSON, IterTools
 using GraphPlot, Compose, Colors
 using Combinatorics, Distributed
 
-# include("spinglass.jl")
-# include("wmis.jl")
 include("utils.jl")
-# include("2bitgate.jl")
-# include("3bitgate.jl")
 include("GraphConstraintSearch.jl")
 
 

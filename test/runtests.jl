@@ -1,4 +1,4 @@
-using GadgetDesign
+using GadgetSearch
 using Test
 
 @testset "graph.jl" begin
