@@ -3,6 +3,9 @@
     for i in vertex_num
         path = "../data/graphs/graph$i.g6"
         graph_dict = readGraphDictFile(path)
+        if !isdir("../data/graphplot/$(i)vertex/")
+            mkpath("../data/graphplot/$(i)vertex/")
+        end
         plotGraph(graph_dict, "../data/graphplot/$(i)vertex/")
     end
 end
