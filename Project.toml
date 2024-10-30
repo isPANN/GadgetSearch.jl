@@ -21,7 +21,7 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 
 [compat]
-Colors = "0.12.11"
+Colors = "0.12.11, 0.13"
 DocumenterTools = "0.1.20"
 IterTools = "1.10.0"
 JSON = "0.21.4"
