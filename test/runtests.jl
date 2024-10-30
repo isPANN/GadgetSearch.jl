@@ -1,6 +1,9 @@
 using GadgetSearch
 using Test
 
-@testset "graph.jl" begin
-    include("graph.jl")
+@testset "utils.jl" begin
+    include("utils.jl")
+end
+@testset "GraphContraintSearch.jl" begin
+    include("GraphContraintSearch.jl")
 end

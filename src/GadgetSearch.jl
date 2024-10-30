@@ -10,9 +10,10 @@ using Combinatorics
 
 include("utils.jl")
 include("GraphConstraintSearch.jl")
+include("DataLoader.jl")
 
-
-export bin, decimal, plotGraph
-export readGraphDictFile, readGraphFile
+export bin, decimal, plotGraphs, plotColoredGraph
+export readGraphDictFile, readGraphFile, checkGraphMIS
 export searchForAnyConstraint, searchForSingleConstraint, checkSingleConstraint
+export loadJSONFile, findByDegeneracy
 end

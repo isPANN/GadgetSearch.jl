@@ -1,37 +1,37 @@
-function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneration::Vector{Int}, dir_path::String, save_path::String)
-    all_graph_data_for_degeneration = []
+function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, dir_path::String, save_path::String)
+    all_graph_data_for_degeneracy = []
     for vertex_num in vertex_nums
         graph_path = dir_path * "graph$(vertex_num).g6"
         graph_dict = readGraphDictFile(graph_path)
-        gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneration)
+        gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
         isnothing(gname) && continue
 
         g = graph_dict[gname]
         nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
         edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
     
-        push!(all_graph_data_for_degeneration, Dict(
+        push!(all_graph_data_for_degeneracy, Dict(
             "vertex_num" => vertex_num,
             "nodes" => nodes,
             "edges" => edges,
             "work_nodes" => candidate
         ))
     end
-    filename = save_path * "$(bit_num)bits_$(degeneration).json"
+    filename = save_path * "$(bit_num)bits_$(degeneracy).json"
     open(filename, "w") do file
-        write(file, JSON.json(all_graph_data_for_degeneration))
+        write(file, JSON.json(all_graph_data_for_degeneracy))
     end
 end
 
 function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path::String, save_path::String)
     all_graph_data = []
-    for degeneration in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
+    for degeneracy in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
         found = false
         
         for vertex_num in vertex_nums
             graph_path = dir_path * "graph$(vertex_num).g6"
             graph_dict = readGraphDictFile(graph_path)
-            gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneration)
+            gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
             isnothing(gname) && continue
 
             g = graph_dict[gname]
@@ -39,7 +39,7 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
             edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
             
             push!(all_graph_data, Dict(
-                "degeneration" => [join(bin(elem, bit_num), "") for elem in degeneration],
+                "degeneracy" => [join(bin(elem, bit_num), "") for elem in degeneracy],
                 "nodes" => nodes,
                 "edges" => edges,
                 "work_nodes" => candidate
@@ -48,7 +48,7 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
             break 
         end
         
-        !found && @info "No suitable graph found for degeneration $(degeneration)"
+        !found && @info "No suitable graph found for degeneracy $(degeneracy)"
     end
 
     filename = save_path * "$(bit_num)bits_any_constraint.json"
@@ -57,8 +57,8 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
     end
 end
 
-function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneration::Vector{Int})
-    @assert length(degeneration) > 0 && maximum(degeneration) < 2^bit_num
+function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneracy::Vector{Int})
+    @assert length(degeneracy) > 0 && maximum(degeneracy) < 2^bit_num
     for gname in sort(collect(keys(graphs)))
         # Find Maximal Independent Sets for each graph using GenericTensorNetworks.jl(https://queracomputing.github.io/GenericTensorNetworks.jl/dev/generated/MaximalIS/)
         is_connected(graphs[gname]) || continue
@@ -74,10 +74,10 @@ function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGr
             candidate_value = [[Int(mis_result[i][j]) for j in candidate] for i in 1:mis_num]
             candidate_value_decimal = [decimal(candidate_value[i]) for i in 1:mis_num]
 
-            is_subset = all(x -> x in candidate_value_decimal, degeneration)
+            is_subset = all(x -> x in candidate_value_decimal, degeneracy)
             is_subset || continue
 
-            target_mis_indices = [findfirst(==(x), candidate_value_decimal) for x in degeneration]
+            target_mis_indices = [findfirst(==(x), candidate_value_decimal) for x in degeneracy]
             wrong_mis_indices = setdiff(1:mis_num, target_mis_indices)
             target_mis_sets = mis_result[target_mis_indices]
             wrong_mis_sets = mis_result[wrong_mis_indices]

@@ -1,8 +1,55 @@
 [
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 2.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 3,
+                "target": 4
+            }
+        ],
+        "degeneracy": [
             "000"
         ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -13,7 +60,41 @@
                 "id": 2
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "degeneracy": [
+            "001"
+        ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
                 "id": 3
             },
             {
@@ -43,91 +124,10 @@
                 "target": 4
             }
         ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
-            "001"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 2,
-                "target": 3
-            }
-        ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "000",
             "001"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 3
-            },
-            {
-                "source": 2,
-                "target": 4
-            },
-            {
-                "source": 3,
-                "target": 4
-            }
-        ],
         "work_nodes": [
             1,
             2,
@@ -135,9 +135,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -161,6 +158,9 @@
                 "source": 2,
                 "target": 3
             }
+        ],
+        "degeneracy": [
+            "010"
         ],
         "work_nodes": [
             1,
@@ -169,10 +169,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -213,6 +209,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "010"
+        ],
         "work_nodes": [
             1,
             3,
@@ -220,10 +220,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -252,6 +248,10 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "001",
+            "010"
+        ],
         "work_nodes": [
             1,
             2,
@@ -259,11 +259,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -308,6 +303,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010"
+        ],
         "work_nodes": [
             1,
             2,
@@ -315,9 +315,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -342,6 +339,9 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "011"
+        ],
         "work_nodes": [
             3,
             1,
@@ -349,10 +349,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -393,6 +389,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "011"
+        ],
         "work_nodes": [
             3,
             1,
@@ -400,10 +400,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -436,6 +432,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "001",
+            "011"
+        ],
         "work_nodes": [
             1,
             2,
@@ -443,11 +443,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -487,6 +482,11 @@
                 "source": 2,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011"
         ],
         "work_nodes": [
             5,
@@ -495,10 +495,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -531,6 +527,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "010",
+            "011"
+        ],
         "work_nodes": [
             1,
             3,
@@ -538,11 +538,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -582,6 +577,11 @@
                 "source": 2,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011"
         ],
         "work_nodes": [
             5,
@@ -590,11 +590,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -635,6 +630,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011"
+        ],
         "work_nodes": [
             5,
             1,
@@ -642,12 +642,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -692,6 +686,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011"
+        ],
         "work_nodes": [
             5,
             1,
@@ -699,9 +699,6 @@
         ]
     },
     {
-        "degeneration": [
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -725,6 +722,9 @@
                 "source": 2,
                 "target": 3
             }
+        ],
+        "degeneracy": [
+            "100"
         ],
         "work_nodes": [
             3,
@@ -733,10 +733,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -776,6 +772,10 @@
                 "source": 3,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100"
         ],
         "work_nodes": [
             3,
@@ -784,10 +784,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -816,6 +812,10 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "001",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -823,11 +823,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -872,6 +867,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -879,10 +879,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -911,6 +907,10 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "010",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -918,11 +918,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -967,6 +962,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -974,11 +974,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1007,6 +1002,11 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -1014,12 +1014,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1064,6 +1058,12 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100"
+        ],
         "work_nodes": [
             1,
             2,
@@ -1071,34 +1071,34 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 2.0,
+                "id": 3
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 2,
+                "target": 3
+            }
+        ],
+        "degeneracy": [
             "011",
             "100"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 2.0,
-                "id": 3
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 2,
-                "target": 3
-            }
-        ],
         "work_nodes": [
             3,
             1,
@@ -1106,11 +1106,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1151,6 +1146,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100"
+        ],
         "work_nodes": [
             3,
             1,
@@ -1158,11 +1158,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1194,6 +1189,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100"
         ],
         "work_nodes": [
             1,
@@ -1202,12 +1202,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1255,6 +1249,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100"
         ],
         "work_nodes": [
             1,
@@ -1263,11 +1263,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1300,6 +1295,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "100"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1307,12 +1307,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1360,6 +1354,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100"
         ],
         "work_nodes": [
             1,
@@ -1368,31 +1368,25 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
                 "id": 1
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 2
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 3
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 4
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 5
             }
         ],
@@ -1417,6 +1411,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100"
         ],
         "work_nodes": [
             1,
@@ -1425,13 +1425,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1476,6 +1469,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100"
+        ],
         "work_nodes": [
             5,
             1,
@@ -1483,9 +1483,6 @@
         ]
     },
     {
-        "degeneration": [
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1510,6 +1507,9 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1517,10 +1517,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1561,6 +1557,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1568,10 +1568,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1603,6 +1599,10 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "001",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -1611,11 +1611,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1656,6 +1651,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "101"
+        ],
         "work_nodes": [
             3,
             5,
@@ -1663,10 +1663,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1691,6 +1687,10 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "010",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1698,11 +1698,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1743,6 +1738,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1750,11 +1750,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1786,6 +1781,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -1794,12 +1794,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1847,6 +1841,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "101"
         ],
         "work_nodes": [
             5,
@@ -1855,10 +1855,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1891,6 +1887,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "011",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1898,11 +1898,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1939,6 +1934,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -1946,11 +1946,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -1994,6 +1989,11 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "011",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -2002,12 +2002,67 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 4
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
             "001",
             "011",
             "101"
         ],
+        "work_nodes": [
+            1,
+            3,
+            2
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -2024,9 +2079,53 @@
             {
                 "weight": 1.0,
                 "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "degeneracy": [
+            "010",
+            "011",
+            "101"
+        ],
+        "work_nodes": [
+            1,
+            3,
+            2
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
             },
             {
                 "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 2.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
                 "id": 5
             }
         ],
@@ -2040,8 +2139,8 @@
                 "target": 4
             },
             {
-                "source": 1,
-                "target": 5
+                "source": 2,
+                "target": 4
             },
             {
                 "source": 2,
@@ -2049,114 +2148,15 @@
             },
             {
                 "source": 3,
-                "target": 4
-            },
-            {
-                "source": 3,
                 "target": 5
             }
         ],
-        "work_nodes": [
-            1,
-            3,
-            2
-        ]
-    },
-    {
-        "degeneration": [
-            "010",
-            "011",
-            "101"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 4
-            }
-        ],
-        "work_nodes": [
-            1,
-            3,
-            2
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "000",
             "010",
             "011",
             "101"
         ],
-        "nodes": [
-            {
-                "weight": 2.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 2.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
-        ],
         "work_nodes": [
             1,
             3,
@@ -2164,12 +2164,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2217,6 +2211,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -2225,13 +2225,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2276,6 +2269,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "101"
+        ],
         "work_nodes": [
             5,
             1,
@@ -2283,41 +2283,41 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 2.0,
+                "id": 4
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            }
+        ],
+        "degeneracy": [
             "100",
             "101"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 2.0,
-                "id": 4
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 4
-            }
         ],
         "work_nodes": [
             2,
@@ -2326,11 +2326,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2370,6 +2365,11 @@
                 "source": 2,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -2378,11 +2378,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2423,6 +2418,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             5,
@@ -2430,12 +2430,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2480,6 +2474,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             5,
@@ -2487,11 +2487,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2523,6 +2518,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "010",
+            "100",
+            "101"
         ],
         "work_nodes": [
             2,
@@ -2531,12 +2531,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2584,6 +2578,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100",
+            "101"
         ],
         "work_nodes": [
             4,
@@ -2592,12 +2592,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2641,6 +2635,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -2649,13 +2649,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2700,6 +2693,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             5,
@@ -2707,11 +2707,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2743,6 +2738,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "011",
+            "100",
+            "101"
         ],
         "work_nodes": [
             2,
@@ -2751,12 +2751,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -2800,6 +2794,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -2808,12 +2808,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2861,6 +2855,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100",
+            "101"
         ],
         "work_nodes": [
             4,
@@ -2869,13 +2869,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2920,6 +2913,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             5,
@@ -2927,12 +2927,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -2977,6 +2971,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -2984,57 +2984,57 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
             "010",
             "011",
             "100",
             "101"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
-        ],
         "work_nodes": [
             1,
             3,
@@ -3042,13 +3042,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3092,6 +3085,13 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100",
+            "101"
         ],
         "work_nodes": [
             1,
@@ -3100,14 +3100,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100",
-            "101"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3164,6 +3156,14 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "101"
+        ],
         "work_nodes": [
             1,
             3,
@@ -3171,9 +3171,6 @@
         ]
     },
     {
-        "degeneration": [
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3198,6 +3195,9 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3205,10 +3205,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3249,6 +3245,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3256,10 +3256,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3284,6 +3280,10 @@
                 "target": 3
             }
         ],
+        "degeneracy": [
+            "001",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3291,11 +3291,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3336,6 +3331,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3343,10 +3343,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3379,6 +3375,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "010",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3386,11 +3386,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3430,6 +3425,11 @@
                 "source": 2,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "110"
         ],
         "work_nodes": [
             3,
@@ -3438,11 +3438,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3475,6 +3470,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3482,12 +3482,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3535,6 +3529,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "110"
         ],
         "work_nodes": [
             5,
@@ -3543,10 +3543,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3579,6 +3575,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "011",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3586,11 +3586,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3627,6 +3622,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3634,11 +3634,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3671,6 +3666,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3678,12 +3678,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -3728,6 +3722,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -3735,54 +3735,54 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 2.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "010",
             "011",
             "110"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 2.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
         ],
         "work_nodes": [
             1,
@@ -3791,12 +3791,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3844,6 +3838,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -3852,12 +3852,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3905,6 +3899,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -3913,13 +3913,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -3963,6 +3956,13 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "110"
         ],
         "work_nodes": [
             5,
@@ -3971,10 +3971,6 @@
         ]
     },
     {
-        "degeneration": [
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4007,6 +4003,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "100",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -4014,11 +4014,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4058,6 +4053,11 @@
                 "source": 2,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -4066,11 +4066,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4103,6 +4098,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "001",
+            "100",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -4110,12 +4110,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4163,6 +4157,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "110"
         ],
         "work_nodes": [
             4,
@@ -4171,11 +4171,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4216,6 +4211,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "010",
+            "100",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -4223,56 +4223,56 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
             "010",
             "100",
             "110"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 4
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
-        ],
         "work_nodes": [
             1,
             2,
@@ -4280,12 +4280,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -4329,6 +4323,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -4337,13 +4337,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4388,6 +4381,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -4395,11 +4395,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4431,6 +4426,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "011",
+            "100",
+            "110"
         ],
         "work_nodes": [
             2,
@@ -4439,15 +4439,66 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 2.0,
+                "id": 3
+            },
+            {
+                "weight": 2.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 3
+            },
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 4
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
             "011",
             "100",
             "110"
         ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 1
             },
             {
@@ -4455,15 +4506,15 @@
                 "id": 2
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 3
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 4
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 5
             }
         ],
@@ -4474,7 +4525,7 @@
             },
             {
                 "source": 1,
-                "target": 4
+                "target": 5
             },
             {
                 "source": 2,
@@ -4489,19 +4540,19 @@
                 "target": 5
             }
         ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "001",
             "011",
             "100",
             "110"
         ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -4520,7 +4571,7 @@
                 "id": 4
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 5
             }
         ],
@@ -4546,20 +4597,20 @@
                 "target": 5
             }
         ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "000",
             "001",
             "011",
             "100",
             "110"
         ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -4589,11 +4640,11 @@
             },
             {
                 "source": 1,
-                "target": 5
+                "target": 4
             },
             {
-                "source": 2,
-                "target": 4
+                "source": 1,
+                "target": 5
             },
             {
                 "source": 2,
@@ -4601,69 +4652,18 @@
             },
             {
                 "source": 3,
+                "target": 4
+            },
+            {
+                "source": 3,
                 "target": 5
             }
         ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "010",
             "011",
             "100",
             "110"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 3
-            },
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 4
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
         ],
         "work_nodes": [
             4,
@@ -4672,13 +4672,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4722,6 +4715,13 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -4730,13 +4730,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4781,6 +4774,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100",
+            "110"
+        ],
         "work_nodes": [
             1,
             4,
@@ -4788,14 +4788,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4852,6 +4844,14 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -4859,10 +4859,6 @@
         ]
     },
     {
-        "degeneration": [
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4895,6 +4891,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -4902,11 +4902,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4943,6 +4938,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -4950,11 +4950,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -4987,6 +4982,11 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "001",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -4994,12 +4994,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5044,6 +5038,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -5051,11 +5051,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5087,6 +5082,11 @@
                 "source": 2,
                 "target": 4
             }
+        ],
+        "degeneracy": [
+            "010",
+            "101",
+            "110"
         ],
         "work_nodes": [
             2,
@@ -5095,12 +5095,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5144,6 +5138,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "101",
+            "110"
         ],
         "work_nodes": [
             1,
@@ -5152,12 +5152,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5202,6 +5196,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             1,
             2,
@@ -5209,13 +5209,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5260,6 +5253,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -5267,11 +5267,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5324,6 +5319,11 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             3,
@@ -5331,12 +5331,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 4.0,
@@ -5397,6 +5391,12 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             4,
             5,
@@ -5404,12 +5404,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5470,6 +5464,12 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             3,
@@ -5477,13 +5477,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -5579,6 +5572,13 @@
                 "source": 7,
                 "target": 8
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "101",
+            "110"
         ],
         "work_nodes": [
             5,
@@ -5587,12 +5587,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5653,6 +5647,12 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             4,
@@ -5660,13 +5660,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -5762,6 +5755,13 @@
                 "source": 7,
                 "target": 8
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "101",
+            "110"
         ],
         "work_nodes": [
             5,
@@ -5770,13 +5770,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5837,6 +5830,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             5,
             3,
@@ -5844,14 +5844,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -5948,6 +5940,14 @@
                 "target": 8
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             3,
@@ -5955,11 +5955,6 @@
         ]
     },
     {
-        "degeneration": [
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6004,6 +5999,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             4,
             1,
@@ -6011,12 +6011,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6064,6 +6058,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             2,
@@ -6072,12 +6072,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6125,6 +6119,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             2,
@@ -6133,13 +6133,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6183,6 +6176,13 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             4,
@@ -6191,12 +6191,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6244,6 +6238,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "010",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             2,
@@ -6252,13 +6252,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6302,6 +6295,13 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             4,
@@ -6310,13 +6310,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6361,6 +6354,13 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             4,
             1,
@@ -6368,14 +6368,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6432,6 +6424,14 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             2,
             1,
@@ -6439,12 +6439,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6505,6 +6499,12 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "011",
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             4,
             2,
@@ -6512,13 +6512,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -6614,6 +6607,13 @@
                 "source": 7,
                 "target": 8
             }
+        ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             4,
@@ -6622,13 +6622,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6688,6 +6681,13 @@
                 "source": 6,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             3,
@@ -6696,14 +6696,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6799,6 +6791,14 @@
                 "source": 7,
                 "target": 8
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             3,
@@ -6807,13 +6807,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6874,6 +6867,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             3,
             4,
@@ -6881,14 +6881,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -6984,6 +6976,14 @@
                 "source": 7,
                 "target": 8
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "101",
+            "110"
         ],
         "work_nodes": [
             3,
@@ -6992,14 +6992,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "101",
-            "110"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7041,6 +7033,10 @@
             },
             {
                 "source": 1,
+                "target": 7
+            },
+            {
+                "source": 1,
                 "target": 8
             },
             {
@@ -7052,31 +7048,27 @@
                 "target": 7
             },
             {
-                "source": 3,
-                "target": 6
+                "source": 2,
+                "target": 8
             },
             {
                 "source": 3,
-                "target": 8
+                "target": 6
             },
             {
                 "source": 4,
                 "target": 7
             },
             {
-                "source": 4,
+                "source": 5,
+                "target": 8
+            },
+            {
+                "source": 6,
                 "target": 8
             }
         ],
-        "work_nodes": [
-            5,
-            6,
-            7
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
+        "degeneracy": [
             "001",
             "010",
             "011",
@@ -7084,6 +7076,13 @@
             "101",
             "110"
         ],
+        "work_nodes": [
+            3,
+            4,
+            5
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -7140,6 +7139,15 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "101",
+            "110"
+        ],
         "work_nodes": [
             4,
             5,
@@ -7147,9 +7155,6 @@
         ]
     },
     {
-        "degeneration": [
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7182,6 +7187,9 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7189,10 +7197,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7225,6 +7229,10 @@
                 "target": 4
             }
         ],
+        "degeneracy": [
+            "000",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7232,10 +7240,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -7275,6 +7279,10 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -7283,11 +7291,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7331,6 +7334,11 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -7339,10 +7347,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -7382,6 +7386,10 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "010",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -7390,11 +7398,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7439,6 +7442,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "111"
+        ],
         "work_nodes": [
             1,
             3,
@@ -7446,11 +7454,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7495,6 +7498,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7502,15 +7510,9 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "111"
-        ],
         "nodes": [
             {
-                "weight": 2.0,
+                "weight": 3.0,
                 "id": 1
             },
             {
@@ -7518,15 +7520,15 @@
                 "id": 2
             },
             {
-                "weight": 3.0,
+                "weight": 2.0,
                 "id": 3
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 4
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 5
             },
             {
@@ -7568,6 +7570,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "111"
+        ],
         "work_nodes": [
             6,
             4,
@@ -7575,10 +7583,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7619,6 +7623,10 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "011",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7626,11 +7634,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7671,6 +7674,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7678,11 +7686,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7730,6 +7733,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "011",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -7738,12 +7746,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -7791,6 +7793,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -7799,11 +7807,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7851,6 +7854,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "010",
+            "011",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -7859,12 +7867,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -7913,6 +7915,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "111"
+        ],
         "work_nodes": [
             2,
             4,
@@ -7920,12 +7928,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -7978,6 +7980,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -7985,13 +7993,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8040,6 +8041,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "111"
+        ],
         "work_nodes": [
             6,
             4,
@@ -8047,10 +8055,6 @@
         ]
     },
     {
-        "degeneration": [
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -8090,6 +8094,10 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "100",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -8098,11 +8106,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8147,6 +8150,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             3,
             1,
@@ -8154,11 +8162,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8203,6 +8206,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -8210,15 +8218,9 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
-                "weight": 3.0,
+                "weight": 2.0,
                 "id": 1
             },
             {
@@ -8226,15 +8228,15 @@
                 "id": 2
             },
             {
-                "weight": 2.0,
+                "weight": 3.0,
                 "id": 3
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 4
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 5
             },
             {
@@ -8276,6 +8278,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             4,
             6,
@@ -8283,11 +8291,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8331,6 +8334,11 @@
                 "source": 4,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "010",
+            "100",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -8339,12 +8347,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 3.0,
@@ -8405,6 +8407,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             4,
             5,
@@ -8412,12 +8420,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8470,6 +8472,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -8477,40 +8485,33 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 1
             },
             {
-                "weight": 1.0,
+                "weight": 3.0,
                 "id": 2
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 3
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 4
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 5
             },
             {
-                "weight": 1.0,
+                "weight": 5.0,
                 "id": 6
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 7
             }
         ],
@@ -8521,7 +8522,7 @@
             },
             {
                 "source": 1,
-                "target": 6
+                "target": 5
             },
             {
                 "source": 1,
@@ -8536,133 +8537,12 @@
                 "target": 6
             },
             {
-                "source": 2,
-                "target": 7
-            },
-            {
-                "source": 3,
-                "target": 5
-            },
-            {
                 "source": 3,
                 "target": 6
             },
             {
-                "source": 4,
-                "target": 7
-            },
-            {
-                "source": 5,
-                "target": 7
-            }
-        ],
-        "work_nodes": [
-            4,
-            5,
-            6
-        ]
-    },
-    {
-        "degeneration": [
-            "011",
-            "100",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
                 "source": 3,
-                "target": 5
-            }
-        ],
-        "work_nodes": [
-            4,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            },
-            {
-                "weight": 2.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
+                "target": 7
             },
             {
                 "source": 4,
@@ -8670,8 +8550,15 @@
             },
             {
                 "source": 5,
-                "target": 6
+                "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -8680,12 +8567,123 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "011",
             "100",
             "111"
         ],
+        "work_nodes": [
+            4,
+            2,
+            3
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            },
+            {
+                "weight": 2.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 5
+            },
+            {
+                "source": 5,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "111"
+        ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -8734,6 +8732,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -8741,13 +8745,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8800,6 +8797,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -8807,59 +8811,59 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "010",
             "011",
             "100",
             "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
         ],
         "work_nodes": [
             1,
@@ -8868,13 +8872,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -8926,6 +8923,13 @@
                 "source": 5,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -8934,13 +8938,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -9001,6 +8998,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100",
+            "111"
+        ],
         "work_nodes": [
             7,
             5,
@@ -9008,14 +9012,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9038,11 +9034,11 @@
                 "id": 5
             },
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 6
             },
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 7
             }
         ],
@@ -9080,17 +9076,21 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "111"
+        ],
         "work_nodes": [
-            7,
-            1,
-            2
+            6,
+            4,
+            5
         ]
     },
     {
-        "degeneration": [
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9131,6 +9131,10 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -9138,11 +9142,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9183,6 +9182,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -9190,11 +9194,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9242,6 +9241,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "101",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -9250,12 +9254,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -9304,6 +9302,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             3,
             2,
@@ -9311,11 +9315,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9356,6 +9355,11 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "010",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             4,
@@ -9363,12 +9367,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9421,6 +9419,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -9428,12 +9432,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9482,6 +9480,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -9489,13 +9493,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9548,6 +9545,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -9555,11 +9559,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9607,6 +9606,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "011",
+            "101",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -9615,12 +9619,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9669,6 +9667,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             4,
@@ -9676,12 +9680,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9730,6 +9728,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -9737,61 +9741,61 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
             "000",
             "001",
             "011",
             "101",
             "111"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
         "work_nodes": [
             1,
             2,
@@ -9799,12 +9803,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9856,6 +9854,12 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "010",
+            "011",
+            "101",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -9864,13 +9868,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9923,6 +9920,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             2,
             4,
@@ -9930,13 +9934,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -9984,6 +9981,13 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "101",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -9992,17 +9996,9 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
-                "weight": 1.0,
+                "weight": 2.0,
                 "id": 1
             },
             {
@@ -10026,7 +10022,7 @@
                 "id": 6
             },
             {
-                "weight": 3.0,
+                "weight": 2.0,
                 "id": 7
             }
         ],
@@ -10040,6 +10036,10 @@
                 "target": 6
             },
             {
+                "source": 1,
+                "target": 7
+            },
+            {
                 "source": 2,
                 "target": 5
             },
@@ -10049,29 +10049,32 @@
             },
             {
                 "source": 3,
-                "target": 6
+                "target": 7
             },
             {
-                "source": 3,
-                "target": 7
+                "source": 4,
+                "target": 6
             },
             {
                 "source": 5,
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "101",
+            "111"
+        ],
         "work_nodes": [
-            1,
             2,
+            4,
             3
         ]
     },
     {
-        "degeneration": [
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -10119,6 +10122,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -10127,12 +10135,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10180,6 +10182,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -10188,12 +10196,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10245,6 +10247,12 @@
                 "source": 5,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -10253,13 +10261,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10308,6 +10309,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             4,
             6,
@@ -10315,12 +10323,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10369,6 +10371,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "010",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             3,
             1,
@@ -10376,13 +10384,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10435,6 +10436,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             3,
             1,
@@ -10442,13 +10450,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -10508,6 +10509,13 @@
                 "source": 4,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             5,
@@ -10516,14 +10524,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10587,6 +10587,14 @@
                 "source": 5,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -10595,12 +10603,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10652,6 +10654,12 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "011",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -10660,13 +10668,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10719,6 +10720,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             4,
             2,
@@ -10726,13 +10734,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -10781,6 +10782,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             4,
             2,
@@ -10788,14 +10796,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -10860,6 +10860,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             4,
             2,
@@ -10867,72 +10875,72 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            },
+            {
+                "weight": 1.0,
+                "id": 7
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 7
+            },
+            {
+                "source": 4,
+                "target": 7
+            },
+            {
+                "source": 5,
+                "target": 7
+            }
+        ],
+        "degeneracy": [
             "010",
             "011",
             "100",
             "101",
             "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            },
-            {
-                "weight": 1.0,
-                "id": 7
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 7
-            },
-            {
-                "source": 4,
-                "target": 7
-            },
-            {
-                "source": 5,
-                "target": 7
-            }
         ],
         "work_nodes": [
             2,
@@ -10941,14 +10949,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11021,6 +11021,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             1,
             3,
@@ -11028,14 +11036,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11091,6 +11091,14 @@
                 "source": 3,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100",
+            "101",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -11099,15 +11107,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100",
-            "101",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11164,6 +11163,15 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "101",
+            "111"
+        ],
         "work_nodes": [
             4,
             5,
@@ -11171,10 +11179,6 @@
         ]
     },
     {
-        "degeneration": [
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11215,6 +11219,10 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -11222,51 +11230,51 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
             "110",
             "111"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
-        ],
         "work_nodes": [
             2,
             3,
@@ -11274,11 +11282,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11318,6 +11321,11 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "001",
+            "110",
+            "111"
         ],
         "work_nodes": [
             2,
@@ -11326,12 +11334,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11384,187 +11386,11 @@
                 "target": 6
             }
         ],
-        "work_nodes": [
-            2,
-            3,
-            1
-        ]
-    },
-    {
-        "degeneration": [
-            "010",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 2.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
-        "work_nodes": [
-            3,
-            4,
-            2
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "000",
-            "010",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 2.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
-        ],
-        "work_nodes": [
-            3,
-            4,
-            2
-        ]
-    },
-    {
-        "degeneration": [
             "001",
-            "010",
             "110",
             "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 5
-            }
         ],
         "work_nodes": [
             2,
@@ -11573,13 +11399,188 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
+            "010",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            4,
+            2
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 2.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "000",
+            "010",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            4,
+            2
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 5
+            }
+        ],
+        "degeneracy": [
             "001",
             "010",
             "110",
             "111"
         ],
+        "work_nodes": [
+            2,
+            3,
+            1
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -11632,6 +11633,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -11639,11 +11647,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -11691,6 +11694,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "011",
+            "110",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -11699,12 +11707,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11753,6 +11755,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -11760,12 +11768,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11818,6 +11820,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -11825,13 +11833,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11884,6 +11885,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -11891,12 +11899,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -11945,6 +11947,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             1,
             3,
@@ -11952,61 +11960,61 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
             "000",
             "010",
             "011",
             "110",
             "111"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
         "work_nodes": [
             1,
             3,
@@ -12014,13 +12022,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12068,6 +12069,13 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "110",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -12076,17 +12084,9 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
-                "weight": 2.0,
+                "weight": 1.0,
                 "id": 1
             },
             {
@@ -12110,7 +12110,7 @@
                 "id": 6
             },
             {
-                "weight": 2.0,
+                "weight": 3.0,
                 "id": 7
             }
         ],
@@ -12124,10 +12124,6 @@
                 "target": 6
             },
             {
-                "source": 1,
-                "target": 7
-            },
-            {
                 "source": 2,
                 "target": 5
             },
@@ -12137,29 +12133,32 @@
             },
             {
                 "source": 3,
-                "target": 7
+                "target": 6
             },
             {
-                "source": 4,
-                "target": 6
+                "source": 3,
+                "target": 7
             },
             {
                 "source": 5,
                 "target": 7
             }
         ],
-        "work_nodes": [
-            2,
-            3,
-            4
-        ]
-    },
-    {
-        "degeneration": [
-            "100",
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
             "110",
             "111"
         ],
+        "work_nodes": [
+            1,
+            3,
+            2
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 2.0,
@@ -12207,6 +12206,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -12215,12 +12219,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12268,6 +12266,12 @@
                 "source": 3,
                 "target": 5
             }
+        ],
+        "degeneracy": [
+            "000",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -12276,12 +12280,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12330,6 +12328,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "001",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             2,
@@ -12337,13 +12341,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12396,6 +12393,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             2,
@@ -12403,12 +12407,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12461,6 +12459,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "010",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -12468,13 +12472,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12522,6 +12519,13 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -12530,13 +12534,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -12596,6 +12593,13 @@
                 "source": 4,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             5,
@@ -12604,14 +12608,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12675,6 +12671,14 @@
                 "source": 5,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -12683,12 +12687,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12741,6 +12739,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             4,
@@ -12748,13 +12752,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12807,6 +12804,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             3,
@@ -12814,13 +12818,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12881,6 +12878,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             6,
@@ -12888,14 +12892,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -12968,6 +12964,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             1,
             2,
@@ -12975,13 +12979,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13030,6 +13027,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             3,
@@ -13037,14 +13041,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -13109,6 +13105,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             3,
@@ -13116,14 +13120,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13179,6 +13175,14 @@
                 "source": 3,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "011",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -13187,15 +13191,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "011",
-            "100",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13251,6 +13246,15 @@
                 "source": 3,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "110",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -13259,11 +13263,6 @@
         ]
     },
     {
-        "degeneration": [
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -13311,6 +13310,11 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -13319,12 +13323,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13373,6 +13371,12 @@
                 "target": 5
             }
         ],
+        "degeneracy": [
+            "000",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             2,
@@ -13380,64 +13384,64 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
             "001",
             "101",
             "110",
             "111"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
         "work_nodes": [
             3,
             2,
@@ -13445,144 +13449,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 2.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 5
-            },
-            {
-                "source": 5,
-                "target": 6
-            }
-        ],
-        "work_nodes": [
-            3,
-            2,
-            4
-        ]
-    },
-    {
-        "degeneration": [
-            "010",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 5
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
-        "work_nodes": [
-            3,
-            4,
-            2
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
-            "010",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13635,6 +13501,78 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "101",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            2,
+            4
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 5
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
+            "010",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             4,
@@ -13642,13 +13580,72 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 2.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 5
+            },
+            {
+                "source": 5,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
+            "000",
             "010",
             "101",
             "110",
             "111"
         ],
+        "work_nodes": [
+            3,
+            4,
+            2
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -13709,6 +13706,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "001",
+            "010",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             6,
             2,
@@ -13716,14 +13720,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13796,6 +13792,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             1,
@@ -13803,12 +13807,6 @@
         ]
     },
     {
-        "degeneration": [
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13861,6 +13859,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             2,
             3,
@@ -13868,13 +13872,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -13935,6 +13932,13 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             5,
@@ -13942,13 +13946,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -13997,6 +13994,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "001",
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             5,
@@ -14004,14 +14008,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14068,6 +14064,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             1,
             5,
@@ -14075,13 +14079,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14130,6 +14127,13 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "010",
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             4,
             3,
@@ -14137,14 +14141,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14201,6 +14197,14 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             1,
             3,
@@ -14208,14 +14212,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14276,15 +14272,7 @@
                 "target": 7
             }
         ],
-        "work_nodes": [
-            2,
-            3,
-            4
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
+        "degeneracy": [
             "001",
             "010",
             "011",
@@ -14292,6 +14280,13 @@
             "110",
             "111"
         ],
+        "work_nodes": [
+            2,
+            3,
+            4
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -14347,6 +14342,15 @@
                 "source": 3,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             4,
@@ -14355,12 +14359,6 @@
         ]
     },
     {
-        "degeneration": [
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14409,6 +14407,12 @@
                 "target": 6
             }
         ],
+        "degeneracy": [
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             3,
             1,
@@ -14416,61 +14420,61 @@
         ]
     },
     {
-        "degeneration": [
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
             "000",
             "100",
             "101",
             "110",
             "111"
         ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
         "work_nodes": [
             3,
             1,
@@ -14478,13 +14482,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14532,6 +14529,13 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "001",
+            "100",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -14540,14 +14544,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "001",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 2.0,
@@ -14611,6 +14607,14 @@
                 "source": 5,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "100",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -14619,13 +14623,6 @@
         ]
     },
     {
-        "degeneration": [
-            "010",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -14673,6 +14670,13 @@
                 "source": 3,
                 "target": 6
             }
+        ],
+        "degeneracy": [
+            "010",
+            "100",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             3,
@@ -14681,369 +14685,6 @@
         ]
     },
     {
-        "degeneration": [
-            "000",
-            "010",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 2.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            },
-            {
-                "weight": 2.0,
-                "id": 7
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 1,
-                "target": 7
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 7
-            },
-            {
-                "source": 3,
-                "target": 7
-            },
-            {
-                "source": 4,
-                "target": 6
-            },
-            {
-                "source": 5,
-                "target": 7
-            }
-        ],
-        "work_nodes": [
-            3,
-            4,
-            2
-        ]
-    },
-    {
-        "degeneration": [
-            "001",
-            "010",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            },
-            {
-                "weight": 1.0,
-                "id": 7
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 7
-            },
-            {
-                "source": 3,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 7
-            }
-        ],
-        "work_nodes": [
-            3,
-            1,
-            2
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
-            "001",
-            "010",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            },
-            {
-                "weight": 1.0,
-                "id": 7
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 7
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 7
-            },
-            {
-                "source": 3,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 7
-            }
-        ],
-        "work_nodes": [
-            1,
-            5,
-            6
-        ]
-    },
-    {
-        "degeneration": [
-            "011",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 6
-            }
-        ],
-        "work_nodes": [
-            3,
-            4,
-            5
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
-            "011",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
-        "nodes": [
-            {
-                "weight": 1.0,
-                "id": 1
-            },
-            {
-                "weight": 1.0,
-                "id": 2
-            },
-            {
-                "weight": 1.0,
-                "id": 3
-            },
-            {
-                "weight": 1.0,
-                "id": 4
-            },
-            {
-                "weight": 1.0,
-                "id": 5
-            },
-            {
-                "weight": 1.0,
-                "id": 6
-            },
-            {
-                "weight": 1.0,
-                "id": 7
-            }
-        ],
-        "edges": [
-            {
-                "source": 1,
-                "target": 4
-            },
-            {
-                "source": 1,
-                "target": 6
-            },
-            {
-                "source": 2,
-                "target": 5
-            },
-            {
-                "source": 2,
-                "target": 7
-            },
-            {
-                "source": 3,
-                "target": 6
-            },
-            {
-                "source": 3,
-                "target": 7
-            }
-        ],
-        "work_nodes": [
-            3,
-            1,
-            5
-        ]
-    },
-    {
-        "degeneration": [
-            "001",
-            "011",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -15104,22 +14745,92 @@
                 "target": 7
             }
         ],
-        "work_nodes": [
-            3,
-            2,
-            4
-        ]
-    },
-    {
-        "degeneration": [
+        "degeneracy": [
             "000",
-            "001",
-            "011",
+            "010",
             "100",
             "101",
             "110",
             "111"
         ],
+        "work_nodes": [
+            3,
+            2,
+            1
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            },
+            {
+                "weight": 1.0,
+                "id": 7
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 7
+            },
+            {
+                "source": 3,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 7
+            }
+        ],
+        "degeneracy": [
+            "001",
+            "010",
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            1,
+            2
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -15176,21 +14887,155 @@
                 "target": 7
             }
         ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
         "work_nodes": [
             1,
             5,
-            3
+            6
         ]
     },
     {
-        "degeneration": [
-            "010",
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 6
+            }
+        ],
+        "degeneracy": [
             "011",
             "100",
             "101",
             "110",
             "111"
         ],
+        "work_nodes": [
+            3,
+            4,
+            5
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            },
+            {
+                "weight": 1.0,
+                "id": 7
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 7
+            },
+            {
+                "source": 3,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 7
+            }
+        ],
+        "degeneracy": [
+            "000",
+            "011",
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            1,
+            5
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -15251,22 +15096,21 @@
                 "target": 7
             }
         ],
-        "work_nodes": [
-            3,
-            4,
-            2
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
-            "010",
+        "degeneracy": [
+            "001",
             "011",
             "100",
             "101",
             "110",
             "111"
         ],
+        "work_nodes": [
+            3,
+            2,
+            4
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -15322,6 +15166,162 @@
                 "source": 3,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "011",
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            1,
+            5,
+            3
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            },
+            {
+                "weight": 3.0,
+                "id": 7
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 6
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 7
+            },
+            {
+                "source": 3,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 7
+            },
+            {
+                "source": 5,
+                "target": 7
+            }
+        ],
+        "degeneracy": [
+            "010",
+            "011",
+            "100",
+            "101",
+            "110",
+            "111"
+        ],
+        "work_nodes": [
+            3,
+            4,
+            2
+        ]
+    },
+    {
+        "nodes": [
+            {
+                "weight": 1.0,
+                "id": 1
+            },
+            {
+                "weight": 1.0,
+                "id": 2
+            },
+            {
+                "weight": 1.0,
+                "id": 3
+            },
+            {
+                "weight": 1.0,
+                "id": 4
+            },
+            {
+                "weight": 1.0,
+                "id": 5
+            },
+            {
+                "weight": 1.0,
+                "id": 6
+            },
+            {
+                "weight": 1.0,
+                "id": 7
+            }
+        ],
+        "edges": [
+            {
+                "source": 1,
+                "target": 4
+            },
+            {
+                "source": 1,
+                "target": 7
+            },
+            {
+                "source": 2,
+                "target": 5
+            },
+            {
+                "source": 2,
+                "target": 7
+            },
+            {
+                "source": 3,
+                "target": 6
+            },
+            {
+                "source": 3,
+                "target": 7
+            }
+        ],
+        "degeneracy": [
+            "000",
+            "010",
+            "011",
+            "100",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             1,
@@ -15330,15 +15330,6 @@
         ]
     },
     {
-        "degeneration": [
-            "001",
-            "010",
-            "011",
-            "100",
-            "101",
-            "110",
-            "111"
-        ],
         "nodes": [
             {
                 "weight": 1.0,
@@ -15395,15 +15386,7 @@
                 "target": 7
             }
         ],
-        "work_nodes": [
-            1,
-            2,
-            3
-        ]
-    },
-    {
-        "degeneration": [
-            "000",
+        "degeneracy": [
             "001",
             "010",
             "011",
@@ -15412,6 +15395,13 @@
             "110",
             "111"
         ],
+        "work_nodes": [
+            1,
+            2,
+            3
+        ]
+    },
+    {
         "nodes": [
             {
                 "weight": 1.0,
@@ -15471,6 +15461,16 @@
                 "source": 4,
                 "target": 7
             }
+        ],
+        "degeneracy": [
+            "000",
+            "001",
+            "010",
+            "011",
+            "100",
+            "101",
+            "110",
+            "111"
         ],
         "work_nodes": [
             1,
