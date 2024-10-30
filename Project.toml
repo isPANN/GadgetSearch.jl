@@ -23,6 +23,7 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 [compat]
 Colors = "0.12.11"
 DocumenterTools = "0.1.20"
+Graphs = "1"
 IterTools = "1.10.0"
 JSON = "0.21.4"
 Revise = "3.6.2"
