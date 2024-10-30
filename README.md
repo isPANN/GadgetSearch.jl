@@ -11,15 +11,15 @@
 
 `Any constraint` means that the logic bits are unconstrained, allowing the encoding states (i.e., the ground states) to take any number and any value. For example, in the case of two logic bits under `Any constraint`, the possible ground state values can be:
 ```
-	•	00 # Single-fold degeneracy
-	•	01
-	•	10
-	•	11
-	•	00, 01 # Double-fold degeneracy
-    •	…
-	•	00, 01, 10 # Triple-fold degeneracy
-	•	…
-    •	…
+00 # Single-fold degeneracy
+01
+10
+11
+00, 01 # Double-fold degeneracy
+…
+00, 01, 10 # Triple-fold degeneracy
+…
+…
 ```
 
 This repository includes corresponding ready-to-use datasets for 2-bit and 3-bit configurations, provided in JSON file format, which can be loaded using the `loadJSONFile` function. When called, `loadJSONFile` reads the JSON file and returns a dictionary `result_dict` structured as follows:
