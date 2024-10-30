@@ -25,6 +25,7 @@ Colors = "0.12.11"
 DocumenterTools = "0.1.20"
 IterTools = "1.10.0"
 JSON = "0.21.4"
+JuMP = "1"
 Revise = "3.6.2"
 julia = "1.10 - 1.11"
 
