@@ -58,3 +58,10 @@ For visualizing the weighted graphs, the `plotColoredGraph` function generates a
 ```julia
 julia> plotColoredGraph(result, save_path)
 ```
+### Logic Gates
+In this repository, we focus on two types of logic gates:
+- Two in Two out
+- Three in One out
+
+The second type is also known as a one-dimensional cellular automaton rule.
+

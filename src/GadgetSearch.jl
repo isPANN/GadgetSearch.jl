@@ -12,8 +12,8 @@ include("utils.jl")
 include("GraphConstraintSearch.jl")
 include("DataLoader.jl")
 
-export bin, decimal, plotGraphs, plotColoredGraph
+export bin, decimal, plotGraphs, plotColoredGraph, genericGate
 export readGraphDictFile, readGraphFile, checkGraphMIS
-export searchForAnyConstraint, searchForSingleConstraint, checkSingleConstraint
-export loadJSONFile, findByDegeneracy
+export searchForAnyConstraint, searchForSingleConstraint, checkSingleConstraint, searchForGates, searchForSingleGate
+export loadJSONFile, findByDegeneracy, findByGateID, showGateInfo
 end

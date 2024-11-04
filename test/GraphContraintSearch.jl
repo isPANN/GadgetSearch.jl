@@ -8,8 +8,17 @@
 end
 
 @testset "searchForAnyConstraint" begin    
-    searchForAnyConstraint([2,3], 2, "../data/graphs/", "../")
-    rm("../2bits_any_constraint.json")
-    searchForSingleConstraint([2,3], 2, [1,2], "../data/graphs/", "../")
-    rm("../2bits_[1, 2].json")
+    fn = searchForAnyConstraint([2,3], 2, "../data/graphs/", "../")
+    rm("$fn")
+    fn = searchForSingleConstraint([2,3], 2, [1,2], "../data/graphs/", "../")
+    rm("$fn")
+    fn = searchForSingleConstraint([6],3,["111","101","011","000"],"../data/graphs/", "../")
+    rm("$fn")
+end
+
+@testset "searchForLogicGates" begin
+    fn = searchForSingleGate([6], 2, 2, 2, "../data/graphs/", "../")
+    rm("$fn")
+    fn = searchForGates([4], 2, 2, "../data/graphs/", "../")
+    rm("$fn")
 end

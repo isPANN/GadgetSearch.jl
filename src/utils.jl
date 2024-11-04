@@ -63,22 +63,52 @@ function checkGraphMIS(graph_info::NamedTuple)
     return work_bits_value_string, energy_value, work_bits_value_string[min_indices]
 end
 
-# function generic2bitGate(input1::Int, input2::Int, ruleid::Int)
-#     return (ruleid >> (input1 << 1 | input2)) & 1
-# end
+function genericGate(gate_id::Int, input_bits::Int, output_bits::Int)
+    num_inputs = 2^input_bits
+    num_outputs = 2^output_bits
+    max_gateid = num_outputs^num_inputs
 
-# function genericCAGate(left::Int, middle::Int, right::Int, ruleid::Int)
-#     # N: CA rule id, 0 <= N <= 255
-#     # p, q, r: input states, 0 or 1
-#     return (ruleid >> (left << 2 | middle << 1 | right)) & 1
-# end
+    if gate_id < 0 || gate_id > max_gateid
+        @error("Gate ID must be between 0 and $max_gateid")
+    end
+    degeneracy = Int[]
+    @info "==== Gate ID: $gate_id ===="
+    for input in 0:(num_inputs - 1)
+        output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
+        input_bin_str = string(input, base=2, pad=input_bits)
+        output_bin_str = string(output, base=2, pad=output_bits)
+        combined_bin_str = input_bin_str * output_bin_str
 
+        degen = parse(Int, combined_bin_str, base=2)
+        push!(degeneracy, degen)
+    end
+    return degeneracy
+end
 
-function bin(x::Int, n::Int)
+function showGateInfo(gate_id::Int, input_bits::Int, output_bits::Int)
+    num_inputs = 2^input_bits
+    num_outputs = 2^output_bits
+    max_gateid = num_outputs^num_inputs
+
+    if gate_id < 0 || gate_id > max_gateid
+        @error("Gate ID must be between 0 and $max_gateid")
+    end
+    @info "==== Gate ID: $gate_id ===="
+    for input in 0:(num_inputs - 1)
+        output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
+        println("Input: $(string(input, base=2, pad=input_bits)) -> Output: $(string(output, base=2, pad=output_bits))")
+    end
+end
+
+function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
 end
 
-function decimal(binary_array::Vector{Int})
+function decimal(binary_str::String)::Int
+    parse(Int, binary_str; base=2)
+end
+
+function decimal(binary_array::Vector{Int})::Int
     decimal = 0
     n = length(binary_array)
     for i in 1:n

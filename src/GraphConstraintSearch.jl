@@ -11,7 +11,8 @@ function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degen
         edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
     
         push!(all_graph_data_for_degeneracy, Dict(
-            "vertex_num" => vertex_num,
+            "degeneracy" => [join(bin(elem, bit_num), "") for elem in degeneracy],
+            # "vertex_num" => vertex_num,
             "nodes" => nodes,
             "edges" => edges,
             "work_nodes" => candidate
@@ -21,13 +22,81 @@ function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degen
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data_for_degeneracy))
     end
+    return filename
+end
+
+function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{String}, dir_path::String, save_path::String)
+    degeneracy_int = [decimal(degen) for degen in degeneracy]
+    return searchForSingleConstraint(vertex_nums, bit_num, degeneracy_int, dir_path, save_path)
+end
+
+function searchForSingleGate(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, gate_id::Int, dir_path::String, save_path::String)
+    degeneracy = genericGate(gate_id, input_bits, output_bits)
+    all_graph_data_for_gate = []
+    for vertex_num in vertex_nums
+        graph_path = dir_path * "graph$(vertex_num).g6"
+        graph_dict = readGraphDictFile(graph_path)
+        gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
+        isnothing(gname) && continue
+        
+        g = graph_dict[gname]
+        nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
+        edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
+        push!(all_graph_data_for_gate, Dict(
+            "gate_id" => gate_id,
+            "degeneracy" => [join(bin(elem, input_bits + output_bits), "") for elem in degeneracy],
+            # "vertex_num" => vertex_num,
+            "nodes" => nodes,
+            "edges" => edges,
+            "work_nodes" => candidate
+        ))
+    end
+    filename = save_path * "$(input_bits)in_$(output_bits)out_gate$(gate_id)_$(degeneracy).json"
+    open(filename, "w") do file
+        write(file, JSON.json(all_graph_data_for_gate))
+    end
+    return filename
+end
+
+function searchForGates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, dir_path::String, save_path::String)
+    gate_num = (2^output_bits)^(2^input_bits)
+    all_graph_data = []
+    for gate_id in 0:(gate_num - 1)
+        degeneracy = genericGate(gate_id, input_bits, output_bits)
+        found = false
+        for vertex_num in vertex_nums
+            graph_path = dir_path * "graph$(vertex_num).g6"
+            graph_dict = readGraphDictFile(graph_path)
+            gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
+            isnothing(gname) && continue
+            
+            g = graph_dict[gname]
+            nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
+            edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
+            push!(all_graph_data, Dict(
+                "gate_id" => gate_id,
+                "degeneracy" => [join(bin(elem, input_bits + output_bits), "") for elem in degeneracy],
+                # "vertex_num" => vertex_num,
+                "nodes" => nodes,
+                "edges" => edges,
+                "work_nodes" => candidate
+            ))
+            found = true
+            break 
+        end
+        !found && @info "No suitable graph found for degeneracy $(degeneracy) in Graph $(vertex_nums)"
+    end
+    filename = save_path * "$(input_bits)in_$(output_bits)out.json"
+    open(filename, "w") do file
+        write(file, JSON.json(all_graph_data))
+    end
+    return filename
 end
 
 function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path::String, save_path::String)
     all_graph_data = []
     for degeneracy in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
         found = false
-        
         for vertex_num in vertex_nums
             graph_path = dir_path * "graph$(vertex_num).g6"
             graph_dict = readGraphDictFile(graph_path)
@@ -37,9 +106,9 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
             g = graph_dict[gname]
             nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
             edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
-            
             push!(all_graph_data, Dict(
                 "degeneracy" => [join(bin(elem, bit_num), "") for elem in degeneracy],
+                # "vertex_num" => vertex_num,
                 "nodes" => nodes,
                 "edges" => edges,
                 "work_nodes" => candidate
@@ -47,22 +116,22 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
             found = true
             break 
         end
-        
-        !found && @info "No suitable graph found for degeneracy $(degeneracy)"
+        !found && @info "No suitable graph found for degeneracy $(degeneracy) in Graph $(vertex_nums)."
     end
-
     filename = save_path * "$(bit_num)bits_any_constraint.json"
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data))
     end
+    return filename
 end
 
 function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneracy::Vector{Int})
     @assert length(degeneracy) > 0 && maximum(degeneracy) < 2^bit_num
     for gname in sort(collect(keys(graphs)))
-        # Find Maximal Independent Sets for each graph using GenericTensorNetworks.jl(https://queracomputing.github.io/GenericTensorNetworks.jl/dev/generated/MaximalIS/)
+        # Check if the graph is connected.
         is_connected(graphs[gname]) || continue
         vertex_num = nv(graphs[gname])
+        # Find Maximal Independent Sets for each graph using GenericTensorNetworks.jl(https://queracomputing.github.io/GenericTensorNetworks.jl/dev/generated/MaximalIS/)
         maximalis = MaximalIS(graphs[gname])
         mis_problem = GenericTensorNetwork(maximalis)
         mis_result = read_config(solve(mis_problem, ConfigsAll())[])
