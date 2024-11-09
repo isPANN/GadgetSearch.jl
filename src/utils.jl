@@ -10,7 +10,7 @@ end
 
 function plotGraphs(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, saved_path::String)
     for gname in keys(graphs)
-        draw(Compose.PNG(saved_path * "$gname.png", 16cm, 16cm), gplot(graphs[gname]))
+        draw(Compose.PNG(joinpath(saved_path, "$gname.png"), 16cm, 16cm), gplot(graphs[gname]))
     end
 end
 
@@ -42,7 +42,7 @@ function plotColoredGraph(graph_info::NamedTuple, saved_path::String, name::Stri
               nodefillc = node_colors,
               nodelabel = node_labels
     )
-    draw(Compose.PNG(saved_path * name, 16cm, 16cm), p)
+    draw(Compose.PNG(joinpath(saved_path, name), 16cm, 16cm), p)
 end
 
 function checkGraphMIS(graph_info::NamedTuple)

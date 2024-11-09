@@ -1,7 +1,7 @@
 function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, dir_path::String, save_path::String)
     all_graph_data_for_degeneracy = []
     for vertex_num in vertex_nums
-        graph_path = dir_path * "graph$(vertex_num).g6"
+        graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
         graph_dict = readGraphDictFile(graph_path)
         gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
         isnothing(gname) && continue
@@ -18,7 +18,7 @@ function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degen
             "work_nodes" => candidate
         ))
     end
-    filename = save_path * "$(bit_num)bits_$(degeneracy).json"
+    filename = joinpath(save_path, "$(bit_num)bits_$(degeneracy).json")
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data_for_degeneracy))
     end
@@ -34,7 +34,7 @@ function searchForSingleGate(vertex_nums::Vector{Int}, input_bits::Int, output_b
     degeneracy = genericGate(gate_id, input_bits, output_bits)
     all_graph_data_for_gate = []
     for vertex_num in vertex_nums
-        graph_path = dir_path * "graph$(vertex_num).g6"
+        graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
         graph_dict = readGraphDictFile(graph_path)
         gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
         isnothing(gname) && continue
@@ -51,7 +51,7 @@ function searchForSingleGate(vertex_nums::Vector{Int}, input_bits::Int, output_b
             "work_nodes" => candidate
         ))
     end
-    filename = save_path * "$(input_bits)in_$(output_bits)out_gate$(gate_id)_$(degeneracy).json"
+    filename = joinpath(save_path, "$(input_bits)in_$(output_bits)out_gate$(gate_id)_$(degeneracy).json")
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data_for_gate))
     end
@@ -65,7 +65,7 @@ function searchForGates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::
         degeneracy = genericGate(gate_id, input_bits, output_bits)
         found = false
         for vertex_num in vertex_nums
-            graph_path = dir_path * "graph$(vertex_num).g6"
+            graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
             graph_dict = readGraphDictFile(graph_path)
             gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
             isnothing(gname) && continue
@@ -86,7 +86,7 @@ function searchForGates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::
         end
         !found && @info "No suitable graph found for degeneracy $(degeneracy) in Graph $(vertex_nums)"
     end
-    filename = save_path * "$(input_bits)in_$(output_bits)out.json"
+    filename = joinpath(save_path, "$(input_bits)in_$(output_bits)out.json")
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data))
     end
@@ -98,7 +98,7 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
     for degeneracy in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
         found = false
         for vertex_num in vertex_nums
-            graph_path = dir_path * "graph$(vertex_num).g6"
+            graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
             graph_dict = readGraphDictFile(graph_path)
             gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
             isnothing(gname) && continue
@@ -118,7 +118,7 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
         end
         !found && @info "No suitable graph found for degeneracy $(degeneracy) in Graph $(vertex_nums)."
     end
-    filename = save_path * "$(bit_num)bits_any_constraint.json"
+    filename = joinpath(save_path, "$(bit_num)bits_any_constraint.json")
     open(filename, "w") do file
         write(file, JSON.json(all_graph_data))
     end
