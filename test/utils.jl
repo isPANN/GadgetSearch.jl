@@ -22,6 +22,13 @@ end
     @test length(data) == 256
     degeneracy = ["0011", "0101", "1010", "1100"]
     g_info = find_by_degeneracy(data, degeneracy)
+
+    g_info1 = find_by_degeneracy(path, degeneracy)
+    @test g_info == g_info1
+
+    g_info2 = find_by_degeneracy(path, 4, [3, 5, 10, 12])
+    @test g_info == g_info2
+
     plotcoloredgraph(g_info, pkgdir(GadgetSearch, "data", "graphplot"))
     rm(pkgdir(GadgetSearch, "data", "graphplot", "graph.png"))
     _, _, ground_states = checkgraphmis(g_info)

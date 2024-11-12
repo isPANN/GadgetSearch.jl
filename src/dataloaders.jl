@@ -44,7 +44,7 @@ function find_by_degeneracy(filename::String, degeneracy::Vector{String})
 end
 
 function find_by_degeneracy(filename::String, bit_num::Int, degeneracy::Vector{Int})
-    degeneracy_key = Vector{String}[join(bin(elem, bit_num), "") for elem in degeneracy]
+    degeneracy_key = [join(bin(elem, bit_num), "") for elem in degeneracy]
     return find_by_degeneracy(filename, degeneracy_key)
 end
 
