@@ -1,9 +1,9 @@
-function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, dir_path::String, save_path::String)
+function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, dir_path::String, save_path::String)
     all_graph_data_for_degeneracy = []
     for vertex_num in vertex_nums
         graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-        graph_dict = readGraphDictFile(graph_path)
-        gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
+        graph_dict = readgraphdict(graph_path)
+        gname, candidate, weight = check_single_constraint(graph_dict, bit_num, degeneracy)
         isnothing(gname) && continue
 
         g = graph_dict[gname]
@@ -25,18 +25,18 @@ function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degen
     return filename
 end
 
-function searchForSingleConstraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{String}, dir_path::String, save_path::String)
+function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{String}, dir_path::String, save_path::String)
     degeneracy_int = [decimal(degen) for degen in degeneracy]
-    return searchForSingleConstraint(vertex_nums, bit_num, degeneracy_int, dir_path, save_path)
+    return search_single_constraint(vertex_nums, bit_num, degeneracy_int, dir_path, save_path)
 end
 
-function searchForSingleGate(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, gate_id::Int, dir_path::String, save_path::String)
-    degeneracy = genericGate(gate_id, input_bits, output_bits)
+function search_single_gate(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, gate_id::Int, dir_path::String, save_path::String)
+    degeneracy = genericgate(gate_id, input_bits, output_bits)
     all_graph_data_for_gate = []
     for vertex_num in vertex_nums
         graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-        graph_dict = readGraphDictFile(graph_path)
-        gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
+        graph_dict = readgraphdict(graph_path)
+        gname, candidate, weight = check_single_constraint(graph_dict, input_bits + output_bits, degeneracy)
         isnothing(gname) && continue
         
         g = graph_dict[gname]
@@ -58,16 +58,16 @@ function searchForSingleGate(vertex_nums::Vector{Int}, input_bits::Int, output_b
     return filename
 end
 
-function searchForGates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, dir_path::String, save_path::String)
+function search_gates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, dir_path::String, save_path::String)
     gate_num = (2^output_bits)^(2^input_bits)
     all_graph_data = []
     for gate_id in 0:(gate_num - 1)
-        degeneracy = genericGate(gate_id, input_bits, output_bits)
+        degeneracy = genericgate(gate_id, input_bits, output_bits)
         found = false
         for vertex_num in vertex_nums
             graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-            graph_dict = readGraphDictFile(graph_path)
-            gname, candidate, weight = checkSingleConstraint(graph_dict, input_bits + output_bits, degeneracy)
+            graph_dict = readgraphdict(graph_path)
+            gname, candidate, weight = check_single_constraint(graph_dict, input_bits + output_bits, degeneracy)
             isnothing(gname) && continue
             
             g = graph_dict[gname]
@@ -93,14 +93,14 @@ function searchForGates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::
     return filename
 end
 
-function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path::String, save_path::String)
+function search_any_constraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path::String, save_path::String)
     all_graph_data = []
     for degeneracy in [collect(s) for s in IterTools.subsets(0:2^bit_num-1) if !isempty(s)]
         found = false
         for vertex_num in vertex_nums
             graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-            graph_dict = readGraphDictFile(graph_path)
-            gname, candidate, weight = checkSingleConstraint(graph_dict, bit_num, degeneracy)
+            graph_dict = readgraphdict(graph_path)
+            gname, candidate, weight = check_single_constraint(graph_dict, bit_num, degeneracy)
             isnothing(gname) && continue
 
             g = graph_dict[gname]
@@ -125,7 +125,7 @@ function searchForAnyConstraint(vertex_nums::Vector{Int}, bit_num::Int, dir_path
     return filename
 end
 
-function checkSingleConstraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneracy::Vector{Int})
+function check_single_constraint(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, bit_num::Int, degeneracy::Vector{Int})
     @assert length(degeneracy) > 0 && maximum(degeneracy) < 2^bit_num
     for gname in sort(collect(keys(graphs)))
         # Check if the graph is connected.

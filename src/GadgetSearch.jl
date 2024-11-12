@@ -9,11 +9,12 @@ using GraphPlot, Compose, Colors
 using Combinatorics
 
 include("utils.jl")
-include("GraphConstraintSearch.jl")
-include("DataLoader.jl")
+include("graphsearch.jl")
+include("dataloader.jl")
 
-export bin, decimal, plotGraphs, plotColoredGraph, genericGate
-export readGraphDictFile, readGraphFile, checkGraphMIS
-export searchForAnyConstraint, searchForSingleConstraint, checkSingleConstraint, searchForGates, searchForSingleGate
-export loadJSONFile, findByDegeneracy, findByGateID, showGateInfo
+export bin, decimal, plotgraphs, plotcoloredgraph, genericgate
+export readgraphdict, readgraph, checkgraphmis
+export search_any_constraint, search_single_constraint, check_single_constraint, search_gates, search_single_gate
+export loadjsonfile, find_by_degeneracy, find_by_gateid, showgateinfo
+
 end
