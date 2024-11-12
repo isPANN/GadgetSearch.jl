@@ -1,20 +1,20 @@
-function readGraphDictFile(path::String)
+function readgraphdict(path::String)
     graph = loadgraphs(path, GraphIO.Graph6.Graph6Format())
     return graph
 end
 
-function readGraphFile(path::String, id::Int)
+function readgraph(path::String, id::Int)
     graph = loadgraph(path, "graph$(id)", GraphIO.Graph6.Graph6Format())
     return graph
 end
 
-function plotGraphs(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, saved_path::String)
+function plotgraphs(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, saved_path::String)
     for gname in keys(graphs)
         draw(Compose.PNG(joinpath(saved_path, "$gname.png"), 16cm, 16cm), gplot(graphs[gname]))
     end
 end
 
-function plotColoredGraph(graph_info::NamedTuple, saved_path::String, name::String="graph.png")
+function plotcoloredgraph(graph_info::NamedTuple, saved_path::String, name::String="graph.png")
     node_weights = graph_info.node_weights
     work_nodes = graph_info.work_nodes
     
@@ -45,7 +45,7 @@ function plotColoredGraph(graph_info::NamedTuple, saved_path::String, name::Stri
     draw(Compose.PNG(joinpath(saved_path, name), 16cm, 16cm), p)
 end
 
-function checkGraphMIS(graph_info::NamedTuple)
+function checkgraphmis(graph_info::NamedTuple)
     g = graph_info.graph
     maximalis = MaximalIS(g)
     mis_problem = GenericTensorNetwork(maximalis)
@@ -63,7 +63,7 @@ function checkGraphMIS(graph_info::NamedTuple)
     return work_bits_value_string, energy_value, work_bits_value_string[min_indices]
 end
 
-function genericGate(gate_id::Int, input_bits::Int, output_bits::Int)
+function genericgate(gate_id::Int, input_bits::Int, output_bits::Int)
     num_inputs = 2^input_bits
     num_outputs = 2^output_bits
     max_gateid = num_outputs^num_inputs
@@ -85,7 +85,7 @@ function genericGate(gate_id::Int, input_bits::Int, output_bits::Int)
     return degeneracy
 end
 
-function showGateInfo(gate_id::Int, input_bits::Int, output_bits::Int)
+function showgateinfo(gate_id::Int, input_bits::Int, output_bits::Int)
     num_inputs = 2^input_bits
     num_outputs = 2^output_bits
     max_gateid = num_outputs^num_inputs
