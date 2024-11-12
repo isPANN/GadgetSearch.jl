@@ -4,6 +4,6 @@ using Test
 @testset "utils.jl" begin
     include("utils.jl")
 end
-@testset "GraphContraintSearch.jl" begin
-    include("GraphContraintSearch.jl")
+@testset "graphsearch.jl" begin
+    include("graphsearch.jl")
 end

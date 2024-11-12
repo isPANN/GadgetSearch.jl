@@ -1,4 +1,4 @@
-function loadJSONFile(filename::String)
+function loadjsonfile(filename::String)
     data = JSON.parsefile(filename)
     result_dict = Dict{Vector{String}, NamedTuple}()    
     for entry in data
@@ -34,27 +34,27 @@ function loadJSONFile(filename::String)
     return result_dict
 end
 
-function findByDegeneracy(data::Dict{Vector{String}, NamedTuple}, degeneracy::Vector{String})
+function find_by_degeneracy(data::Dict{Vector{String}, NamedTuple}, degeneracy::Vector{String})
     return get(data, degeneracy, "Degeneracy not found.")
 end
 
-function findByDegeneracy(filename::String, degeneracy::Vector{String})
-    data = loadJSONFile(filename)
-    return findByDegeneracy(data, degeneracy)
+function find_by_degeneracy(filename::String, degeneracy::Vector{String})
+    data = loadjsonfile(filename)
+    return find_by_degeneracy(data, degeneracy)
 end
 
-function findByDegeneracy(filename::String, bit_num::Int, degeneracy::Vector{Int})
+function find_by_degeneracy(filename::String, bit_num::Int, degeneracy::Vector{Int})
     degeneracy_key = Vector{String}[join(bin(elem, bit_num), "") for elem in degeneracy]
-    return findByDegeneracy(filename, degeneracy_key)
+    return find_by_degeneracy(filename, degeneracy_key)
 end
 
-# function findByGateID(data::Dict{Vector{String}, NamedTuple}, gate_id::Int)
+# function find_by_gateid(data::Dict{Vector{String}, NamedTuple}, gate_id::Int)
 #     return get(data, gate_id, "Gate not found.")
 # end
 
-# function findByGateID(filename::String, gate_id::Int)
+# function find_by_gateid(filename::String, gate_id::Int)
 #     data = loadJSONFile(filename)
-#     return findByGateID(data, gate_id)
+#     return find_by_gateid(data, gate_id)
 # end
 
 
