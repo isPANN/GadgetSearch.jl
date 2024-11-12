@@ -22,7 +22,7 @@
 …
 ```
 
-This repository includes corresponding ready-to-use datasets for 2-bit and 3-bit configurations, provided in JSON file format, which can be loaded using the `loadJSONFile` function. When called, `loadJSONFile` reads the JSON file and returns a dictionary `result_dict` structured as follows:
+This repository includes corresponding ready-to-use datasets for 2-bit and 3-bit configurations, provided in JSON file format, which can be loaded using the `loadjsonfile` function. When called, `loadjsonfile` reads the JSON file and returns a dictionary `result_dict` structured as follows:
 
 ```julia
 result_dict[degeneracy_key] = (
@@ -32,31 +32,31 @@ result_dict[degeneracy_key] = (
 )
 ```
 
-The `findByDegeneracy` function can directly locate specific degeneracy cases and return corresponding value (i.e. a 3-tuple) in the dictionary above.
+The `find_by_degeneracy` function can directly locate specific degeneracy cases and return corresponding value (i.e. a 3-tuple) in the dictionary above.
 
 ```julia
 julia> using GadgetSearch
 
-julia> dataset_path = "./datasets/any_constraint/3bits_any_constraint.json"
+julia> dataset_path = "/datasets/any_constraint/3bits_any_constraint.json"
 julia> degeneracy = ["001", "010", "101", "111"]
 
-julia> result = findByDegeneracy(dataset_path, degeneracy)
+julia> result = find_by_degeneracy(dataset_path, degeneracy)
 
 (graph = Graphs.SimpleGraphs.SimpleGraph{Int64}(5, [[4, 6], [5, 6], [5], [1], [2, 3], [1, 2]]), node_weights = Dict(5 => 2.0, 4 => 1.0, 6 => 1.0, 2 => 1.0, 3 => 1.0, 1 => 1.0), work_nodes = Any[2, 1, 3])
 ```
-Once a degeneracy configuration is retrieved, `checkGraphMIS` function can be used to verify all Maximal Independent States and their corresponding energy values for the graph. This function will also return all ground states associated with the given configuration.
+Once a degeneracy configuration is retrieved, `checkgraphmis` function can be used to verify all Maximal Independent States and their corresponding energy values for the graph. This function will also return all ground states associated with the given configuration.
 
 ```julia
-julia> _, _, ground_states = checkGraphMIS(result)
+julia> _, _, ground_states = checkgraphmis(result)
 
 [ Info: All Maximal Independent States' value: ["010", "111", "101", "000", "001"].
 [ Info: Corresponding energy values: [3.0, 3.0, 3.0, 4.0, 3.0].
 [ Info: => Ground States for this graph: ["010", "111", "101", "001"].
 ```
-For visualizing the weighted graphs, the `plotColoredGraph` function generates a color-coded representation of the graph based on node weights.
+For visualizing the weighted graphs, the `plotcoloredgraph` function generates a color-coded representation of the graph based on node weights.
 
 ```julia
-julia> plotColoredGraph(result, save_path)
+julia> plotcoloredgraph(result, save_path)
 ```
 ### Logic Gates
 In this repository, we focus on two types of logic gates:
