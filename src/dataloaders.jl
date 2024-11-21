@@ -1,35 +1,32 @@
-function loadjsonfile(filename::String)
+function loadjsonfile(filename::String, key::Symbol=:degeneracy)
+    valid_keys = [:degeneracy, :gate_id]
+    if !(key in valid_keys)
+        error("Invalid key. Valid keys are: $(join(valid_keys, ","))")
+    end
+
+    the_other_key = key == :degeneracy ? :gate_id : :degeneracy
+
     data = JSON.parsefile(filename)
-    result_dict = Dict{Vector{String}, NamedTuple}()    
+    result_dict = key == :degeneracy ? Dict{Vector{String}, NamedTuple}() : Dict{Integer, NamedTuple}()
+
     for entry in data
-        degeneracy_key = entry["degeneracy"]
-        if haskey(entry, "gate_id")
-            gate_id = entry["gate_id"]
-        end
+        dict_key = entry[String(key)]
         node_weights = Dict(node["id"] => node["weight"] for node in entry["nodes"])
-        g = SimpleGraph()
-        for _ in keys(node_weights)
-            add_vertex!(g)
-        end
+
+        g = SimpleGraph(length(node_weights))
         for edge in entry["edges"]
             add_edge!(g, edge["source"], edge["target"])
         end
+
         work_nodes = entry["work_nodes"]
-        # vertex_num = entry["vertex_num"]
-        if haskey(entry, "gate_id")
-            result_dict[degeneracy_key] = (
-                graph = g,
-                node_weights = node_weights,
-                work_nodes = work_nodes, 
-                gate_id = gate_id
-            )
-        else
-            result_dict[degeneracy_key] = (
-                graph = g,
-                node_weights = node_weights,
-                work_nodes = work_nodes
-            )
-        end
+
+        key_info = get(entry, String(the_other_key), nothing)
+        result_dict[dict_key] = (
+            graph = g,
+            node_weights = node_weights,
+            work_nodes = work_nodes,
+            key_info = key_info
+        )
     end
     return result_dict
 end
@@ -48,13 +45,13 @@ function find_by_degeneracy(filename::String, bit_num::Int, degeneracy::Vector{I
     return find_by_degeneracy(filename, degeneracy_key)
 end
 
-# function find_by_gateid(data::Dict{Vector{String}, NamedTuple}, gate_id::Int)
-#     return get(data, gate_id, "Gate not found.")
-# end
+function find_by_gateid(data::Dict{Integer, NamedTuple}, gate_id::Int)
+    return get(data, gate_id, "Gate not found.")
+end
 
-# function find_by_gateid(filename::String, gate_id::Int)
-#     data = loadJSONFile(filename)
-#     return find_by_gateid(data, gate_id)
-# end
+function find_by_gateid(filename::String, gate_id::Int)
+    data = loadjsonfile(filename, :gate_id)
+    return find_by_gateid(data, gate_id)
+end
 
 

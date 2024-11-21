@@ -1,5 +1,7 @@
 @testset "GraphIO" begin
     path = pkgdir(GadgetSearch, "data", "graphs", "graph2.g6")
+    num = count_nonempty_lines(path)
+    @test num == 2
     graph_dict = readgraphdict(path)
     @test readgraph(path, 1) == graph_dict["graph1"]
 end
@@ -12,7 +14,7 @@ end
         if !isdir(pkgdir(GadgetSearch, "data", "graphplot", "$(i)vertex/"))
             mkpath(pkgdir(GadgetSearch, "data", "graphplot", "$(i)vertex/"))
         end
-        plotgraphs(graph_dict, pkgdir(GadgetSearch, "data", "graphplot", "$(i)vertex/"))
+        plotgraphs(graph_dict, :png; saved_path=pkgdir(GadgetSearch, "data", "graphplot", "$(i)vertex/"))
     end
 end
 
@@ -53,3 +55,4 @@ end
     genericgate(110, 3, 1)
     showgateinfo(110, 3, 1)
 end
+

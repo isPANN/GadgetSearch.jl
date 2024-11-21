@@ -24,4 +24,6 @@ mainNotes.bib
 /docs/Manifest.toml
 /docs/build/
 /data/graphplot/
+/data/graphs/
+/datasets/plots/
 .vscode/
