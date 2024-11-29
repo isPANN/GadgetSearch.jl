@@ -1,5 +1,6 @@
 function loadjsonfile(filename::String)
     data = JSON.parsefile(filename)
+    # TODO: use data type instead of NamedTuple
     result_dict = Dict{Vector{String}, NamedTuple}()    
     for entry in data
         degeneracy_key = entry["degeneracy"]
@@ -34,6 +35,7 @@ function loadjsonfile(filename::String)
     return result_dict
 end
 
+# TODO: remove degeneracy to groundstates, degeneracy is the number of states with the same energy.
 function find_by_degeneracy(data::Dict{Vector{String}, NamedTuple}, degeneracy::Vector{String})
     return get(data, degeneracy, "Degeneracy not found.")
 end

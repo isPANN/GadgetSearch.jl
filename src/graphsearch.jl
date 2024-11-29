@@ -1,61 +1,60 @@
-function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, dir_path::String, save_path::String)
-    all_graph_data_for_degeneracy = []
+# TODO: please do not repeat yourself (DRY).
+
+function nonisomorphic_graphs(vertex_num::Int)
+    # TODO: handle the number of vertex_num too large error
+    graph_path = pkgdir(GadgetSearch, "data", "graphs", "graph$(vertex_num).g6")
+    return readgraphdict(graph_path)
+end
+
+# filename = joinpath(save_path, "$(bit_num)bits_$(degeneracy).json"
+struct MISGadgetSolution{T}
+    graph::SimpleGraph{Int}
+    weights::Vector{T}  # weights are on vertices, which can be integer typed or real typed.
+    pins::Vector{Int}   # pins are vertices carrying logical signals
+    function GadgetSolution(graph::SimpleGraph{Int}, weights::Vector{T}, pins::Vector{Int}) where T
+        @assert length(weights) == nv(graph)
+        new{T}(graph, weights, pins)
+    end
+end
+function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{Int}, id::Int, output_file)
+    all_graph_data_for_degeneracy = MISGadgetSolution{Int}[]
     for vertex_num in vertex_nums
-        graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-        graph_dict = readgraphdict(graph_path)
+        graph_dict = nonisomorphic_graphs(vertex_num)
+        # the following function should be graph in, gadget out.
         gname, candidate, weight = check_single_constraint(graph_dict, bit_num, degeneracy)
         isnothing(gname) && continue
-
-        g = graph_dict[gname]
-        nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
-        edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
-    
-        push!(all_graph_data_for_degeneracy, Dict(
-            "degeneracy" => [join(bin(elem, bit_num), "") for elem in degeneracy],
-            # "vertex_num" => vertex_num,
-            "nodes" => nodes,
-            "edges" => edges,
-            "work_nodes" => candidate
-        ))
+        push!(all_graph_data_for_degeneracy, graph2dict(graph_dict[gname], id, candidate, weight))
     end
-    filename = joinpath(save_path, "$(bit_num)bits_$(degeneracy).json")
-    open(filename, "w") do file
+    # save file
+    open(output_file, "w") do file
         write(file, JSON.json(all_graph_data_for_degeneracy))
     end
-    return filename
+    return output_file
 end
 
-function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{String}, dir_path::String, save_path::String)
-    degeneracy_int = [decimal(degen) for degen in degeneracy]
-    return search_single_constraint(vertex_nums, bit_num, degeneracy_int, dir_path, save_path)
+function graph2dict(g::SimpleGraph, id::Int, candidate, weight)
+    nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
+    edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
+
+    return Dict(
+        "id" => id,
+        "degeneracy" => [join(bin(elem, bit_num), "") for elem in degeneracy],
+        "nodes" => nodes,
+        "edges" => edges,
+        "work_nodes" => candidate
+    )
 end
+
+# No, we do not need string input.
+# function search_single_constraint(vertex_nums::Vector{Int}, bit_num::Int, degeneracy::Vector{String}, dir_path::String, save_path::String)
+#     degeneracy_int = [decimal(degen) for degen in degeneracy]
+#     return search_single_constraint(vertex_nums, bit_num, degeneracy_int, dir_path, save_path)
+# end
 
 function search_single_gate(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, gate_id::Int, dir_path::String, save_path::String)
     degeneracy = genericgate(gate_id, input_bits, output_bits)
-    all_graph_data_for_gate = []
-    for vertex_num in vertex_nums
-        graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
-        graph_dict = readgraphdict(graph_path)
-        gname, candidate, weight = check_single_constraint(graph_dict, input_bits + output_bits, degeneracy)
-        isnothing(gname) && continue
-        
-        g = graph_dict[gname]
-        nodes = [Dict("id" => v, "weight" => weight[v]) for v in Graphs.vertices(g)]
-        edges = [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(g)]
-        push!(all_graph_data_for_gate, Dict(
-            "gate_id" => gate_id,
-            "degeneracy" => [join(bin(elem, input_bits + output_bits), "") for elem in degeneracy],
-            # "vertex_num" => vertex_num,
-            "nodes" => nodes,
-            "edges" => edges,
-            "work_nodes" => candidate
-        ))
-    end
-    filename = joinpath(save_path, "$(input_bits)in_$(output_bits)out_gate$(gate_id)_$(degeneracy).json")
-    open(filename, "w") do file
-        write(file, JSON.json(all_graph_data_for_gate))
-    end
-    return filename
+    output_file = joinpath(save_path, "$(input_bits)in_$(output_bits)out_gate$(gate_id)_$(degeneracy).json")
+    return search_single_constraint(vertex_nums, input_bits + output_bits, degeneracy, gate_id, output_file)
 end
 
 function search_gates(vertex_nums::Vector{Int}, input_bits::Int, output_bits::Int, dir_path::String, save_path::String)
@@ -133,10 +132,12 @@ function check_single_constraint(graphs::Dict{String, Graphs.SimpleGraphs.Simple
         vertex_num = nv(graphs[gname])
         # Find Maximal Independent Sets for each graph using GenericTensorNetworks.jl(https://queracomputing.github.io/GenericTensorNetworks.jl/dev/generated/MaximalIS/)
         maximalis = MaximalIS(graphs[gname])
+        # TODO: use greedy
         mis_problem = GenericTensorNetwork(maximalis)
         mis_result = read_config(solve(mis_problem, ConfigsAll())[])
         mis_num = length(mis_result)
         
+        # Q: combination or permutation?
         all_candidates = collect(permutations(1:vertex_num, bit_num))
         
         for candidate in all_candidates 
@@ -180,6 +181,7 @@ function check_single_constraint(graphs::Dict{String, Graphs.SimpleGraphs.Simple
                 @info "Optimal objective value: $([value(x[i]) for i in 1:length(x)])"
                 return gname, candidate, [value(x[i]) for i in 1:length(x)]
             end
+            # why delete
             for con in all_constraints(model; include_variable_in_set_constraints = false)
                 delete(model, con)
             end
