@@ -147,19 +147,19 @@ end
 
 function checkgraphmis(graph_info::NamedTuple)
     g = graph_info.graph
-    maximalis = MaximalIS(g)
-    mis_problem = GenericTensorNetwork(maximalis)
-    mis_result = read_config(solve(mis_problem, ConfigsAll())[])
-    mis_num = length(mis_result)
+    mis_result = find_maximal_independent_sets(g)
+    mis_num = size(mis_result, 1)
 
-    work_bits_value_vector = [[Int(mis_result[i][j]) for j in graph_info.work_nodes] for i in 1:mis_num]
+    work_bits_value_vector = [[mis_result[i, j] for j in graph_info.work_nodes] for i in 1:mis_num]
     work_bits_value_string = [join(map(string, subarr)) for subarr in work_bits_value_vector]
-    energy_value = [sum([graph_info.node_weights[j] * Int(mis_result[i][j]) for j in 1:nv(g)])  for i in 1:mis_num]
+    energy_value = [sum([graph_info.node_weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
     max_value = maximum(energy_value)
     max_indices = findall(x -> x == max_value, energy_value)
-    @info "All Maximal Independent States' value: $(work_bits_value_string)."
-    @info "Corresponding energy values: $(energy_value)."
-    @info "=> Ground States for this graph: $(work_bits_value_string[max_indices])."
+    @info """
+    All Maximal Independent States' value: $(work_bits_value_string).
+    Corresponding energy values: $(energy_value).
+    => Ground States for this graph: $(work_bits_value_string[max_indices]).
+    """
     return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
 end
 
@@ -204,18 +204,6 @@ function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
 end
 
-# function decimal(binary_str::String)::Int
-#     parse(Int, binary_str; base=2)
-# end
-
-# function decimal(binary_array::Vector{Int})::Int
-#     decimal = 0
-#     n = length(binary_array)
-#     for i in 1:n
-#         decimal += binary_array[i] * 2^(n - i)
-#     end
-#     return decimal
-# end
 
 function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})::Matrix{Int}
     bit_vectors = zeros(Int, length(indices), bit_num)
