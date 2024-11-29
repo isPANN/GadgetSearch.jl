@@ -1,9 +1,11 @@
 @testset "GraphIO" begin
     path = pkgdir(GadgetSearch, "data", "graphs", "graph2.g6")
-    num = count_nonempty_lines(path)
-    @test num == 2
     graph_dict = readgraphdict(path)
     @test readgraph(path, 1) == graph_dict["graph1"]
+
+    graph_vector = read_g6_file(path)
+    @test length(graph_vector) == 2
+    @test graph_vector[1] == graph_dict["graph1"]
 end
 
 @testset "graphPlot" begin
@@ -19,7 +21,7 @@ end
 end
 
 @testset "loadJSON & locate" begin
-    path = pkgdir(GadgetSearch, "datasets", "logic_gates", "2in_2out.json")
+    path = pkgdir(GadgetSearch, "datasets", "logic_gates", "2in2out.json")
     data = loadjsonfile(path)
     @test length(data) == 256
     degeneracy = ["0011", "0101", "1010", "1100"]
@@ -31,7 +33,7 @@ end
     g_info2 = find_by_degeneracy(path, 4, [3, 5, 10, 12])
     @test g_info == g_info2
 
-    plotcoloredgraph(g_info, pkgdir(GadgetSearch, "data", "graphplot"))
+    plotcoloredgraph(g_info, :png; saved_path = pkgdir(GadgetSearch, "data", "graphplot"), name = "graph")
     rm(pkgdir(GadgetSearch, "data", "graphplot", "graph.png"))
     _, _, ground_states = checkgraphmis(g_info)
     @test Set(degeneracy) == Set(ground_states)
@@ -45,14 +47,21 @@ end
     
     degeneracy = ["001", "010", "100", "111"]
     g_info = find_by_degeneracy(data, degeneracy)
-    plotcoloredgraph(g_info, pkgdir(GadgetSearch, "data", "graphplot"))
+    plotcoloredgraph(g_info, :png; saved_path = pkgdir(GadgetSearch, "data", "graphplot"), name = "graph")
     rm(pkgdir(GadgetSearch, "data", "graphplot", "graph.png"))
     _, _, ground_states = checkgraphmis(g_info)
     @test Set(degeneracy) == Set(ground_states)
+
+    data = loadjsonfile(path, :gate_id)
+    g_info = find_by_gateid(data, 1)
+    plotcoloredgraphs(data, :png; saved_path = pkgdir(GadgetSearch, "data", "graphplot", "test_plot"), name = "graph")
+    rm(pkgdir(GadgetSearch, "data", "graphplot", "test_plot"), force = true, recursive = true)
+
+    g_info2 = find_by_gateid(path, 1)
+    @test g_info == g_info2
 end
 
 @testset "genericGate" begin
     genericgate(110, 3, 1)
     showgateinfo(110, 3, 1)
 end
-

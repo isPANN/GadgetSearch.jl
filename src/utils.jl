@@ -155,12 +155,12 @@ function checkgraphmis(graph_info::NamedTuple)
     work_bits_value_vector = [[Int(mis_result[i][j]) for j in graph_info.work_nodes] for i in 1:mis_num]
     work_bits_value_string = [join(map(string, subarr)) for subarr in work_bits_value_vector]
     energy_value = [sum([graph_info.node_weights[j] * Int(mis_result[i][j]) for j in 1:nv(g)])  for i in 1:mis_num]
-    min_value = minimum(energy_value)
-    min_indices = findall(x -> x == min_value, energy_value)
+    max_value = maximum(energy_value)
+    max_indices = findall(x -> x == max_value, energy_value)
     @info "All Maximal Independent States' value: $(work_bits_value_string)."
     @info "Corresponding energy values: $(energy_value)."
-    @info "=> Ground States for this graph: $(work_bits_value_string[min_indices])."
-    return work_bits_value_string, energy_value, work_bits_value_string[min_indices]
+    @info "=> Ground States for this graph: $(work_bits_value_string[max_indices])."
+    return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
 end
 
 function genericgate(gate_id::Int, input_bits::Int, output_bits::Int)
@@ -172,7 +172,7 @@ function genericgate(gate_id::Int, input_bits::Int, output_bits::Int)
         @error("Gate ID must be between 0 and $max_gateid")
     end
     degeneracy = Int[]
-    @info "==== Gate ID: $gate_id ===="
+    # @info "==== Gate ID: $gate_id ===="
     for input in 0:(num_inputs - 1)
         output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
         input_bin_str = string(input, base=2, pad=input_bits)

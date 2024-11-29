@@ -16,36 +16,42 @@ struct Result{T}
     work_nodes::Vector{T}
 end
 
-check_singleconstraint_for_graphs(vertex_num::Int, bit_num::Int, degeneracy::Vector{String}, dir_path::String) = check_singleconstraint_for_graphs(vertex_num, bit_num, format_degeneracy_input(degeneracy), dir_path)
+check_singleconstraint(vertex_num::Int, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{String}, dir_path::String; gate_id::Int=0) = check_singleconstraint(vertex_num, bit_num, format_degeneracy_input(degeneracy), dir_path; gate_id=gate_id)
 
-check_singleconstraint_for_graphs(vertex_num::Int, bit_num::Int, degeneracy::Vector{Vector{Int}}, dir_path::String) = check_singleconstraint_for_graphs(vertex_num, bit_num, format_degeneracy_input(degeneracy), dir_path)
+check_singleconstraint(vertex_num::Int, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Vector{Int}}, dir_path::String; gate_id::Int=0) = check_singleconstraint(vertex_num, bit_num, format_degeneracy_input(degeneracy), dir_path; gate_id=gate_id)
 
-function check_singleconstraint_for_graphs(vertex_num::Int, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int}, dir_path::String; max_file_size::Int = 1_000_000)::Union{Result, Nothing}
+function check_singleconstraint(vertex_num::Int, bit_num::Vector{Int}, gate_id::Int, dir_path::String)
+    @assert length(bit_num) == 2
+    input_num = bit_num[1]; output_num = bit_num[2];
+    return check_singleconstraint(vertex_num, bit_num, genericgate(gate_id, input_num, output_num), dir_path; gate_id=gate_id)
+end
+
+function check_singleconstraint(vertex_num::Int, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int}, dir_path::String; gate_id::Int = 0, max_file_size::Int = 1_000_000)::Union{Result, Nothing}
     graph_path = joinpath(dir_path, "graph$(vertex_num).g6")
     if filesize(graph_path) > max_file_size
-        process_large_file(graph_path, bit_num, degeneracy)
+        process_large_file(graph_path, bit_num, degeneracy, gate_id)
     else
-        normally_process(graph_path, bit_num, degeneracy)
+        normally_process(graph_path, bit_num, degeneracy, gate_id)
     end
 end
 
-function process_large_file(path::String, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int})
+function process_large_file(path::String, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int}, gate_id::Int = 0)
     open(path, "r") do io
         for line in eachline(io)
             graph_data = strip(line)
             isempty(graph_data) && continue
             g = g6string_to_graph(graph_data)
             candidate, weight = check_singleconstraint_for_singlegraph(g, bit_num, degeneracy)
-            !isnothing(candidate) && return convert_to_result(g, candidate, weight, degeneracy)
+            !isnothing(candidate) && return convert_to_result(g, candidate, weight, degeneracy, gate_id)
         end
     end
 end
 
-function normally_process(path::String, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int})
+function normally_process(path::String, bit_num::Union{Int, Vector{Int}}, degeneracy::Vector{Int}, gate_id::Int = 0)
     graph_list = read_g6_file(path)
     for g in graph_list
         candidate, weight = check_singleconstraint_for_singlegraph(g, bit_num, degeneracy)
-        !isnothing(candidate) && return convert_to_result(g, candidate, weight, degeneracy)
+        !isnothing(candidate) && return convert_to_result(g, candidate, weight, degeneracy, gate_id)
     end
 end
 
@@ -93,7 +99,7 @@ function check_singleconstraint_for_singlegraph(graph::SimpleGraph, bit_num::Vec
                  target_mis_set, wrong_mis_set = _split_mis_set(mis_result, vcat(combination...))
                  weight = _find_weight(vertex_num, target_mis_set, wrong_mis_set)
                  isempty(weight) && continue
-                 return candidate, weight
+                 return candidate_full, weight
              end
          end
      end
@@ -111,9 +117,14 @@ function convert_to_result(g::SimpleGraph, candidate::Vector{T}, weight::Vector{
     nodes = [Node(i, weight[i]) for i in 1:length(weight)]
 
     edges = [Edge(src(e), dst(e)) for e in Graphs.edges(g)]
-    
     degeneracy_io = format_degeneracy_output(degeneracy, length(candidate))
 
+    @info """ === Result ===
+    Gate ID: $gate_id
+    Degeneracy: $degeneracy_io
+    Edges: $(join([string(src(e), " -- ", dst(e)) for e in Graphs.edges(g)], ", "))
+    Nodes: $(join([string(node.id, " -- ", node.weight) for node in nodes], ", "))
+    """
     return Result{T}(
         gate_id,
         degeneracy_io,
