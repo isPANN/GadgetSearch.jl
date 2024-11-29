@@ -1,8 +1,8 @@
 function _bv2int(x::BitVector)
     @assert(length(x) <= 8 * sizeof(Int))
     acc = 0
-    for i in 1:length(x)
-        acc = acc << 1 + x[i]
+    for i in eachindex(x)
+        acc = (acc << 1) + x[i]
     end
     return acc
 end
@@ -72,37 +72,35 @@ function _g6_Np(N::Vector{UInt8})
     end
 end
 
-function g6string_to_matrix(s::AbstractString)
+function g6string_to_graph(s::AbstractString)::SimpleGraph
     if startswith(s, ">>graph6<<")
         s = s[11:end]
     end
     V = Vector{UInt8}(s)
     (nv, rest) = _g6_Np(V)
     bitvec = _g6_Rp(rest)
-
     n = 0
-    adj_matrix = zeros(Int, nv, nv)
+    g = Graphs.SimpleGraph(nv)
     for i in 2:nv, j in 1:(i - 1)
         n += 1
         if bitvec[n]
-            adj_matrix[j, i] = 1
-            adj_matrix[i, j] = 1
+            add_edge!(g, j, i)
         end
     end
-    return adj_matrix
+    return g
 end
 
-function adjacency_matrix_to_simple_graph(adj_matrix::Matrix{Int})
-    n = size(adj_matrix, 1)  # 节点数量
-    graph = SimpleGraph(n)   # 创建无向图
-    
-    for i in 1:n
-        for j in i+1:n  # 遍历上三角矩阵避免重复添加边
-            if adj_matrix[i, j] > 0
-                add_edge!(graph, i, j)
+function read_g6_file(file_path::String)::Vector{SimpleGraph}
+    results = SimpleGraph[]
+    open(file_path, "r") do io
+        for line in eachline(io)
+            graph_data = strip(line)
+            if isempty(graph_data)
+                continue
             end
+            push!(results, g6string_to_graph(graph_data))
         end
     end
-    
-    return graph
+    return results
 end
+

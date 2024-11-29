@@ -8,6 +8,18 @@ function readgraph(path::String, id::Int)
     return graph
 end
 
+function plotgraphs(graphs, format::Symbol=:png; saved_path::String=".", saved_name::String="")
+    valid_formats = [:png, :pdf]
+    if format ∉ valid_formats
+        @error "Unsupported format. Valid formats are: $(join(valid_formats,","))."
+    end
+
+    for (idx, gname) in enumerate(gadgets)
+        filepath = joinpath("./SearchGadgets.jl/", "udg$idx.$png")
+        draw(Compose.PNG(filepath, 16cm, 16cm), gplot(gname.g))
+    end
+end
+
 function plotgraphs(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, format::Symbol=:png; saved_path::String=".", saved_name::String="")
     valid_formats = [:png, :pdf]
     if format ∉ valid_formats
@@ -192,48 +204,38 @@ function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
 end
 
-function decimal(binary_str::String)::Int
-    parse(Int, binary_str; base=2)
-end
+# function decimal(binary_str::String)::Int
+#     parse(Int, binary_str; base=2)
+# end
 
-function decimal(binary_array::Vector{Int})::Int
-    decimal = 0
-    n = length(binary_array)
-    for i in 1:n
-        decimal += binary_array[i] * 2^(n - i)
-    end
-    return decimal
-end
+# function decimal(binary_array::Vector{Int})::Int
+#     decimal = 0
+#     n = length(binary_array)
+#     for i in 1:n
+#         decimal += binary_array[i] * 2^(n - i)
+#     end
+#     return decimal
+# end
 
-function count_nonempty_lines(filepath::String)
-    lines = readlines(filepath)
-    return count(!isempty(strip(line)) for line in lines)
-end
-
-function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})
-    return [Int[i in idxs for i in 1:bit_num] for idxs in indices]
-end
-
-function complement(adj_matrix::Matrix{Int})
-    n = size(adj_matrix, 1)
-    comp_matrix = ones(Int, n, n) - adj_matrix
-    for i in 1:n
-        comp_matrix[i, i] = 0
-    end
-    return comp_matrix
-end
-
-function get_values(ones_vertex, index, total_length)
-    num_cases = length(ones_vertex)
-    num_index = length(index)
-    values = zeros(Int, num_cases, total_length)
-   
-    for i in 1:num_cases
-        for vertex in ones_vertex[i]
-            values[i, vertex] = 1
+function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})::Matrix{Int}
+    bit_vectors = zeros(Int, length(indices), bit_num)
+    for (col, idxs) in enumerate(indices)
+        for idx in idxs
+            bit_vectors[col, idx] = 1  # 逐元素赋值
         end
     end
-    result = values[:, index]
+    return bit_vectors
+end
+
+format_degeneracy_input(degeneracy::Vector{Vector{Int}})::Vector{Int} = [sum(v[i] * 2^(length(v) - i) for i in 1:length(v)) for v in degeneracy]
+format_degeneracy_input(degeneracy::Vector{String})::Vector{Int} = [parse(Int, s; base=2) for s in degeneracy]
+format_degeneracy_output(degeneracy::Vector{Int}, bit_length::Int)::Vector{String} = [join(reverse(digits(x, base=2, pad=bit_length))) for x in degeneracy]
+# format_degeneracy_output(degeneracy::Vector{Vector{Int}})::Vector{String} = [join(string.(row)) for row in degeneracy]
+
+function get_candidate_degeneracy(index_matrix::AbstractMatrix{Int}, index::Vector{Int})::Vector{Int}
+    result = index_matrix[:, index]
+    num_cases = size(index_matrix, 1)
+    num_index = length(index)
     decimal_values = zeros(Int, num_cases)
     for i in 1:num_cases
         decimal_val = 0
@@ -242,7 +244,5 @@ function get_values(ones_vertex, index, total_length)
         end
         decimal_values[i] = decimal_val
     end
-
-    return result, decimal_values
+    return decimal_values
 end
-
