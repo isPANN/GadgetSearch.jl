@@ -48,6 +48,8 @@
 }
 
 \begin{abstract}
+    Rydberg atoms array is a promising platform for quantum simulation and combinatorial optimization. Encoding problems into the energy landscape of Rydberg atoms array is a crucial step towards utlizing this platform for quantum computation and optimization.
+    In a previous work, we show that the classical part of the Rydberg Hamiltonian encodes an independent set problem on a unit disk graph. In this paper, we will introduce a more general framework that enables us to encode a wide of optimization problems into the energy landscape of Rydberg atoms array.
 \end{abstract}
 
 \maketitle
@@ -95,7 +97,7 @@ array}\label{energy-based-universal-computation-with-rydberg-atoms-array}
 
 The classical Rydberg Hamiltonian is universal for classical computation, since the NOR gate can be implemented using the Rydberg Hamiltonian (subfigure
 c below). The NOR gate is a universal gate for classical computation.
-\includegraphics[width=\columnwidth]{../notes/images/gadgets.png}
+\includegraphics[width=\columnwidth]{images/gadgets.png}
 
 The conjunction of gates can be implemented by ``gluing'' the Rydberg
 atoms together (subfigure d below). The weights are added together.
@@ -109,12 +111,12 @@ We can encode the Rule 110 CA into a Weighted Maximum
 Independent Set Problem, with blue vertices assigned a weight of 1 and
 red vertices assigned a weight of 2, as follows.
 
-\includegraphics[width=0.6\columnwidth]{../notes/images/image.png}
+\includegraphics[width=0.6\columnwidth]{images/image.png}
 
 This graph can be embedded into a grid graph, where two vertices are
 connected if and only if their Euclidean distance is no more than $2$.
 
-\includegraphics[width=0.7\columnwidth]{../notes/images/image-1.png}
+\includegraphics[width=0.7\columnwidth]{images/image-1.png}
 
 The correspondence between the Maximum Weighted Independent Set (MWIS)
 Solution and Rule 110 is as follows:
@@ -133,13 +135,13 @@ There are exactly \textbf{8} different MWIS solutions in this graph (the
 weighted size of each MWIS solution is 7), each corresponding to one of
 the \textbf{8} possible outputs of the automata. We list them as
 follows.
-\includegraphics[width=\columnwidth]{../notes/images/gadget110.png}
+\includegraphics[width=\columnwidth]{images/gadget110.png}
 
 Utilizing copy gadget and cross gadget~\cite{Nguyen2023}, we construct a \textbf{Surface Programmable Material} with open boundary conditions as follows.
 
 \begin{figure}
 \centering
-\includesvg[width=\columnwidth]{../notes/images/rule110transvarient.svg}
+\includesvg[width=\columnwidth]{images/rule110transvarient.svg}
 \caption{Alt text}
 \end{figure}
 
@@ -154,6 +156,11 @@ In the automata diagram, the above gadget is equivalent to:
     \item Generate all unit disk graphs with size < 15 (please check \href{https://github.com/GiggleLiu/SmallGraphs}{small graph zoo}).
     \item Use the algorithm to search for MWIS gadgets on unit disk graphs.
 \end{enumerate}
+}
+
+\jinguo{Refs:
+QUBO problems~\cite{Glover2019, Volpe2024, Ushijima2017, Qiu2020}.
+Rydberg atoms array~\cite{Pichler2018a,Pichler2018,Kim2021,Ebadi2022,Kim2022,Andrist2023,Lanthaler2022}
 }
 
 \begin{acknowledgments}
