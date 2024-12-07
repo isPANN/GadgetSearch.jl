@@ -19,6 +19,7 @@ function plotcoloredgraph(graph_info::NamedTuple, saved_path::String, name::Stri
     work_nodes = graph_info.work_nodes
     
     node_colors = [ colorant"blue" for _ in Graphs.vertices(graph_info.graph)]
+    # TODO: use colormap instead of hardcoding
     color_dict = Dict(
         1 => colorant"blue",
         2 => colorant"red",
@@ -108,6 +109,7 @@ function decimal(binary_str::String)::Int
     parse(Int, binary_str; base=2)
 end
 
+# TODO: use mapreduce. Or just use package BitBasis
 function decimal(binary_array::Vector{Int})::Int
     decimal = 0
     n = length(binary_array)
