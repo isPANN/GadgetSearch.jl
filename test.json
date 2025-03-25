@@ -1,1 +1,0 @@
-[{"gate_id":0,"degeneracy":["01","10"],"nodes":[{"id":1,"weight":1.0},{"id":2,"weight":1.0}],"edges":[{"source":1,"target":2}],"work_nodes":[1,2]}]

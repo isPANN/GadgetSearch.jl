@@ -1,151 +1,77 @@
-function readgraphdict(path::String)
-    graph = loadgraphs(path, GraphIO.Graph6.Graph6Format())
+function read_graph_dict(path::String)::Dict{String, SimpleGraph{Int}}
+    graph = Graphs.loadgraphs(path, GraphIO.Graph6.Graph6Format())
     return graph
 end
 
-function readgraph(path::String, id::Int)
-    graph = loadgraph(path, "graph$(id)", GraphIO.Graph6.Graph6Format())
+function read_graph(path::String, id::Int)
+    graph = Graphs.loadgraph(path, "graph$(id)", GraphIO.Graph6.Graph6Format())
     return graph
 end
 
-function plotgraphs(graphs, format::Symbol=:png; saved_path::String=".", saved_name::String="")
-    valid_formats = [:png, :pdf]
-    if format ∉ valid_formats
-        @error "Unsupported format. Valid formats are: $(join(valid_formats,","))."
-    end
-
-    for (idx, gname) in enumerate(gadgets)
-        filepath = joinpath("./SearchGadgets.jl/", "udg$idx.$png")
-        draw(Compose.PNG(filepath, 16cm, 16cm), gplot(gname.g))
-    end
+function _split_large_file(path::String, split_size::Int=700_000)::Vector{String}
+    # generate a new directory under the same path to store the split files
+    tmp_dir_path = _create_tmp_dir(path, split_size)
+    split_file_paths = _split_large_file(path, tmp_dir_path, split_size)
+    return split_file_paths
 end
 
-function plotgraphs(graphs::Dict{String, Graphs.SimpleGraphs.SimpleGraph}, format::Symbol=:png; saved_path::String=".", saved_name::String="")
-    valid_formats = [:png, :pdf]
-    if format ∉ valid_formats
-        @error "Unsupported format. Valid formats are: $(join(valid_formats,","))."
-    end
-
-    for gname in keys(graphs)
-        filepath = joinpath(saved_path, "$saved_name$gname.$(String(format))")
-        if format == :png
-            draw(Compose.PNG(filepath, 16cm, 16cm), gplot(graphs[gname]))
-        elseif format == :pdf
-            draw(Compose.PDF(filepath, 16cm, 16cm), gplot(graphs[gname]))
-        end
-    end
+function _extract_numbers(s::String)
+    # Extract `graph_id` from a key of a `graph_dict`, e.g. "graph1" -> 1.
+    return parse.(Int, collect(eachmatch(r"\d+", s)) .|> x -> x.match)[1]
 end
 
-function plotcoloredgraph(graph_info::NamedTuple, format::Symbol=:png; saved_path::String=".", name::String="graph")
-    node_weights = graph_info.node_weights
-    work_nodes = graph_info.work_nodes
+function _create_tmp_dir(path::String, split_size::Int)::Union{String, Vector{String}}
+    # The temporary directory name is constructed as `tmp_<name>_<split_size>`, where `<name>` is the last component of the provided `path`.
+    name = last(split(path, "/"))
+    split_dir_path = joinpath(dirname(path), "tmp_$(name)_$(split_size)")
+    if !isdir(split_dir_path)
+        # If the directory already exists, the function does not modify its contents but instead lists the files inside it.
+    #     file_list = readdir(split_dir_path)
+    #     return map(x -> joinpath(split_dir_path, x), file_list)
+    # else
+        mkdir(split_dir_path)
+    end
+    return split_dir_path
     
-    node_colors = [ colorant"blue" for _ in Graphs.vertices(graph_info.graph)]
-    color_dict = Dict(
-        1 => colorant"cyan",
-        2 => colorant"red",
-        3 => colorant"yellow",
-        4 => colorant"green",
-        5 => colorant"purple",
-        6 => colorant"orange",
-        7 => colorant"brown",
-        8 => colorant"pink",
-        9 => colorant"blue",
-        10 => colorant"magenta"
-    )
-    for (v, w) in node_weights
-        node_colors[v] = color_dict[w]
-    end
-    node_labels = [ "" for _ in Graphs.vertices(graph_info.graph)]
-    
-    for (i, node) in enumerate(work_nodes)
-        node_labels[node] = string(i)
-    end
-    p = gplot(graph_info.graph,
-              nodefillc = node_colors,
-              nodelabel = node_labels
-    )
-    valid_formats = [:png, :pdf]
-    if format ∉ valid_formats
-        @error "Unsupported format. Valid formats are: $(join(valid_formats,","))."
-    end
-    filepath = joinpath(saved_path, "$name.$(String(format))")
-    if format == :png
-        draw(Compose.PNG(filepath, 16cm, 16cm), p)
-    elseif format == :pdf
-        draw(Compose.PDF(filepath, 5cm, 3cm), p)
-    end
 end
 
-function plotcoloredgraphs(graphs_info::Union{Dict{Integer, NamedTuple}, Dict{Vector{String}, NamedTuple}}, format::Symbol=:png; saved_path::String=".", name::String="graph", convert_to_latex::Bool=false)
-    if !isdir(saved_path)
-        @info "Creating directory: $saved_path"
-        mkpath(saved_path)
+function _split_large_file(path::String, output_path::String, num_lines::Int=700_000)::Vector{String}
+    # Split a large file into smaller files with a specified number of lines. 
+    # The function returns a list of paths to the split files.
+    if !isdir(output_path)
+        @info "Creating directory: $output_path"
+        mkpath(output_path)
     end
-    for key in keys(graphs_info)
-        plotcoloredgraph(graphs_info[key], format; saved_path=saved_path, name="$name$key")
-    end
-    if convert_to_latex
-        open(joinpath(saved_path, "results.tex"), "w") do io
-            write(io, """
-            \\documentclass{article}
-            \\usepackage{graphicx}
-            \\usepackage{pdfpages}
-            \\usepackage{geometry}
-            \\usepackage{longtable}
-            \\usepackage{array}
-            \\usepackage{tikz}
-            \\usepackage{xcolor}
-            \\usepackage{pgfplots}
-            \\pgfplotsset{compat=1.18}
-            \\geometry{a4paper, margin=1in}
-            \\newcolumntype{P}[1]{>{\\centering\\arraybackslash}p{#1}}
 
-            \\begin{document}
-            \\begin{center}
-            Results
-            \\begin{tikzpicture}[scale=0.5]
-                \\draw[fill={rgb,1:red,0;green,1;blue,1}] (0, 0) rectangle (1, 1) node[midway] {1}; % cyan
-                \\draw[fill={rgb,1:red,1;green,0;blue,0}] (1, 0) rectangle (2, 1) node[midway] {2}; % red
-                \\draw[fill={rgb,1:red,1;green,1;blue,0}] (2, 0) rectangle (3, 1) node[midway] {3}; % yellow
-                \\draw[fill={rgb,1:red,0;green,1;blue,0}] (3, 0) rectangle (4, 1) node[midway] {4}; % green
-                \\draw[fill={rgb,1:red,0.5;green,0;blue,0.5}] (4, 0) rectangle (5, 1) node[midway] {5}; % purple
-                \\draw[fill={rgb,1:red,1;green,0.5;blue,0}] (5, 0) rectangle (6, 1) node[midway] {6}; % orange
-                % \\draw[fill={rgb,1:red,0.6;green,0.3;blue,0.1}] (6, 0) rectangle (7, 1) node[midway] {7}; % brown
-                % \\draw[fill={rgb,1:red,1;green,0.75;blue,0.8}] (7, 0) rectangle (8, 1) node[midway] {8}; % pink
-                % \\draw[fill={rgb,1:red,0;green,0;blue,1}] (8, 0) rectangle (9, 1) node[midway] {9}; % blue
-                % \\draw[fill={rgb,1:red,1;green,0;blue,1}] (9, 0) rectangle (10, 1) node[midway] {10}; % magenta
-            \\end{tikzpicture}
-            \\end{center}
-            
-            \\begin{longtable}{|P{2cm}|P{5cm}|P{5cm}|}
-            \\hline
-            \\multicolumn{1}{|c|}{\\textbf{Index}} & 
-            \\multicolumn{1}{c|}{\\textbf{Degeneracy}} & 
-            \\multicolumn{1}{c|}{\\textbf{Graph}} \\\\ \\hline
-            \\endfirsthead
-            \\hline
-            \\multicolumn{1}{|c|}{\\textbf{Index}} & 
-            \\multicolumn{1}{c|}{\\textbf{Degeneracy}} & 
-            \\multicolumn{1}{c|}{\\textbf{Graph}} \\\\ \\hline
-            \\endhead
-            """)
+    split_files = String[]
+    file_count = 1
+    output_file = joinpath(output_path, "part_$(file_count).g6")
+    out_io = open(output_file, "w")
+    push!(split_files, output_file)
 
-            for key in sort(collect(keys(graphs_info)))
-                write(io, """
-                $key & $(Vector{String}(graphs_info[key].key_info)) & \\includegraphics[width=0.2\\textwidth]{$(name)$(key).pdf} \\\\ \\hline
-                """)
+    try
+        line_count = 0
+        for line in eachline(path)
+            println(out_io, line)
+            line_count += 1
+
+            if line_count >= num_lines
+                close(out_io)
+                file_count += 1
+                output_file = joinpath(output_path, "part_$(file_count).g6")
+                out_io = open(output_file, "w")
+                push!(split_files, output_file)
+                line_count = 0
             end
-            
-            write(io, """
-            \\end{longtable}
-            \\end{document}
-            """)
         end
+    finally
+        close(out_io)
     end
+
+    return split_files
 end
 
-function checkgraphmis(graph_info::NamedTuple)
+function check_graph_mis(graph_info::NamedTuple)
     g = graph_info.graph
     mis_result = find_maximal_independent_sets(g)
     mis_num = size(mis_result, 1)
@@ -163,7 +89,42 @@ function checkgraphmis(graph_info::NamedTuple)
     return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
 end
 
-function genericgate(gate_id::Int, input_bits::Int, output_bits::Int)
+function check_graph_mis(g::SimpleGraph{Int}, node_weights::Vector{Int}, pins::Vector{Int})
+    mis_result = find_maximal_independent_sets(g)
+    mis_num = size(mis_result, 1)
+
+    work_bits_value_vector = [[mis_result[i, j] for j in pins] for i in 1:mis_num]
+    work_bits_value_string = [join(map(string, subarr)) for subarr in work_bits_value_vector]
+    energy_value = [sum([node_weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
+    max_value = maximum(energy_value)
+    max_indices = findall(x -> x == max_value, energy_value)
+    @info """
+    All Maximal Independent States' value: $(work_bits_value_string).
+    Corresponding energy values: $(energy_value).
+    => Ground States for this graph: $(work_bits_value_string[max_indices]).
+    """
+    return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
+end
+
+
+"""
+    generic_gate(gate_id::Int, input_bits::Int, output_bits::Int; show_info::Bool=false)
+                ::Vector{Int}
+
+Generate the decimal vector `ground_states` of a generic `input_bits`-in-`output_bits`-out gate with the given `gate_id`.
+
+# Arguments
+- `gate_id::Int`: the ID of the gate.
+- `input_bits::Int`: the number of input bits.
+- `output_bits::Int`: the number of output bits.
+
+# Keyword Arguments
+- `show_info::Bool=false`: whether to show the truth table of the gate.
+
+# Returns
+The decimal vector of the `ground_states`.
+"""
+function generic_gate(gate_id::Int, input_bits::Int, output_bits::Int; show_info::Bool=false)::Vector{Int}
     num_inputs = 2^input_bits
     num_outputs = 2^output_bits
     max_gateid = num_outputs^num_inputs
@@ -171,34 +132,62 @@ function genericgate(gate_id::Int, input_bits::Int, output_bits::Int)
     if gate_id < 0 || gate_id > max_gateid
         @error("Gate ID must be between 0 and $max_gateid")
     end
-    degeneracy = Int[]
-    # @info "==== Gate ID: $gate_id ===="
-    for input in 0:(num_inputs - 1)
-        output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
-        input_bin_str = string(input, base=2, pad=input_bits)
-        output_bin_str = string(output, base=2, pad=output_bits)
-        combined_bin_str = input_bin_str * output_bin_str
 
-        degen = parse(Int, combined_bin_str, base=2)
-        push!(degeneracy, degen)
+    ground_states = Int[]
+    mask_output = num_outputs - 1
+    shift_amount = output_bits
+
+    for input in 0:(num_inputs - 1)
+        output = (gate_id >> (input * shift_amount)) & mask_output
+        combined_degen = (input << shift_amount) | output  # Combine input and output into one number
+        push!(ground_states, combined_degen)
     end
-    return degeneracy
+
+    if show_info
+        show_gate_info(gate_id, input_bits, output_bits)
+    end
+    return ground_states
 end
 
-function showgateinfo(gate_id::Int, input_bits::Int, output_bits::Int)
-    num_inputs = 2^input_bits
-    num_outputs = 2^output_bits
-    max_gateid = num_outputs^num_inputs
+"""
+    show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
+
+Show the truth table of a generic `input_bits`-in-`output_bits`-out gate with the given `gate_id`.
+
+# Arguments
+- `gate_id::Int`: the ID of the gate.
+- `input_bits::Int`: the number of input bits.
+- `output_bits::Int`: the number of output bits.
+"""
+function show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
+    num_inputs = 2 ^ input_bits
+    num_outputs = 2 ^ output_bits
+    max_gateid = num_outputs ^ num_inputs
 
     if gate_id < 0 || gate_id > max_gateid
         @error("Gate ID must be between 0 and $max_gateid")
     end
     @info "==== Gate ID: $gate_id ===="
+    
+    # Create the header for the table
+    header = "Input (Binary) | Output (Binary)"
+    separator = "-" ^ length(header)
+    println(header)
+    println(separator)
+
     for input in 0:(num_inputs - 1)
+        # Calculate output using bitwise operations
         output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
-        println("Input: $(string(input, base=2, pad=input_bits)) -> Output: $(string(output, base=2, pad=output_bits))")
+
+        # Format input and output to fixed-width binary strings
+        input_bin = string(input, base=2, pad=input_bits)
+        output_bin = string(output, base=2, pad=output_bits)
+
+        # Print the formatted result
+        println("$input_bin | $output_bin")
     end
 end
+
 
 function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
@@ -215,12 +204,38 @@ function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})::Matrix
     return bit_vectors
 end
 
-format_degeneracy_input(degeneracy::Vector{Vector{Int}})::Vector{Int} = [sum(v[i] * 2^(length(v) - i) for i in 1:length(v)) for v in degeneracy]
-format_degeneracy_input(degeneracy::Vector{String})::Vector{Int} = [parse(Int, s; base=2) for s in degeneracy]
-format_degeneracy_output(degeneracy::Vector{Int}, bit_length::Int)::Vector{String} = [join(reverse(digits(x, base=2, pad=bit_length))) for x in degeneracy]
-# format_degeneracy_output(degeneracy::Vector{Vector{Int}})::Vector{String} = [join(string.(row)) for row in degeneracy]
+"""
+    format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
 
-function get_candidate_degeneracy(index_matrix::AbstractMatrix{Int}, index::Vector{Int})::Vector{Int}
+Format the truth table into a vector of integers, row by row.
+The truth table is a matrix where each row represents a binary number.
+
+# Arguments
+- `truth_table::AbstractMatrix`: a matrix where each row represents a binary number, which can be a `Matrix{Int}` or a `BitMatrix`.
+"""
+function format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
+    bit_length = size(truth_table, 2)
+    max_value = 2^bit_length - 1  # Maximum value for the given bit length
+
+    return [let value = sum(Int(row[i]) * 2^(bit_length - i) for i in 1:bit_length)
+                value > max_value && throw(ArgumentError("Computed value $value exceeds the maximum representable value $max_value for bit length $bit_length."))
+                value
+            end for row in eachrow(truth_table)]
+end
+
+"""
+    format_grstate_output(ground_states::Vector{Int}, bit_length::Int)::Vector{String}
+
+Format the a vector of integers in to a vector of binary strings with a fixed bit length, which is easy to store in a JSON file.
+
+# Arguments
+- `ground_states::Vector{Int}`: a vector of decimal integers representing the ground states.
+"""
+function format_grstate_output(ground_states::Vector{Int}, bit_length::Int)::Vector{String}
+    return [join(reverse(digits(x, base=2, pad=bit_length))) for x in ground_states]
+end
+
+function get_candidate_grstates(index_matrix::AbstractMatrix{Int}, index::Vector{Int})::Vector{Int}
     result = index_matrix[:, index]
     num_cases = size(index_matrix, 1)
     num_index = length(index)
@@ -233,4 +248,57 @@ function get_candidate_degeneracy(index_matrix::AbstractMatrix{Int}, index::Vect
         decimal_values[i] = decimal_val
     end
     return decimal_values
+end
+
+function hamming_distance_matrix(index_matrix::AbstractMatrix{Int})
+    k = size(index_matrix, 1)  # the number of binary numbers
+    n = size(index_matrix, 2)  # the number of bits
+    H = zeros(Int, k, k)
+
+    # Compute the Hamming distance between each pair of binary numbers
+    for i in 1:k
+        for j in i+1:k
+            H[i, j] = sum(index_matrix[i, :] .!= index_matrix[j, :]) 
+            H[j, i] = H[i, j]  # the Hamming distance is symmetric
+        end
+    end
+    return H
+end
+
+function find_most_distant(index_matrix::AbstractMatrix{Int}, top_k::Vector{Int})
+    # find the most distant binary numbers
+    k = size(index_matrix, 1)
+    max_k = maximum(top_k)
+    if max_k > k
+        return collect(1:k)
+    end
+    H = hamming_distance_matrix(index_matrix)
+
+    # Compute the minimum Hamming distance for each binary number
+    min_distances = [minimum(H[i, [1:i-1; i+1:end]] ) for i in 1:k]
+    # Sort the binary numbers by the minimum Hamming distance
+    sorted_indices = sortperm(min_distances, rev=true)
+    return sorted_indices[top_k]
+end
+
+function extract_gate_ids(file_path::String)
+    data = JSON.parsefile(file_path)
+    gate_ids = [item["gate_id"] for item in data if haskey(item, "gate_id")]
+    return gate_ids
+end
+
+function extract_graph_ids(file_path::String)
+    data = JSON.parsefile(file_path)
+    graph_ids = [item["graph_id"] for item in data if haskey(item, "graph_id")]
+    return graph_ids
+end
+
+# Convert (row, col) to a linear index
+function _tuple_to_index(tups::Vector{Tuple{Int, Int}}, shape::Tuple{Int, Int})
+    return [LinearIndices(shape)[CartesianIndex(tup)] for tup in tups]
+end
+
+# Convert linear index to (row, col)
+function _index_to_tuple(indices::Vector{Int}, shape::Tuple{Int, Int})
+    return [Tuple(CartesianIndices(shape)[idx]) for idx in indices]
 end
