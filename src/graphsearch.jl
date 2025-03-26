@@ -1,18 +1,36 @@
+function search_rules(graph_path, bit_num, gate_list, save_path)
+    non_results = []
+    save_res = []
+    for rule_id in gate_list
+        res = search_single_constraint_udg(graph_path, bit_num, rule_id)
+        if !isnothing(res)
+            push!(save_res, res)
+            save_results_to_json(save_res, save_path)
+            res = nothing
+        else
+            push!(non_results, rule_id)
+        end
+    end
+    return non_results
+end
+
 """
-    search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}},        ground_states::Vector{Int}; gate_id::Int = 0, max_file_size::Int = 1_000_000,  greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    ::Union{MISGadgetSolution, Nothing}
+    search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}};        ground_states::Vector{Int}=Int[], truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0), rule_id::Int=0, max_file_size_mb::Int=30, greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
+    ::Union{gadget, Nothing}
 
 For a series of ground states, search for a single rule that can satisfy all of them. This particular function is designed for generic constraint search.
 
 # Arguments
 - `graph_path::String`: the path of the graph `*.g6` file.
-- `bit_num::Union{Int, Vector{Int}}`: the number of pins, which also shows the kind of the rule to search for, e.g. `2` for a 2-bit generic constraint, `[2, 1]` for a 2-in-1-out logic gate.
-- `ground_states::Vector{Int}`: the truth table of ground states to satisfy. Note: the default value of the ground states is a vector of decimal numbers, e.g. `[0, 1, 2, 3]` for binary numbers `[00, 01, 10, 11]` if we have 2-bit constraint.
+- `bit_num::Union{Int, Vector{Int}}`: the number of pins, which also shows the kind of the rule to search for, e.g. `2` for a 2-bit state constraint, `[2, 1]` for a 2-in-1-out logic gate.
+
 
 # Keyword Arguments
-- `gate_id::Int = 0`: the ID of the logic gate to search for. This is a reserved parameter for the logic gate search.
+- `ground_states::Vector{Int} = Int[]`: the truth table of ground states to satisfy. Note: the default value of the ground states is a vector of decimal numbers, e.g. `[0, 1, 2, 3]` for binary numbers `[00, 01, 10, 11]` if we have 2-bit constraint.
+- `truth_table::AbstractMatrix{Int} = Matrix{Int}(undef, 0, 0)`: the truth table of the logic gate to search for. 
+- `rule_id::Int = -1`: the ID of the logic gate to search for. This is a reserved parameter for the logic gate search.
 - `pin_set::Vector{Int} = Int[]`: the set of pins to search for. If not provided, the function will search for all possible pins.
-- `max_file_size::Int = 1_000_000`: the maximum file size to process. If the file size exceeds this value, the function will split the file and process each part separately.
+- `max_file_size_mb::Int = 30`: the maximum file size (unit: Mb) to process. If the file size exceeds this value, the function will split the file and process each part separately.
 - `split_size::Int = 700_000`: the maximum number of rows (graphs) in each split file.
 - `start_idx::Int = 0`: the starting index of the graph to search.
 - `end_idx::Int = 0`: the ending index of the graph to search.
@@ -21,24 +39,29 @@ For a series of ground states, search for a single rule that can satisfy all of 
 - `max_samples::Int = 0`: the maximum number of samples to generate. Defaults to no sampling.
 
 # Returns
-Returns an instance of `MISGadgetSolution` if a valid solution is found; otherwise, returns `nothing`.
+Returns an instance of `gadget` if a valid solution is found; otherwise, returns `nothing`.
 
 # Notes
+- **Either `ground_states` or `truth_table` must be provided unless the `rule_id` of the target logic gate is known, in which case this function can be called directly.**
 - The function ensures that the graph is connected before proceeding.
 - The function iterates over all possible pin vectors and checks if they satisfy the given ground states within the maximal independent sets of the graph.
 - If a valid candidate and weight are found, they are returned immediately. 
 """
-function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}},   
-                            ground_states::Vector{Int}; 
-                            gate_id::Int=0, 
+function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}};   
+                            ground_states::Vector{Int}=Int[],
+                            truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0),
+                            rule_id::Int=-1, 
                             pin_set::Vector{Int} = Int[],
                             # File processing parameters
                             max_file_size_mb::Int=30, split_size::Int=700_000, 
                             # Search strategy parameters
                             start_idx::Int=0, end_idx::Int=0, 
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0
-)::Union{GadgetSolution, Nothing}
+)::Union{gadget, Nothing}
     # This is a default version.
+    ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
+    isempty(ground_states) && return nothing
+
     if (filesize(graph_path) / (1024 * 1024)) > max_file_size_mb
         # Split the file into smaller parts and process each part separately.
         split_file_paths = _split_large_file(graph_path, split_size)
@@ -46,53 +69,43 @@ function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}}
         for (i, file) in enumerate(split_file_paths)
             graph_dict = read_graph_dict(file)
 
-            result = _execute_graph_search(graph_dict, bit_num, ground_states, gate_id, pin_set, i, split_size, start_idx, end_idx, greedy, threshold, max_samples)
+            result = _execute_graph_search(graph_dict, bit_num, ground_states, rule_id, pin_set, i, split_size, start_idx, end_idx, greedy, threshold, max_samples)
             isnothing(result) || return result
         end
     else
         graph_dict = read_graph_dict(graph_path)
-
-        result = _execute_graph_search(graph_dict, bit_num, ground_states, gate_id, pin_set, 0, 0, start_idx, end_idx, greedy, threshold, max_samples)
+        result = _execute_graph_search(graph_dict, bit_num, ground_states, rule_id, pin_set, 0, 0, start_idx, end_idx, greedy, threshold, max_samples)
     end
     return result
 end
 
-function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}}, 
-                            truth_table::AbstractMatrix; 
-                            gate_id::Int = 0, 
-                            pin_set::Vector{Int}=Int[], 
-                            max_file_size_mb::Int = 30, split_size::Int=700_000, 
-                            start_idx::Int=0, end_idx::Int=0, 
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # This function receives a truth table as the ground states.
-    # Convert the truth table (Matrix) to a vector of decimal numbers.
-    return search_single_rule(graph_path, bit_num, format_truth_table(truth_table); gate_id=gate_id, pin_set=pin_set, max_file_size_mb=max_file_size_mb, split_size=split_size, start_idx=start_idx, end_idx=end_idx, greedy=greedy, threshold=threshold, max_samples=max_samples)
+function _process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
+    if isempty(ground_states)
+        if isempty(truth_table)
+            if length(bit_num) == 2 && rule_id >= 0
+                # When the `rule_id` of the logic gate to be searched is known, this function can be called without figuring out the `ground_states`.
+                ground_states = generic_rule(rule_id, bit_num)
+            elseif length(bit_num) == 1 && rule_id > 0
+                # When the `rule_id` of the state constraint to be searched is known, this function can be called without figuring out the `ground_states`.
+                ground_states = generic_rule(rule_id, bit_num)
+            else
+                @error "The rule id $rule_id is not valid."
+                return nothing, nothing
+            end
+        else
+            # This function receives a truth table as the ground states.
+            ground_states = format_truth_table(truth_table)
+        end
+    end
+    if length(bit_num) == 2 && rule_id < 0
+        rule_id = reconstruct_rule_id(ground_states, bit_num)
+    end
+    return ground_states, rule_id
 end
 
 
 """
-    search_single_rule(dir_path::String, bit_num::Vector{Int}, gate_id::Int; max_file_size::Int = 1_000_000)
-
-This is a simplified version tailored for logic gate search. When the `gate_id` of the logic gate to be searched is known, this function can be called without figuring out the `ground_states`.
-
-# Arguments
-- `dir_path::String`: the path of the directory containing the graph `*.g6` files.
-- `bit_num::Vector{Int}`: a length-2 vector representing the input and output bits of the logic gate.
-- `gate_id::Int`: the ID of the logic gate to search for.
-"""
-function search_single_rule(graph_path::String, bit_num::Vector{Int}, gate_id::Int;
-                            pin_set::Vector{Int}=Int[], 
-                            max_file_size_mb::Int = 30, split_size::Int=700_000, 
-                            start_idx::Int=0, end_idx::Int=0,
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # Only use the gate_id to search for the logic gate.
-    @assert length(bit_num) == 2
-    input_num = bit_num[1]; output_num = bit_num[2];
-    return search_single_rule(graph_path, bit_num, generic_gate(gate_id, input_num, output_num); gate_id=gate_id, pin_set=pin_set, max_file_size_mb=max_file_size_mb, split_size=split_size, start_idx=start_idx, end_idx=end_idx, greedy=greedy, threshold=threshold, max_samples=max_samples)
-end
-
-"""
-    search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}}, bit_num::Union{Int, Vector{Int}}, ground_states::Vector{Int}; gate_id::Int=0, pin_set::Vector{Int}=Int[], split_idx::Int=0, split_size::Int=0, start_idx::Int=0, end_idx::Int=0, greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
+    search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}}, bit_num::Union{Int, Vector{Int}}; ground_states::Vector{Int}, truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0), rule_id::Int=0, pin_set::Vector{Int}=Int[], split_idx::Int=0, split_size::Int=0, start_idx::Int=0, end_idx::Int=0, greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
 
 Searches for a single rule that satisfies given constraints for a single graph. 
 
@@ -100,50 +113,28 @@ This particular function is designed for generic constraint search.
 
 # Arguments
 - `graph_dict::Dict{String, SimpleGraph{Int}}`: The input graph dictionary, where the key is the graph name like `"graph100"` and the value is a `Graphs.SimpleGraph` object.
-- `bit_num::Union{Int, Vector{Int}}`: The number of pins used to represent the given rule.
-- `ground_states::Vector{Int}`: A vector of ground states, where each ground state is represented as a decimal value corresponding to its binary representation.
+
 
 # Keyword Arguments
-- `split_idx::Int=0`: The reserved index of the split file to process. Defaults to `0`.
-- `split_size::Int=0`: The maximum number of rows (graphs) in each split file. Defaults to `0`. If one wants to process split files manually, please ensure that all dictionaries have the same length `split_size` except for the last one.
+- `split_idx::Int = 0`(optional): The index of the split file to process. Defaults to `0`.
+- `split_size::Int = 0`(optional): The maximum number of rows (graphs) in each split file. Defaults to `0`. If one wants to process split files manually, please ensure that all dictionaries have the same length `split_size` except for the last one.
 """
 function search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}}, 
-                            bit_num::Union{Int, Vector{Int}}, 
-                            ground_states::Vector{Int};
-                            gate_id::Int=0,
+                            bit_num::Union{Int, Vector{Int}};
+                            ground_states::Vector{Int}=Int[],
+                            truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0),
+                            rule_id::Int=-1,
                             pin_set::Vector{Int}=Int[], 
                             split_idx::Int=0, split_size::Int=0,
                             start_idx::Int=0, end_idx::Int=0,
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
     # This is a default version for a `graph dict`.
-    return _execute_graph_search(graph_dict, bit_num, ground_states, gate_id, pin_set, split_idx, split_size, start_idx, end_idx, greedy, threshold, max_samples)
-end
-
-function search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}}, 
-                            bit_num::Union{Int, Vector{Int}}, 
-                            truth_table::AbstractMatrix; 
-                            pin_set::Vector{Int}=Int[], 
-                            split_idx::Int=0, split_size::Int=0,
-                            start_idx::Int=0, end_idx::Int=0,
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # Use the truth table to search for a single rule on a `graph_dict`.
-    return _execute_graph_search(graph_dict, bit_num, format_truth_table(truth_table), gate_id, pin_set, split_idx, split_size, start_idx, end_idx, greedy, threshold, max_samples)
-end
-
-function search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}}, 
-                            bit_num::Vector{Int}, gate_id::Int;
-                            pin_set::Vector{Int}=Int[], 
-                            split_idx::Int=0, split_size::Int=0,
-                            start_idx::Int=0, end_idx::Int=0,
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # Only use `gate_id` on a `graph_dict`.
-    @assert length(bit_num) == 2
-    input_num = bit_num[1]; output_num = bit_num[2];
-    return _execute_graph_search(graph_dict, bit_num, generic_gate(gate_id, input_num, output_num), gate_id, pin_set, split_idx, split_size, start_idx, end_idx, greedy, threshold, max_samples)
+    ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
+    return _execute_graph_search(graph_dict, bit_num, ground_states, rule_id, pin_set, split_idx, split_size, start_idx, end_idx, greedy, threshold, max_samples)
 end
 
 """
-    search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{Int}}, ground_states::Vector{Int}; pin_set::Vector{Int}=Int[], greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
+    search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{Int}}; ground_states::Vector{Int}, truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0), rule_id::Int=0, pin_set::Vector{Int}=Int[], greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
 
 Searches for a single rule that satisfies given constraints for a single graph. 
 
@@ -151,45 +142,28 @@ This particular function is designed for generic constraint search.
 
 # Arguments
 - `graph::SimpleGraph{Int}`: The input graph, represented as a `Graphs.SimpleGraph` object.
-- `bit_num::Union{Int, Vector{Int}}`: The number of pins used to represent the given rule.
-- `ground_states::Vector{Int}`: A vector of ground states, where each ground state is represented as a decimal value corresponding to its binary representation.
 """
-function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{Int}}, 
-                            ground_states::Vector{Int};
+function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{Int}}; 
+                            ground_states::Vector{Int}=Int[],
+                            truth_table::AbstractMatrix=Matrix{Int}(undef, 0, 0),
+                            rule_id::Int=-1,
                             pin_set::Vector{Int}=Int[], 
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
     # This is a default version for a single graph.
+    ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
     pins, weight = _search_on_single_graph(graph, bit_num, ground_states, pin_set, greedy, threshold, max_samples)
     if !isnothing(pins)
-        return convert_to_result(0, graph, pins, weight, ground_state, gate_id)
+        return convert_to_result(0, graph, pins, weight, ground_states, rule_id)
     else
-        @info "No valid solution found."
+        @info "No valid solution found in this graph."
         return nothing
     end
 end
 
-function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{Int}}, 
-                            truth_table::AbstractMatrix; 
-                            pin_set::Vector{Int}=Int[], 
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # Use the truth table to search for a single rule on one graph.
-    return search_single_rule(graph, bit_num, format_truth_table(truth_table); pin_set=pin_set, greedy=greedy, threshold=threshold, max_samples=max_samples)
-end
-
-function search_single_rule(graph::SimpleGraph{Int}, bit_num::Vector{Int}, gate_id::Int;
-                            pin_set::Vector{Int}=Int[], 
-                            greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
-    # Only use `gate_id` on a single graph.
-    @assert length(bit_num) == 2
-    input_num = bit_num[1]; output_num = bit_num[2];
-    return search_single_rule(graph, bit_num, generic_gate(gate_id, input_num, output_num); pin_set=pin_set, greedy=greedy, threshold=threshold, max_samples=max_samples)
-end
-
-
 function _execute_graph_search(graph_dict::Dict{String, SimpleGraph{Int}}, 
                                 bit_num::Union{Int, Vector{Int}}, 
                                 ground_state::Vector{Int}, 
-                                gate_id::Int=0, 
+                                rule_id::Int=-1, 
                                 pin_set::Vector{Int}=Int[], 
                                 split_idx::Int=0, split_size::Int=0, 
                                 start_idx::Int=0, end_idx::Int=0, 
@@ -216,7 +190,7 @@ function _execute_graph_search(graph_dict::Dict{String, SimpleGraph{Int}},
             else
                 graph_id = _extract_numbers(gname) + (split_idx - 1) * split_size
             end
-            return convert_to_result(graph_id, graph_dict[gname], pins, weight, ground_state, gate_id)
+            return convert_to_result(graph_id, graph_dict[gname], pins, weight, ground_state, rule_id)
         end
     end 
 end
@@ -234,7 +208,7 @@ function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Int, ground_s
 
     # Generate all pin vectors, i.e. the permutations of `bit_num` vertices in `pin_set`. 
     if isempty(pin_set)
-        pin_set = 1:vertex_num
+        pin_set = collect(1:vertex_num)
     end
     @assert length(pin_set) >= bit_num
     all_candidates = _generate_constraint_bit(pin_set, bit_num)
@@ -270,7 +244,7 @@ function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, 
     mis_num < 2^(input_num) && return nothing, nothing
     if isempty(pin_set)
         # If the pin set is not provided, all vertices are considered as potential pins.
-        pin_set = 1:vertex_num
+        pin_set = collect(1:vertex_num)
         # Exclude some vertices.
         input_candidates = _generate_pin_set(graph, mis_result, input_num)
     else
@@ -305,10 +279,9 @@ function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, 
 end
 
 
-function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, gate_id::Int; pin_set::Vector{Int}=Int[], greedy::Bool=true, threshold::Int=0, max_samples::Int=0)
+function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, rule_id::Int; pin_set::Vector{Int}=Int[], greedy::Bool=true, threshold::Int=0, max_samples::Int=0)
     @assert length(bit_num) == 2
-    input_num = bit_num[1]; output_num = bit_num[2];
-    return _search_on_single_graph(graph, bit_num, generic_gate(gate_id, input_num, output_num); pin_set=pin_set, greedy=greedy, threshold=threshold, max_samples=max_samples)
+    return _search_on_single_graph(graph, bit_num, generic_rule(rule_id, bit_num); pin_set=pin_set, greedy=greedy, threshold=threshold, max_samples=max_samples)
 end
 
 
@@ -474,51 +447,44 @@ function _generate_constraint_bit(valid_columns::Vector{Int}, bit_num::Int)::Vec
     return collect(permutations(valid_columns, bit_num))
 end
 
-struct Node{T}
-    id::Int
-    weight::T
-end
 
-struct Edge
-    source::Int
-    target::Int
-end
-
-struct GadgetSolution{T}
-    gate_id::Int
-    ground_states::Vector{String}
-    graph_id::Int
-    graph::SimpleGraph{Int}
-    nodes::Vector{GadgetSearch.Node{T}}
-    edges::Vector{GadgetSearch.Edge}
-    pins::Vector{Int}
-end
-
-function convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}, weight::Vector{T}, ground_states::Vector{Int}, gate_id::Int=0) where T
-    nodes = [Node(i, weight[i]) for i in 1:length(weight)]
-    edges = [Edge(src(e), dst(e)) for e in Graphs.edges(g)]
+function convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}, weight::Vector{T}, ground_states::Vector{Int}, rule_id::Int=0) where T
     ground_state_io = format_grstate_output(ground_states, length(pins))
 
     @info """ === Result ===
-    Gate ID: $gate_id
+    Gate ID: $rule_id
     Ground States: $ground_state_io
     Graph ID: $(graph_id)
     Edges: $(join([string(src(e), " -- ", dst(e)) for e in Graphs.edges(g)], ", "))
-    Nodes: $(join([string(node.id, " -- ", node.weight) for node in nodes], ", "))
+    Nodes: $(join([string(i, " -- ", weight[i]) for i in 1:length(weight)], ", "))
     """
-    return GadgetSolution{T}(
-        gate_id,
+    return gadget{T}(
+        rule_id,
         ground_state_io,
         graph_id,
         g,
-        nodes,
-        edges,
-        pins
+        pins,
+        weight
     )
 end
 
-function save_results_to_json(results, file_path::String)
-    json_data = JSON3.write(results; pretty=true)
+function save_results_to_json(results::Vector{gadget{T}}, file_path::String) where T
+    # Convert results to a serializable format
+    json_results = [
+        Dict(
+            "rule_id" => res.rule_id,
+            "ground_states" => res.ground_states,
+            "pins" => res.pins,
+            "weights" => res.weights,
+            "graph" => Dict(
+                "nodes" => [Dict("id" => i, "weight" => res.weights[i]) for i in 1:length(res.weights)],
+                "edges" => [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(res.graph)],
+                "graph_id" => res.graph_id
+            ) # Convert graph to a dictionary format
+        ) for res in results
+    ]
+    # Write to JSON file
+    json_data = JSON3.write(json_results; pretty=true)
     open(file_path, "w") do io
         write(io, json_data)
     end

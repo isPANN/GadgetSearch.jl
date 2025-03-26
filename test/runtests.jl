@@ -7,3 +7,7 @@ end
 @testset "graphsearch.jl" begin
     include("graphsearch.jl")
 end
+
+@testset "dataloaders.jl" begin
+    include("dataloaders.jl")
+end

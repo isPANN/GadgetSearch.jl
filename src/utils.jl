@@ -108,15 +108,14 @@ end
 
 
 """
-    generic_gate(gate_id::Int, input_bits::Int, output_bits::Int; show_info::Bool=false)
+    generic_rule(rule_id::Int, bit_num::Vector{Int}; show_info::Bool=false)
                 ::Vector{Int}
 
-Generate the decimal vector `ground_states` of a generic `input_bits`-in-`output_bits`-out gate with the given `gate_id`.
+Generate the decimal vector `ground_states` of a generic `input_bits`-in-`output_bits`-out gate with the given `rule_id`.
 
 # Arguments
-- `gate_id::Int`: the ID of the gate.
-- `input_bits::Int`: the number of input bits.
-- `output_bits::Int`: the number of output bits.
+- `rule_id::Int`: the ID of the gate.
+- `bit_num::Vector{Int}`: a length-2-vector of two integers representing the number of input and output bits.
 
 # Keyword Arguments
 - `show_info::Bool=false`: whether to show the truth table of the gate.
@@ -124,12 +123,13 @@ Generate the decimal vector `ground_states` of a generic `input_bits`-in-`output
 # Returns
 The decimal vector of the `ground_states`.
 """
-function generic_gate(gate_id::Int, input_bits::Int, output_bits::Int; show_info::Bool=false)::Vector{Int}
-    num_inputs = 2^input_bits
-    num_outputs = 2^output_bits
+function generic_rule(rule_id::Int, bit_num::Vector{Int}; show_info::Bool=false)::Vector{Int}
+    @assert length(bit_num) == 2
+    input_bits = bit_num[1]; output_bits = bit_num[2]
+    num_inputs = 2^input_bits; num_outputs = 2^output_bits
     max_gateid = num_outputs^num_inputs
 
-    if gate_id < 0 || gate_id > max_gateid
+    if rule_id < 0 || rule_id > max_gateid
         @error("Gate ID must be between 0 and $max_gateid")
     end
 
@@ -138,36 +138,99 @@ function generic_gate(gate_id::Int, input_bits::Int, output_bits::Int; show_info
     shift_amount = output_bits
 
     for input in 0:(num_inputs - 1)
-        output = (gate_id >> (input * shift_amount)) & mask_output
+        output = (rule_id >> (input * shift_amount)) & mask_output
         combined_degen = (input << shift_amount) | output  # Combine input and output into one number
         push!(ground_states, combined_degen)
     end
 
-    if show_info
-        show_gate_info(gate_id, input_bits, output_bits)
-    end
+    show_info && show_rule_info(rule_id, bit_num)
     return ground_states
 end
 
 """
-    show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
+   generic_rule(rule_id::Int, bits::Int; show_info::Bool=false)::Vector{Int} 
 
-Show the truth table of a generic `input_bits`-in-`output_bits`-out gate with the given `gate_id`.
+Generate the decimal vector `ground_states` of a generic `bits`-state-constraint with the given `rule_id`.
+
+# Note
+State constraints allow for more flexible conditions that determine which states are permitted.
+"""
+function generic_rule(rule_id::Int, bits::Int; show_info::Bool=false)::Vector{Int}
+    max_rule_id = 2^(2^bits) - 1
+
+    if rule_id < 0 || rule_id > max_rule_id
+        @error("State constraint ID must be between 0 and $max_rule_id")
+    end
+    ground_states = [i for i in 0:(2^bits)-1 if (rule_id & (1 << i)) != 0]
+    
+    show_info && show_rule_info(rule_id, bits)
+    return ground_states
+end
+
+"""
+    reconstruct_rule_id(ground_states::Vector{Int}, bit_num::Vector{Int}) -> Int
+
+Reconstructs a unique gate identifier (`rule_id`) based on the provided `ground_states`, 
+the number of `input_bits`, and `output_bits`.
 
 # Arguments
-- `gate_id::Int`: the ID of the gate.
+- `ground_states::Vector{Int}`: A vector of integers representing the ground state constraints.
+- `bit_num::Vector{Int}`: A length-2 vector of two integers representing the number of input and output bits.
+
+# Returns
+- `Int`: A unique integer identifier (`rule_id`) that encodes the mapping of inputs to outputs 
+  based on the provided ground states.
+
+# Details
+- Each `constraint` in `ground_states` is assumed to encode both input and output bits.
+- The `input` is extracted by shifting the `constraint` right by `output_bits` and applying a mask 
+  to isolate the `input_bits`.
+- The `output` is extracted by masking the lower `output_bits` of the `constraint`.
+- The `rule_id` is constructed by combining the outputs, shifted into positions determined by 
+  their corresponding inputs.
+"""
+function reconstruct_rule_id(ground_states::Vector{Int}, bit_num::Vector{Int})::Int
+    @assert length(bit_num) == 2
+    input_bits = bit_num[1]; output_bits = bit_num[2]
+    rule_id = 0
+    shift_amount = output_bits
+    mask_input = (1 << input_bits) - 1  # generate a mask for input bits
+
+    for constraint in ground_states
+        input = (constraint >> shift_amount) & mask_input  
+        output = constraint & ((1 << output_bits) - 1)    
+        rule_id |= output << (input * shift_amount)   
+    end
+
+    return rule_id
+end
+
+function reconstruct_rule_id(ground_states::Vector{Int})::Int
+    return sum(1 << i for i in ground_states)
+end
+
+
+"""
+    show_rule_info(rule_id::Int, input_bits::Int, output_bits::Int)
+
+Show the truth table of a generic `input_bits`-in-`output_bits`-out gate with the given `rule_id`.
+
+# Arguments
+- `rule_id::Int`: the ID of the gate.
 - `input_bits::Int`: the number of input bits.
 - `output_bits::Int`: the number of output bits.
 """
-function show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
+function show_rule_info(rule_id::Int, bit_num::Vector{Int})
+    @assert length(bit_num) == 2
+    input_bits = bit_num[1]; output_bits = bit_num[2]
     num_inputs = 2 ^ input_bits
     num_outputs = 2 ^ output_bits
-    max_gateid = num_outputs ^ num_inputs
+    max_rule_id = num_outputs ^ num_inputs
 
-    if gate_id < 0 || gate_id > max_gateid
-        @error("Gate ID must be between 0 and $max_gateid")
+    if rule_id < 0 || rule_id > max_rule_id
+        @error("Gate ID must be between 0 and $max_rule_id")
     end
-    @info "==== Gate ID: $gate_id ===="
+    @info "==== Gate ID: $rule_id ===="
     
     # Create the header for the table
     header = "Input (Binary) | Output (Binary)"
@@ -177,7 +240,7 @@ function show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
 
     for input in 0:(num_inputs - 1)
         # Calculate output using bitwise operations
-        output = (gate_id >> (input * output_bits)) & (num_outputs - 1)
+        output = (rule_id >> (input * output_bits)) & (num_outputs - 1)
 
         # Format input and output to fixed-width binary strings
         input_bin = string(input, base=2, pad=input_bits)
@@ -189,8 +252,68 @@ function show_gate_info(gate_id::Int, input_bits::Int, output_bits::Int)
 end
 
 
+"""
+    show_rule_info(rule_id::Int, bits::Int)
+    
+Show the truth table of a generic `bits`-state-constarint with the given `rule_id`.
+"""
+function show_rule_info(rule_id::Int, bits::Int)
+    max_rule_id = 2^(2^bits) - 1
+
+    if rule_id <= 0 || rule_id > max_rule_id
+        @error "State Constraint ID must be between 1 and $max_rule_id"
+        return
+    end
+    @info "==== State Constraint ID: $rule_id ===="
+    
+    # Create the header for the table
+    header = " Bits "
+    separator = "-" ^ length(header)
+    println(header)
+    println(separator)
+    count = 0
+
+    for i in 0:(2^bits - 1)
+        if (rule_id & (1 << i)) != 0
+            # Format input and output to fixed-width binary strings
+            bits_bin = string(i, base=2, pad=bits)
+            # Print the formatted result
+            println("| " * bits_bin)
+            count += 1
+        end
+    end
+    println("State constraint $rule_id allows $count states.")
+end
+
 function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
+end
+
+# Function to generate all n-bit input combinations
+function generate_n_bit_combinations(n::Int, truth_table::Bool=false)
+    return [truth_table == true ? bin(i, n) : i for i in 0:(2^n - 1)]
+end
+
+# Function to generate all degeneracy cases for n-bit input combinations
+function generate_degeneracy_cases(n::Int; truth_table::Bool=false)
+    comb = generate_n_bit_combinations(n, truth_table)
+    if truth_table
+        degeneracy_cases = Matrix{Int}[]
+        # Iterate through lengths 1 to length of combinations (which is 2^n)
+        for num in 1:length(comb)
+            for subset in combinations(1:length(comb), num)
+                push!(degeneracy_cases, hcat([comb[i] for i in subset]...)')
+            end
+        end
+    else
+        degeneracy_cases = Vector{Int}[]
+        for num in 1:length(comb)
+            for subset in combinations(1:length(comb), num)
+                push!(degeneracy_cases, [comb[i] for i in subset])
+            end
+        end
+    end
+    return degeneracy_cases
 end
 
 
@@ -281,10 +404,10 @@ function find_most_distant(index_matrix::AbstractMatrix{Int}, top_k::Vector{Int}
     return sorted_indices[top_k]
 end
 
-function extract_gate_ids(file_path::String)
+function extract_rule_ids(file_path::String)
     data = JSON.parsefile(file_path)
-    gate_ids = [item["gate_id"] for item in data if haskey(item, "gate_id")]
-    return gate_ids
+    rule_ids = [item["rule_id"] for item in data if haskey(item, "rule_id")]
+    return rule_ids
 end
 
 function extract_graph_ids(file_path::String)
