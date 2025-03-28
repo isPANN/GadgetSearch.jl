@@ -1,20 +1,21 @@
-struct gadget{T}
+#TODO seperate input pins and output pins
+struct gadget
     rule_id::Int
     ground_states::Vector{String}
     graph_id::Int  # reserved param
     graph::SimpleGraph{Int}
     pins::Vector{Int}
-    weights::Vector{T}
+    weights::AbstractVector
 end
 
-struct grid_gadget{T}
+struct grid_gadget
     # This struct is only used for data loading.
     rule_id::Int
     ground_states::Vector{String}
     graph_id::Int
     graph::SimpleGraph{Int}
     pins::Vector{Int}
-    weights::Vector{T}
+    weights::AbstractVector
     pos::Vector{Tuple{Int, Int}}
 end
 

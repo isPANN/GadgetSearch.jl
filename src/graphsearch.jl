@@ -1,8 +1,14 @@
-function search_rules(graph_path, bit_num, gate_list, save_path)
+function search_rules(graph_path, bit_num, gate_list, save_path; 
+                    pin_set::Vector{Int} = Int[],
+                    # File processing parameters
+                    max_file_size_mb::Int=30, split_size::Int=700_000, 
+                    # Search strategy parameters
+                    start_idx::Int=0, end_idx::Int=0, 
+                    greedy::Bool=false, threshold::Int=0, max_samples::Int=0)
     non_results = []
-    save_res = []
+    save_res = gadget[]
     for rule_id in gate_list
-        res = search_single_constraint_udg(graph_path, bit_num, rule_id)
+        res = search_single_rule(graph_path, bit_num; rule_id=rule_id, pin_set=pin_set, max_file_size_mb=max_file_size_mb, split_size=split_size, start_idx=start_idx, end_idx=end_idx, greedy=greedy, threshold=threshold, max_samples=max_samples)
         if !isnothing(res)
             push!(save_res, res)
             save_results_to_json(save_res, save_path)
@@ -316,7 +322,6 @@ function _sample_possible_mis(full_comb::Vector{Vector{Int}}, threshold::Int, ma
 end
 
 
-
 """
     find_maximal_independent_sets(g::SimpleGraph{Int})::Tuple{AbstractMatrix{Int}, Int}
 
@@ -458,7 +463,7 @@ function convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}
     Edges: $(join([string(src(e), " -- ", dst(e)) for e in Graphs.edges(g)], ", "))
     Nodes: $(join([string(i, " -- ", weight[i]) for i in 1:length(weight)], ", "))
     """
-    return gadget{T}(
+    return gadget(
         rule_id,
         ground_state_io,
         graph_id,
@@ -468,14 +473,13 @@ function convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}
     )
 end
 
-function save_results_to_json(results::Vector{gadget{T}}, file_path::String) where T
+function save_results_to_json(results::Vector{gadget}, file_path::String)
     # Convert results to a serializable format
     json_results = [
         Dict(
             "rule_id" => res.rule_id,
             "ground_states" => res.ground_states,
             "pins" => res.pins,
-            "weights" => res.weights,
             "graph" => Dict(
                 "nodes" => [Dict("id" => i, "weight" => res.weights[i]) for i in 1:length(res.weights)],
                 "edges" => [Dict("source" => src(e), "target" => dst(e)) for e in Graphs.edges(res.graph)],

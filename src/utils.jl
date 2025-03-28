@@ -25,14 +25,9 @@ function _create_tmp_dir(path::String, split_size::Int)::Union{String, Vector{St
     name = last(split(path, "/"))
     split_dir_path = joinpath(dirname(path), "tmp_$(name)_$(split_size)")
     if !isdir(split_dir_path)
-        # If the directory already exists, the function does not modify its contents but instead lists the files inside it.
-    #     file_list = readdir(split_dir_path)
-    #     return map(x -> joinpath(split_dir_path, x), file_list)
-    # else
         mkdir(split_dir_path)
     end
     return split_dir_path
-    
 end
 
 function _split_large_file(path::String, output_path::String, num_lines::Int=700_000)::Vector{String}
@@ -71,39 +66,29 @@ function _split_large_file(path::String, output_path::String, num_lines::Int=700
     return split_files
 end
 
-function check_graph_mis(graph_info::NamedTuple)
-    g = graph_info.graph
-    mis_result = find_maximal_independent_sets(g)
-    mis_num = size(mis_result, 1)
-
-    work_bits_value_vector = [[mis_result[i, j] for j in graph_info.work_nodes] for i in 1:mis_num]
-    work_bits_value_string = [join(map(string, subarr)) for subarr in work_bits_value_vector]
-    energy_value = [sum([graph_info.node_weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
+function check_gadget(bit_num, gadget_info::Union{gadget, grid_gadget})
+    g = gadget_info.graph
+    mis_result, mis_num = find_maximal_independent_sets(g)
+    
+    pin_value_vector = format_truth_table(mis_result[:, gadget_info.pins])
+    
+    energy_value = [sum([gadget_info.weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
     max_value = maximum(energy_value)
     max_indices = findall(x -> x == max_value, energy_value)
-    @info """
-    All Maximal Independent States' value: $(work_bits_value_string).
-    Corresponding energy values: $(energy_value).
-    => Ground States for this graph: $(work_bits_value_string[max_indices]).
-    """
-    return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
-end
 
-function check_graph_mis(g::SimpleGraph{Int}, node_weights::Vector{Int}, pins::Vector{Int})
-    mis_result = find_maximal_independent_sets(g)
-    mis_num = size(mis_result, 1)
-
-    work_bits_value_vector = [[mis_result[i, j] for j in pins] for i in 1:mis_num]
-    work_bits_value_string = [join(map(string, subarr)) for subarr in work_bits_value_vector]
-    energy_value = [sum([node_weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
-    max_value = maximum(energy_value)
-    max_indices = findall(x -> x == max_value, energy_value)
-    @info """
-    All Maximal Independent States' value: $(work_bits_value_string).
-    Corresponding energy values: $(energy_value).
-    => Ground States for this graph: $(work_bits_value_string[max_indices]).
-    """
-    return work_bits_value_string, energy_value, work_bits_value_string[max_indices]
+    ground_states = sort(pin_value_vector[max_indices])
+    rule_id = reconstruct_rule_id(ground_states, bit_num)
+    @info "Corresponding energy values: $(max_value)."
+    show_rule_info(rule_id, bit_num)
+    
+    # ground_states_print = [join(map(string, bin(subarr, sum(bit_num)))) for subarr in pin_value_vector]
+    # @info """
+    # All Maximal Independent States' value: $(ground_states_print).
+    # Corresponding energy values: $(energy_value).
+    # => Ground States for this graph: $(ground_states_print[max_indices]).
+    # => Rule ID: $(gadget_info.rule_id).
+    # """
+    return 
 end
 
 
@@ -206,6 +191,7 @@ function reconstruct_rule_id(ground_states::Vector{Int}, bit_num::Vector{Int})::
 end
 
 function reconstruct_rule_id(ground_states::Vector{Int})::Int
+    # Reconstructs a unique state constraint identifier based on the provided ground states.
     return sum(1 << i for i in ground_states)
 end
 
@@ -321,7 +307,7 @@ function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})::Matrix
     bit_vectors = zeros(Int, length(indices), bit_num)
     for (col, idxs) in enumerate(indices)
         for idx in idxs
-            bit_vectors[col, idx] = 1  # 逐元素赋值
+            bit_vectors[col, idx] = 1
         end
     end
     return bit_vectors
@@ -344,6 +330,16 @@ function format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
                 value > max_value && throw(ArgumentError("Computed value $value exceeds the maximum representable value $max_value for bit length $bit_length."))
                 value
             end for row in eachrow(truth_table)]
+end
+
+function format_truth_table(truth_table::Vector{Vector{Int}})::Vector{Int}
+    bit_length = length(truth_table[1])  # 获取第一行的长度（假设每一行的长度相同）
+    max_value = 2^bit_length - 1  # Maximum value for the given bit length
+
+    return [let value = sum(Int(row[i]) * 2^(bit_length - i) for i in 1:bit_length)
+                value > max_value && throw(ArgumentError("Computed value $value exceeds the maximum representable value $max_value for bit length $bit_length."))
+                value
+            end for row in truth_table]
 end
 
 """
@@ -412,7 +408,7 @@ end
 
 function extract_graph_ids(file_path::String)
     data = JSON.parsefile(file_path)
-    graph_ids = [item["graph_id"] for item in data if haskey(item, "graph_id")]
+    graph_ids = [item["graph"]["graph_id"] for item in data if haskey(item["graph"], "graph_id")]
     return graph_ids
 end
 

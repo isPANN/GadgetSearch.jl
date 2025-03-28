@@ -43,11 +43,10 @@ end
 function _generate_vertex_color(weights::AbstractVector, discrete_color_scheme, continuous_color_scheme)
     if any(w < 1 || w > length(discrete_color_scheme) || typeof(w) != Int for w in weights)
         @info "Using continuous color scheme."
-        # 计算权重范围
         min_w, max_w = minimum(weights), maximum(weights)
-        # 生成 colormap（使用 Viridis 颜色方案）
+        # generate colormap
         cmap = get(continuous_color_scheme, range(0, 1, length=length(weights)))
-        # 根据权重分配颜色
+        # assign colors based on weights
         node_colors = [cmap[floor(Int, (w - min_w) / (max_w - min_w) * (length(cmap) - 1) + 1)] for w in weights]
     else
         @info "Using discrete color scheme."
