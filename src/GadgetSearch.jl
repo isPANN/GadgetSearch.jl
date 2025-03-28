@@ -13,7 +13,6 @@ include("dataloaders.jl")
 include("utils.jl")
 include("graphsearch.jl")
 include("generateUDG.jl")
-include("unitdiskgraph.jl")
 include("visualize.jl")
 
 export search_single_rule, search_rules
@@ -26,6 +25,7 @@ export generate_degeneracy_cases
 export load_gadget, load_unweighted_grid_gadget, load_grid_gadget
 export plot_single_gadget
 export extract_rule_ids, extract_graph_ids
-export check_gadget
+export check_gadget, generate_degeneracy_cases
+export generate_grid_udgs
 
 end

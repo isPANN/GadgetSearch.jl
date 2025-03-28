@@ -10,8 +10,8 @@
     @test result1.graph_id == result2.graph_id == result3.graph_id
 
     save_path = pkgdir(GadgetSearch, "test", "test.json")
-    flag = save_results_to_json([result1, result2], save_path)
-    @test flag == save_path
+    save_results_to_json([result1, result2], save_path)
+    @test isfile(save_path)
     rm(save_path)
 end
 
@@ -33,6 +33,10 @@ end
 
     @test result1.graph_id == result2.graph_id == result3.graph_id
     @test result4.graph_id == result5.graph_id == result6.graph_id
+
+    # test greedy search
+    result1 = search_single_rule(graph_dict, [2,2]; ground_states=ground_states, greedy=true);
+    result2 = search_single_rule(graph_dict, [2,2]; ground_states=ground_states, threshold=1, max_samples=1);
 end
 
 @testset "search generic constraints using graph path" begin

@@ -47,6 +47,17 @@ function filter_nonisomorphic_naive(gs::AbstractVector{<:SimpleGraph}, fixed_ver
     return gs[mask]
 end
 
+function unit_disk_graph(locs::AbstractVector, unit::Real)
+    n = length(locs)
+    g = SimpleGraph(n)
+    for i=1:n, j=i+1:n
+        if sum(abs2, locs[i] .- locs[j]) < unit ^ 2
+            add_edge!(g, i, j)
+        end
+    end
+    return g
+end
+
 function canonical_form(comb, m, n)
     # generate all possible different combinations
     sorted_comb = sort(comb)
@@ -91,7 +102,7 @@ function generate_grid_udgs(m::Int, n::Int, pin_pad::Int, directions::Vector{Sym
     pivot_pos = [pivot_dict[d] for d in directions]
     pin_pos = [pin_dict[d] for d in directions]
 
-    for indices in product((1:length(p) for p in pivot_pos)...)
+    for indices in Iterators.product((1:length(p) for p in pivot_pos)...)
         pivot_combination = [pivot_pos[i][index] for (i, index) in enumerate(indices)]
         pin_combination = [pin_pos[i][index] for (i, index) in enumerate(indices)]
         candidate_points = [

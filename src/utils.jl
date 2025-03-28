@@ -333,7 +333,7 @@ function format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
 end
 
 function format_truth_table(truth_table::Vector{Vector{Int}})::Vector{Int}
-    bit_length = length(truth_table[1])  # 获取第一行的长度（假设每一行的长度相同）
+    bit_length = length(truth_table[1]) 
     max_value = 2^bit_length - 1  # Maximum value for the given bit length
 
     return [let value = sum(Int(row[i]) * 2^(bit_length - i) for i in 1:bit_length)

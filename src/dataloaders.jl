@@ -63,6 +63,7 @@ function load_gadget(gadget_file_name::String; key::Symbol=:rule_id, round_weigh
             )
         )
     end
+    return result_dict
 end
 
 
