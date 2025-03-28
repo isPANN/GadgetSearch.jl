@@ -1,6 +1,6 @@
 @testset "dataloaders" begin
     file_path = pkgdir(GadgetSearch, "datasets", "logic_gates", "2in2out.json")
-    load_gadget(file_path)
+    res_dict = load_gadget(file_path)
 
     gadget_path = pkgdir(GadgetSearch, "datasets", "udgs", "2in2out_m3n4.json")
     pos_path = pkgdir(GadgetSearch, "data", "grid_udgs", "m3n4pad1_min3max12_direct4.json")
