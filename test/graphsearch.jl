@@ -1,26 +1,52 @@
-using GadgetSearch, Test
+@testset "search single gate using path" begin
+    path = pkgdir(GadgetSearch, "data", "graphs", "graph6.g6")
+    rule_id = 0
+    ground_states = generic_rule(0,[2,2])
+    truth_table = [0 0 0 0; 0 1 0 0; 1 0 0 0; 1 1 0 0]
 
-@testset "searchForSingleConstraint" begin
-    vertex_num = [3, 4, 5]
-    for i in vertex_num
-        path = pkgdir(GadgetSearch, "data", "graphs", "graph$i.g6")
-        graph_dict = readgraphdict(path)
-        check_single_constraint(graph_dict, 3, [0])
-    end
+    result1 = search_single_rule(path, [2,2]; ground_states=ground_states);
+    result2 = search_single_rule(path, [2,2]; truth_table=truth_table);
+    result3 = search_single_rule(path, [2,2]; rule_id=rule_id);
+    @test result1.graph_id == result2.graph_id == result3.graph_id
+
+    save_path = pkgdir(GadgetSearch, "test", "test.json")
+    save_results_to_json([result1, result2], save_path)
+    @test isfile(save_path)
+    rm(save_path)
 end
 
-@testset "searchForAnyConstraint" begin    
-    fn = search_any_constraint([2,3], 2, pkgdir(GadgetSearch, "data", "graphs"), pkgdir(GadgetSearch))
-    rm("$fn")
-    fn = search_single_constraint([2,3], 2, [1,2], pkgdir(GadgetSearch, "data", "graphs"), pkgdir(GadgetSearch))
-    rm("$fn")
-    fn = search_single_constraint([6],3,["111","101","011","000"],pkgdir(GadgetSearch, "data", "graphs"), pkgdir(GadgetSearch))
-    rm("$fn")
+@testset "search single gate using graph" begin
+    path = pkgdir(GadgetSearch, "data", "graphs", "graph6.g6")
+    rule_id = 0
+    ground_states = generic_rule(0,[2,2])
+    truth_table = [0 0 0 0; 0 1 0 0; 1 0 0 0; 1 1 0 0]
+
+    graph_dict = read_graph_dict(path)
+    result1 = search_single_rule(graph_dict, [2,2]; ground_states=ground_states);
+    result2 = search_single_rule(graph_dict, [2,2]; truth_table=truth_table);
+    result3 = search_single_rule(graph_dict, [2,2]; rule_id=rule_id);
+
+    graph = read_graph(path, 122)
+    result4 = search_single_rule(graph, [2,2]; ground_states=ground_states);
+    result5 = search_single_rule(graph, [2,2]; truth_table=truth_table);
+    result6 = search_single_rule(graph, [2,2]; rule_id=rule_id);
+
+    @test result1.graph_id == result2.graph_id == result3.graph_id
+    @test result4.graph_id == result5.graph_id == result6.graph_id
+
+    # test greedy search
+    result1 = search_single_rule(graph_dict, [2,2]; ground_states=ground_states, greedy=true);
+    result2 = search_single_rule(graph_dict, [2,2]; ground_states=ground_states, threshold=1, max_samples=1);
 end
 
-@testset "searchForLogicGates" begin
-    fn = search_single_gate([6], 2, 2, 2, pkgdir(GadgetSearch, "data", "graphs"), pkgdir(GadgetSearch))
-    rm("$fn")
-    fn = search_gates([4], 2, 2, pkgdir(GadgetSearch, "data", "graphs"), pkgdir(GadgetSearch))
-    rm("$fn")
+@testset "search generic constraints using graph path" begin
+    path = pkgdir(GadgetSearch, "data", "graphs", "graph5.g6")
+    ground_states = [1, 2]
+    truth_table = [0 1; 1 0]
+    rule_id = 6
+
+    result1 = search_single_rule(path, 2; ground_states=ground_states);
+    result2 = search_single_rule(path, 2; truth_table=truth_table);
+    result3 = search_single_rule(path, 2; rule_id=rule_id);
+    @test result1.graph_id == result2.graph_id == result3.graph_id
 end

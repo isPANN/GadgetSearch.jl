@@ -1,19 +1,31 @@
 module GadgetSearch
 
-using JuMP, HiGHS
-using GenericTensorNetworks
-using COPT
+using JuMP, HiGHS, COPT, GLPK
 using Suppressor
-using Graphs, GraphIO, JSON, IterTools
-using GraphPlot, Compose, Colors
+using Graphs, GraphIO, IterTools
+using Colors, ColorSchemes
 using Combinatorics
+using JSON3, JSON
+using Karnak, Luxor
+using Random
 
+include("dataloaders.jl")
 include("utils.jl")
 include("graphsearch.jl")
-include("dataloaders.jl")
+include("generateUDG.jl")
+include("visualize.jl")
 
-export bin, decimal, plotgraphs, plotcoloredgraph, genericgate
-export readgraphdict, readgraph, checkgraphmis
-export search_any_constraint, search_single_constraint, check_single_constraint, search_gates, search_single_gate
-export loadjsonfile, find_by_degeneracy, find_by_gateid, showgateinfo
+export search_single_rule, search_rules
+export find_maximal_independent_sets
+export save_results_to_json
+export read_graph_dict, read_graph
+export format_truth_table
+export show_rule_info, generic_rule, reconstruct_rule_id
+export generate_degeneracy_cases
+export load_gadget, load_unweighted_grid_gadget, load_grid_gadget
+export plot_single_gadget
+export extract_rule_ids, extract_graph_ids
+export check_gadget, generate_degeneracy_cases
+export generate_grid_udgs
+
 end

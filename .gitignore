@@ -24,4 +24,7 @@ mainNotes.bib
 /docs/Manifest.toml
 /docs/build/
 /data/graphplot/
+/data/graphs/
+/datasets/plots/
 .vscode/
+m4n5pad1_min4max20_direct4.*
