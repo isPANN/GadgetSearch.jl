@@ -56,32 +56,103 @@ function _generate_vertex_color(weights::AbstractVector, discrete_color_scheme, 
     
 end
 
-function _generate_mask(index_map, n)
-    mask = fill("", n)  # generate an empty mask
-    for (i, idx) in enumerate(index_map)
-        mask[idx] = string(i)  # use the index_map to fill the mask
+function _generate_pin_mask(special_index, n; normal_fill::String="", special_fill::String="")
+    mask = fill(normal_fill, n)  # generate an empty mask
+    for (i, idx) in enumerate(special_index)
+        if length(special_fill) == 0
+            mask[idx] = string(i)  # use the special_index to fill the mask
+        else
+            mask[idx] = special_fill  # use the special fill value
+        end
     end
     return mask
 end
 
-#TODO: use Luxor to add colorbar
-function plot_single_gadget(gadget::grid_gadget, save_path::String; plot_size=400, margin=20, preserve_aspect_ratio=true, discrete_color_scheme=ColorSchemes.seaborn_bright, continuous_color_scheme=ColorSchemes.viridis)
+
+#TODO: add parameters to control the size of graph elements.
+#TODO: Find a way to show pins and weights in the same plot.
+function plot_single_gadget(
+                            gadget::grid_gadget, save_path::String; 
+                            plot_size=400, margin=30, 
+                            preserve_aspect_ratio=true, 
+                            background_grid=true,
+                            discrete_color_scheme=ColorSchemes.seaborn_bright, 
+                            continuous_color_scheme=ColorSchemes.viridis
+                            )
+
     x_new_vals, y_new_vals, x_scale_factor, y_scale_factor = _map_and_scale(gadget, plot_size, plot_size, margin, preserve_aspect_ratio)
-    
+    x_max, y_max = maximum(x_new_vals), maximum(y_new_vals)
+    x_min, y_min = minimum(x_new_vals), minimum(y_new_vals)
+
     @pdf begin
         background("white")
+        
+        if background_grid
+            x_list = collect(x_min:x_max) .* x_scale_factor
+            y_list = collect(y_min:y_max) .* y_scale_factor
+
+            sethue("gray")
+            setline(0.3)
+            for x in x_list
+                for x in x_list
+                    line(Point(x, y_min*y_scale_factor), Point(x, y_max*y_scale_factor), :stroke)
+                end
+                for y in y_list
+                    line(Point(x_min*x_scale_factor, y), Point(x_max*x_scale_factor, y), :stroke)
+                end
+            end
+        end
+
+        sethue("black")
         pts = [Point(x*x_scale_factor, y*y_scale_factor) for (x,y) in zip(x_new_vals, y_new_vals)]
         node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
-        mask = _generate_mask(gadget.pins, nv(gadget.graph))
+        mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
 
+        drawgraph(gadget.graph, 
+                  vertexlabels=gadget.weights,  
+                  vertexshapesizes=10, 
+                  vertexlabelfontsizes=15, 
+                  vertexfillcolors=node_colors,
+                  edgestrokeweights=2,
+                  layout=pts,
+                )
+        
+        fontsize(margin / 2)
+        text("PIN $(gadget.pins[1])", pts[1] - (0,20), halign=:center, valign=:middle)
+        text("PIN $(gadget.pins[2])", pts[2] + (20,0), halign=:center, valign=:middle, angle=pi/2)
+        text("PIN $(gadget.pins[3])", pts[3] + (0,20), halign=:center, valign=:middle)
+        text("PIN $(gadget.pins[4])", pts[4] - (20,0), halign=:center, valign=:middle, angle=-pi/2)
+    
+    end plot_size plot_size save_path
+
+    finish()
+    println("Drawing saved as $save_path")
+end
+
+
+function plot_single_gadget(
+                            gadget::gadget, save_path::String; 
+                            plot_size=400, margin=30, 
+                            preserve_aspect_ratio=true, 
+                            background_grid=true,
+                            discrete_color_scheme=ColorSchemes.seaborn_bright, 
+                            continuous_color_scheme=ColorSchemes.viridis
+                            )
+    @pdf begin
+        background("white")
+        
+        sethue("black")
+        node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
+        mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
         drawgraph(gadget.graph, 
                   vertexlabels=mask,  
                   vertexshapesizes=10, 
                   vertexlabelfontsizes=15, 
-                  layout=pts, 
-                  edgestrokeweights=1,
-                  vertexfillcolors=node_colors) 
-        
+                  vertexfillcolors=node_colors,
+                  edgestrokeweights=2,
+                  layout=spring,
+                )
+    
     end plot_size plot_size save_path
 
     finish()
