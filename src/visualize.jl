@@ -76,6 +76,7 @@ function plot_single_gadget(
                             plot_size=400, margin=30, 
                             preserve_aspect_ratio=true, 
                             background_grid=true,
+                            show_weights=true,
                             discrete_color_scheme=ColorSchemes.seaborn_bright, 
                             continuous_color_scheme=ColorSchemes.viridis
                             )
@@ -84,7 +85,7 @@ function plot_single_gadget(
     x_max, y_max = maximum(x_new_vals), maximum(y_new_vals)
     x_min, y_min = minimum(x_new_vals), minimum(y_new_vals)
 
-    @pdf begin
+    @svg begin
         background("white")
         
         if background_grid
@@ -105,17 +106,27 @@ function plot_single_gadget(
 
         sethue("black")
         pts = [Point(x*x_scale_factor, y*y_scale_factor) for (x,y) in zip(x_new_vals, y_new_vals)]
-        node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
-        mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
+        if show_weights
+            node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
+            # mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
 
-        drawgraph(gadget.graph, 
-                  vertexlabels=gadget.weights,  
-                  vertexshapesizes=10, 
-                  vertexlabelfontsizes=15, 
-                  vertexfillcolors=node_colors,
-                  edgestrokeweights=2,
-                  layout=pts,
-                )
+            drawgraph(gadget.graph, 
+                    vertexlabels=gadget.weights,  
+                    vertexshapesizes=10, 
+                    vertexlabelfontsizes=15, 
+                    vertexfillcolors=node_colors,
+                    edgestrokeweights=2,
+                    layout=pts,
+                    )
+        else
+            drawgraph(gadget.graph, 
+                    vertexlabels=collect(1:nv(gadget.graph)),  
+                    vertexshapesizes=10, 
+                    vertexlabelfontsizes=15, 
+                    edgestrokeweights=2,
+                    layout=pts,
+                    )
+        end
         
         fontsize(margin / 2)
         text("PIN $(gadget.pins[1])", pts[1] - (0,20), halign=:center, valign=:middle)
@@ -135,26 +146,62 @@ function plot_single_gadget(
                             plot_size=400, margin=30, 
                             preserve_aspect_ratio=true, 
                             background_grid=true,
+                            show_weights=true,
                             discrete_color_scheme=ColorSchemes.seaborn_bright, 
                             continuous_color_scheme=ColorSchemes.viridis
                             )
-    @pdf begin
+    @svg begin
         background("white")
         
         sethue("black")
-        node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
-        mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
-        drawgraph(gadget.graph, 
-                  vertexlabels=mask,  
-                  vertexshapesizes=10, 
-                  vertexlabelfontsizes=15, 
-                  vertexfillcolors=node_colors,
-                  edgestrokeweights=2,
-                  layout=spring,
-                )
+        if show_weights
+            node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
+            mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
+            drawgraph(gadget.graph, 
+                    vertexlabels=gadget.weights,  
+                    vertexshapesizes=10, 
+                    vertexlabelfontsizes=15, 
+                    vertexfillcolors=node_colors,
+                    edgestrokeweights=2,
+                    layout=spring,
+                    )
+        else
+            drawgraph(gadget.graph, 
+                    vertexlabels=collect(1:nv(gadget.graph)),  
+                    vertexshapesizes=10, 
+                    vertexlabelfontsizes=15, 
+                    edgestrokeweights=2,
+                    layout=spring,
+                    )
+        end
     
     end plot_size plot_size save_path
 
     finish()
     println("Drawing saved as $save_path")
+end
+
+
+function plot_single_gadget_mis(
+                            gadget::gadget, save_path::String; 
+                            plot_size=400, margin=30
+                            )
+    mis_matrix, n = find_maximal_independent_sets(gadget.graph)
+    for i in 1:n
+    save_single_path = save_path * "$i"
+        @svg begin
+            # background(none)
+            drawgraph(gadget.graph, 
+                    vertexlabels=collect(1:nv(gadget.graph)),  
+                    vertexshapesizes=10, 
+                    vertexlabelfontsizes=15,
+                    vertexfillcolors=ifelse.(BitVector(mis_matrix[i, :]), RGB(1,0,0), RGB(0,0,0)),
+                    edgestrokeweights=2,
+                    layout=spring,
+                    )
+        end plot_size plot_size save_single_path
+
+        finish()
+        println("Drawing saved as $save_single_path")
+    end
 end

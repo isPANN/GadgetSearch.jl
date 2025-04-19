@@ -73,6 +73,7 @@ function check_gadget(bit_num, gadget_info::Union{gadget, grid_gadget})
     pin_value_vector = format_truth_table(mis_result[:, gadget_info.pins])
     
     energy_value = [sum([gadget_info.weights[j] * mis_result[i, j] for j in 1:nv(g)])  for i in 1:mis_num]
+    @show energy_value
     max_value = maximum(energy_value)
     max_indices = findall(x -> x == max_value, energy_value)
 

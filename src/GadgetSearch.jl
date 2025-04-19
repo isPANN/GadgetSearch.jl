@@ -26,6 +26,6 @@ export load_gadget, load_unweighted_grid_gadget, load_grid_gadget
 export plot_single_gadget
 export extract_rule_ids, extract_graph_ids
 export check_gadget, generate_degeneracy_cases
-export generate_grid_udgs
+export generate_grid_udgs, plot_single_gadget_mis
 
 end
