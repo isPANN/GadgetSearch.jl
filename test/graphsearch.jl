@@ -50,3 +50,18 @@ end
     result3 = search_single_rule(path, 2; rule_id=rule_id);
     @test result1.graph_id == result2.graph_id == result3.graph_id
 end
+
+@testset "search with different optimizers" begin
+    path = pkgdir(GadgetSearch, "data", "graphs", "graph5.g6")
+    ground_states = [1, 2]
+
+    # Test with default HiGHS optimizer
+    result1 = search_single_rule(path, 2; ground_states=ground_states);
+
+    # Test with GLPK optimizer
+    result2 = search_single_rule(path, 2; ground_states=ground_states, optimizer=GLPK.Optimizer);
+
+    # Both should find a solution (though possibly different ones)
+    @test !isnothing(result1)
+    @test !isnothing(result2)
+end

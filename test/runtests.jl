@@ -1,5 +1,6 @@
 using GadgetSearch
 using Test
+using GLPK
 
 @testset "utils.jl" begin
     include("utils.jl")

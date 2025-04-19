@@ -1,6 +1,6 @@
 module GadgetSearch
 
-using JuMP, HiGHS, COPT, GLPK
+using JuMP, HiGHS
 using Suppressor
 using Graphs, GraphIO, IterTools
 using Colors, ColorSchemes
@@ -8,6 +8,7 @@ using Combinatorics
 using JSON3, JSON
 using Karnak, Luxor
 using Random
+using LinearAlgebra, Statistics
 
 include("dataloaders.jl")
 include("utils.jl")
@@ -27,5 +28,4 @@ export plot_single_gadget
 export extract_rule_ids, extract_graph_ids
 export check_gadget, generate_degeneracy_cases
 export generate_grid_udgs
-
 end

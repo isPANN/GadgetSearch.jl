@@ -21,6 +21,7 @@ end
 end
 
 @testset "split large file" begin
+
     path = pkgdir(GadgetSearch, "data", "graphs", "graph3.g6")
     search_single_rule(path, 2; truth_table=[0 1; 1 0], max_file_size_mb=0, split_size=3)
     @test isdir(pkgdir(GadgetSearch, "data", "graphs", "tmp_graph3.g6_3"))
