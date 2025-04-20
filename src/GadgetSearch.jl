@@ -7,6 +7,7 @@ using Graphs, GraphIO, IterTools
 using Combinatorics
 using LinearAlgebra, Statistics
 using Random
+using Base.Threads
 
 # Visualization and data handling
 using Colors, ColorSchemes
@@ -33,13 +34,14 @@ include("dataloaders.jl")   # Data loading utilities
 include("utils.jl")         # Utility functions
 include("types.jl")         # Type definitions
 include("traits.jl")        # Trait system for graph types and search strategies
-include("graphsearch_new.jl")   # Core search algorithms
+include("graphsearch.jl")   # Core search algorithms
+include("search_rules_parallel.jl")  # Parallel search algorithms
 include("generateUDG.jl")   # UDG generation
 include("visualize.jl")     # Visualization tools
 
 # Export public API
 # Core search functions
-export search_single_rule, search_rules
+export search_single_rule, search_rules, search_rules_parallel
 
 # Type definitions
 export SearchParameters

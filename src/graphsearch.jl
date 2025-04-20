@@ -759,7 +759,7 @@ function _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_se
     # Define variables
     @variable(model, x[1:vertex_num])
     @variable(model, C)
-
+    
     # Define constraints
     ϵ = 1  # Separation constant
 
