@@ -1,60 +1,42 @@
-# Structure to encapsulate search parameters for better organization and type safety
+# Search parameters are defined in types.jl
+
+"""_process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
+
+Process ground states from either direct input, truth table, or rule ID.
+
+# Arguments
+- `ground_states::Vector{Int}`: Ground states to satisfy
+- `truth_table::AbstractMatrix`: Truth table of the logic gate
+- `bit_num::Union{Int, Vector{Int}}`: Number of bits or vector of input/output bits
+- `rule_id::Int`: ID of the logic gate
+
+# Returns
+- Tuple of (ground_states, rule_id)
 """
-    SearchParameters(;
-        pin_set::Vector{Int} = Int[],
-        max_file_size_mb::Int = 30,
-        split_size::Int = 700_000,
-        start_idx::Int = 0,
-        end_idx::Int = 0,
-        greedy::Bool = false,
-        threshold::Int = 0,
-        max_samples::Int = 0
-    )
-
-Contains parameters for graph search operations
-
-# Fields
-- `pin_set::Vector{Int}`: Set of pins to search for
-- `max_file_size_mb::Int`: Maximum file size in MB to process before splitting
-- `split_size::Int`: Maximum number of rows in each split file
-- `start_idx::Int`: Starting index for graph search
-- `end_idx::Int`: Ending index for graph search
-- `greedy::Bool`: Whether to use greedy approach
-- `threshold::Int`: Maximum number of MIS combinations to consider
-- `max_samples::Int`: Maximum number of samples to generate
-"""
-struct SearchParameters
-    pin_set::Vector{Int}
-    max_file_size_mb::Int
-    split_size::Int
-    start_idx::Int
-    end_idx::Int
-    greedy::Bool
-    threshold::Int
-    max_samples::Int
-
-    # Constructor with default values and validation
-    function SearchParameters(;
-        pin_set::Vector{Int} = Int[],
-        max_file_size_mb::Int = 30,
-        split_size::Int = 700_000,
-        start_idx::Int = 0,
-        end_idx::Int = 0,
-        greedy::Bool = false,
-        threshold::Int = 0,
-        max_samples::Int = 0
-    )
-        # Parameter validation
-        max_file_size_mb >= 0 || throw(ArgumentError("max_file_size_mb must be positive"))
-        split_size > 0 || throw(ArgumentError("split_size must be positive"))
-        start_idx >= 0 || throw(ArgumentError("start_idx must be non-negative"))
-        end_idx >= 0 || throw(ArgumentError("end_idx must be non-negative"))
-        threshold >= 0 || throw(ArgumentError("threshold must be non-negative"))
-        max_samples >= 0 || throw(ArgumentError("max_samples must be non-negative"))
-
-        new(pin_set, max_file_size_mb, split_size, start_idx, end_idx, greedy, threshold, max_samples)
+function _process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
+    if isempty(ground_states)
+        if isempty(truth_table)
+            if length(bit_num) == 2 && rule_id >= 0
+                # When the `rule_id` of the logic gate to be searched is known, this function can be called without figuring out the `ground_states`.
+                ground_states = generic_rule(rule_id, bit_num)
+            elseif length(bit_num) == 1 && rule_id > 0
+                # When the `rule_id` of the state constraint to be searched is known, this function can be called without figuring out the `ground_states`.
+                ground_states = generic_rule(rule_id, bit_num)
+            else
+                @error "The rule id $rule_id is not valid."
+                return nothing, nothing
+            end
+        else
+            # This function receives a truth table as the ground states.
+            ground_states = format_truth_table(truth_table)
+        end
     end
+    if length(bit_num) == 2 && rule_id < 0
+        rule_id = reconstruct_rule_id(ground_states, bit_num)
+    end
+    return ground_states, rule_id
 end
+
 
 """
     search_rules(graph_path, bit_num, gate_list, save_path;
@@ -64,7 +46,9 @@ end
                     # Search strategy parameters
                     start_idx::Int=0, end_idx::Int=0,
                     greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                    optimizer=HiGHS.Optimizer)
+                    # Grid graph parameters
+                    is_grid_graph::Bool=false, pos_data_path=nothing, grid_dims=(0,0),
+                    optimizer=HiGHS.Optimizer, env=nothing)
 
 # Arguments
 - `graph_path`: Path to the graph database
@@ -79,6 +63,80 @@ end
 # Returns
 - List of rule IDs for which no solution was found
 """
+# function search_rules(graph_path, bit_num, gate_list, save_path;
+#                     pin_set::Vector{Int} = Int[],
+#                     # File processing parameters
+#                     max_file_size_mb::Int=30, split_size::Int=700_000,
+#                     # Search strategy parameters
+#                     start_idx::Int=0, end_idx::Int=0,
+#                     greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
+#                     # Grid graph parameters
+#                     is_grid_graph::Bool=false, pos_data_path=nothing, grid_dims=(0,0),
+#                     # Optimizer Setttings
+#                     optimizer=HiGHS.Optimizer, env=nothing)
+
+#     # Determine graph type using traits
+#     graph_type = is_grid_graph ? GridGraph(pos_data_path, grid_dims) : GeneralGraph()
+
+#     # Create appropriate result vector based on graph type
+#     save_res = create_result_vector(graph_type)
+
+#     # Create search parameters object
+#     params = SearchParameters(
+#         pin_set=pin_set,
+#         max_file_size_mb=max_file_size_mb,
+#         split_size=split_size,
+#         start_idx=start_idx,
+#         end_idx=end_idx,
+#         greedy=greedy,
+#         threshold=threshold,
+#         max_samples=max_samples
+#     )
+
+#     # Prepare graph chunks for processing
+#     graph_chunks = if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
+#         # Split the file into smaller parts and return as (index, path) pairs
+#         [(i, path) for (i, path) in enumerate(_split_large_file(graph_path, params.split_size))]
+#     else
+#         # Just use the original file with index 0
+#         [(0, graph_path)]
+#     end
+
+#     # Process each graph chunk
+#     for (chunk_idx, chunk_path) in graph_chunks
+#         # Load graph dictionary once per chunk
+#         graph_dict = read_graph_dict(chunk_path)
+
+#         # Process each rule in the gate list
+#         for rule_id in gate_list
+#             # Skip rules that have already been found
+#             rule_id in map(r -> r.rule_id, save_res) && continue
+
+#             @show rule_id
+#             # Process ground states
+#             ground_states = generic_rule(rule_id, bit_num)
+
+#             # Execute search on this chunk of the graph database
+#             result = _execute_graph_search(
+#                 graph_dict, bit_num, ground_states, params, chunk_idx, rule_id,
+#                 optimizer, env;
+#                 graph_type=graph_type
+#             )
+
+#             # Save result if found
+#             if !isnothing(result)
+#                 push!(save_res, result)
+#                 save_results_to_json(save_res, save_path)
+#             end
+#         end
+#     end
+
+#     # Identify rules that weren't found
+#     found_rules = Set(map(r -> r.rule_id, save_res))
+#     non_results = filter(r -> !(r in found_rules), gate_list)
+
+#     return non_results
+# end
 function search_rules(graph_path, bit_num, gate_list, save_path;
                     pin_set::Vector{Int} = Int[],
                     # File processing parameters
@@ -86,7 +144,17 @@ function search_rules(graph_path, bit_num, gate_list, save_path;
                     # Search strategy parameters
                     start_idx::Int=0, end_idx::Int=0,
                     greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                    optimizer=HiGHS.Optimizer)
+                    # Grid graph parameters
+                    is_grid_graph::Bool=false, pos_data_path=nothing, grid_dims=(0,0),
+                    # Optimizer Setttings
+                    optimizer=HiGHS.Optimizer, env=nothing)
+
+    # Determine graph type using traits
+    graph_type = is_grid_graph ? GridGraph(pos_data_path, grid_dims) : GeneralGraph()
+
+    # Create appropriate result vector based on graph type
+    save_res = create_result_vector(graph_type)
+
     # Create search parameters object
     params = SearchParameters(
         pin_set=pin_set,
@@ -99,34 +167,165 @@ function search_rules(graph_path, bit_num, gate_list, save_path;
         max_samples=max_samples
     )
 
-    # Track rules that couldn't be found
-    non_results = Int[]
-    save_res = Vector{Gadget}()
+    # Prepare graph chunks for processing
+    graph_chunks = if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
+        # Split the file into smaller parts and return as (index, path) pairs
+        [(i, path) for (i, path) in enumerate(_split_large_file(graph_path, params.split_size))]
+    else
+        # Just use the original file with index 0
+        [(0, graph_path)]
+    end
 
-    # Process each rule in the gate list
-    for rule_id in gate_list
-        # Search for a single rule with the given parameters
-        res = search_single_rule(graph_path, bit_num;
-                               rule_id=rule_id,
-                               optimizer=optimizer,
-                               pin_set=params.pin_set,
-                               max_file_size_mb=params.max_file_size_mb,
-                               split_size=params.split_size,
-                               start_idx=params.start_idx,
-                               end_idx=params.end_idx,
-                               greedy=params.greedy,
-                               threshold=params.threshold,
-                               max_samples=params.max_samples)
+    # 跟踪尚未找到解决方案的规则
+    remaining_rules = Set(gate_list)
 
-        if !isnothing(res)
-            push!(save_res, res)
-            save_results_to_json(save_res, save_path)
-        else
-            push!(non_results, rule_id)
+    # 确定搜索策略
+    search_strategy = determine_search_strategy(bit_num)
+
+    # 预先计算所有规则的基态
+    rule_ground_states = Dict(rule_id => generic_rule(rule_id, bit_num) for rule_id in gate_list)
+
+    # Process each graph chunk
+    for (chunk_idx, chunk_path) in graph_chunks
+        # 如果所有规则都已找到解决方案，提前退出
+        isempty(remaining_rules) && break
+
+        # Load graph dictionary once per chunk
+        graph_dict = read_graph_dict(chunk_path)
+
+        # 对每个图进行处理
+        for (i, (gname, graph)) in enumerate(graph_dict)
+            # 检查图是否连通，如果不连通则跳过
+            Graphs.is_connected(graph) || continue
+
+            # 计算原始图ID
+            graph_id = _extract_numbers(gname) + (chunk_idx == 0 ? 0 : (chunk_idx - 1) * params.split_size)
+
+            # 计算最大独立集（MIS）- 这是计算密集型操作，只需计算一次
+            mis_result, mis_num = find_maximal_independent_sets(graph)
+
+            # 打印进度信息
+            i % 1000 == 0 && println("Searched $(i)-th graph...")
+
+            # 根据搜索策略类型选择不同的处理方法
+            if isa(search_strategy, LogicGateSearch)
+                input_num = bit_num[1]
+                output_num = bit_num[2]
+
+                # 如果MIS数量不足，跳过当前图
+                if mis_num < 2^(input_num)
+                    continue
+                end
+
+                # 生成输入引脚候选
+                local pin_set = params.pin_set
+                if isempty(pin_set)
+                    # 如果未提供引脚集，所有顶点都被视为潜在引脚
+                    pin_set = collect(1:Graphs.nv(graph))
+                    # 生成有效的输入引脚组合
+                    input_candidates = _generate_pin_set(graph, mis_result, input_num)
+                else
+                    # 如果提供了引脚集，则默认pin_set中的所有选择都有效
+                    input_candidates = _generate_gate_input(pin_set, input_num)
+                end
+
+                # 如果没有有效的输入候选，跳过当前图
+                isempty(input_candidates) && continue
+
+                # 尝试每个输入候选
+                for candidate in input_candidates
+                    # 找到输出引脚的剩余元素
+                    remain_elements = setdiff(pin_set, candidate)
+
+                    # 尝试每种可能的输出引脚组合
+                    for output_bits in permutations(remain_elements, output_num)
+                        # 组合输入和输出引脚
+                        candidate_full = vcat(candidate, output_bits)
+
+                        # 对每个剩余的规则进行处理
+                        for rule_id in collect(remaining_rules)
+                            # 获取该规则的基态
+                            ground_states = rule_ground_states[rule_id]
+
+                            # 检查基态是否包含在MIS中
+                            target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate_full, ground_states, params.greedy)
+                            isempty(target_mis_indices_all) && continue
+
+                            # 寻找权重
+                            weight = _find_weight_new(mis_result, target_mis_indices_all, optimizer, env)
+                            isempty(weight) && continue
+
+                            # 如果找到解决方案
+                            result = convert_to_gadget(graph_type, graph_id, graph, candidate_full, weight, ground_states, rule_id)
+
+                            # 保存结果
+                            push!(save_res, result)
+                            save_results_to_json(save_res, save_path)
+
+                            # 从剩余规则中移除
+                            delete!(remaining_rules, rule_id)
+
+                            # 如果所有规则都已找到解决方案，提前退出
+                            isempty(remaining_rules) && break
+                        end
+
+                        # 如果所有规则都已找到解决方案，提前退出
+                        isempty(remaining_rules) && break
+                    end
+
+                    # 如果所有规则都已找到解决方案，提前退出
+                    isempty(remaining_rules) && break
+                end
+            else  # 对于GenericConstraintSearch策略
+                # 生成所有引脚向量，即`pin_set`中`bit_num`个顶点的排列
+                local pin_set = params.pin_set
+                if isempty(pin_set)
+                    pin_set = collect(1:Graphs.nv(graph))
+                end
+                @assert length(pin_set) >= bit_num
+                all_candidates = _generate_constraint_bit(pin_set, bit_num)
+
+                # 遍历所有可能的引脚向量
+                for candidate in all_candidates
+                    # 对每个剩余的规则进行处理
+                    for rule_id in collect(remaining_rules)
+                        # 获取该规则的基态
+                        ground_states = rule_ground_states[rule_id]
+
+                        # 检查在选择`candidate`的情况下，`ground_states`是否包含在MIS中
+                        target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate, ground_states, params.greedy)
+                        isempty(target_mis_indices_all) && continue
+
+                        # 寻找权重
+                        weight = _find_weight_new(mis_result, target_mis_indices_all, optimizer, env)
+                        isempty(weight) && continue
+
+                        # 如果找到解决方案
+                        result = convert_to_gadget(graph_type, graph_id, graph, candidate, weight, ground_states, rule_id)
+
+                        # 保存结果
+                        push!(save_res, result)
+                        save_results_to_json(save_res, save_path)
+
+                        # 从剩余规则中移除
+                        delete!(remaining_rules, rule_id)
+
+                        # 如果所有规则都已找到解决方案，提前退出
+                        isempty(remaining_rules) && break
+                    end
+
+                    # 如果所有规则都已找到解决方案，提前退出
+                    isempty(remaining_rules) && break
+                end
+            end
+
+            # 如果所有规则都已找到解决方案，提前退出
+            isempty(remaining_rules) && break
         end
     end
 
-    return non_results
+    # 返回未找到解决方案的规则
+    return collect(remaining_rules)
 end
 
 
@@ -141,7 +340,9 @@ end
                             # Search strategy parameters
                             start_idx::Int=0, end_idx::Int=0,
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                            optimizer=HiGHS.Optimizer)::Union{Gadget, Nothing}
+                            # Graph type parameter
+                            graph_type::AbstractGraphType=GeneralGraph(),
+                            optimizer=HiGHS.Optimizer, env=nothing)::Union{AbstractGadget, Nothing}
 
 # Arguments
 - `graph_path::String`: Path to the graph database
@@ -167,8 +368,10 @@ function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}}
                             # Search strategy parameters
                             start_idx::Int=0, end_idx::Int=0,
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                            optimizer=HiGHS.Optimizer
-)::Union{Gadget, Nothing}
+                            # Graph type parameter
+                            graph_type::AbstractGraphType=GeneralGraph(),
+                            optimizer=HiGHS.Optimizer, env=nothing
+)::Union{AbstractGadget, Nothing}
     # Create search parameters object
     params = SearchParameters(
         pin_set=pin_set,
@@ -183,66 +386,34 @@ function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}}
 
     # Process ground states
     ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
-    isempty(ground_states) && return nothing
 
-    # Check if file needs to be split
-    if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
-        # Split the file into smaller parts and process each part separately
-        split_file_paths = _split_large_file(graph_path, params.split_size)
-
-        # Process each split file
-        for (i, file) in enumerate(split_file_paths)
-            graph_dict = read_graph_dict(file)
-
-            # Execute search on this part of the graph database
-            result = _execute_graph_search(
-                graph_dict, bit_num, ground_states, rule_id,
-                params.pin_set, i, params.split_size, params.start_idx,
-                params.end_idx, params.greedy, params.threshold,
-                params.max_samples, optimizer
-            )
-
-            # Return early if a solution is found
-            isnothing(result) || return result
-        end
+    # Prepare graph chunks for processing
+    graph_chunks = if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
+        # Split the file into smaller parts and return as (index, path) pairs
+        [(i, path) for (i, path) in enumerate(_split_large_file(graph_path, params.split_size))]
     else
-        # Process the entire file at once
-        graph_dict = read_graph_dict(graph_path)
+        # Just use the original file with index 0
+        [(0, graph_path)]
+    end
+
+    # Process each graph chunk until a solution is found
+    for (chunk_idx, chunk_path) in graph_chunks
+        # Load graph dictionary once per chunk
+        graph_dict = read_graph_dict(chunk_path)
+
+        # Execute search on this chunk of the graph database
         result = _execute_graph_search(
-            graph_dict, bit_num, ground_states, rule_id,
-            params.pin_set, 0, params.split_size, params.start_idx,
-            params.end_idx, params.greedy, params.threshold,
-            params.max_samples, optimizer
+            graph_dict, bit_num, ground_states, params, chunk_idx, rule_id,
+            optimizer, env;
+            graph_type=graph_type
         )
-        return result
+
+        # Return early if a solution is found
+        isnothing(result) || return result
     end
 
     # No solution found
     return nothing
-end
-
-function _process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
-    if isempty(ground_states)
-        if isempty(truth_table)
-            if length(bit_num) == 2 && rule_id >= 0
-                # When the `rule_id` of the logic gate to be searched is known, this function can be called without figuring out the `ground_states`.
-                ground_states = generic_rule(rule_id, bit_num)
-            elseif length(bit_num) == 1 && rule_id > 0
-                # When the `rule_id` of the state constraint to be searched is known, this function can be called without figuring out the `ground_states`.
-                ground_states = generic_rule(rule_id, bit_num)
-            else
-                @error "The rule id $rule_id is not valid."
-                return nothing, nothing
-            end
-        else
-            # This function receives a truth table as the ground states.
-            ground_states = format_truth_table(truth_table)
-        end
-    end
-    if length(bit_num) == 2 && rule_id < 0
-        rule_id = reconstruct_rule_id(ground_states, bit_num)
-    end
-    return ground_states, rule_id
 end
 
 
@@ -278,7 +449,8 @@ function search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}},
                             split_idx::Int=0, split_size::Int=700_000,
                             start_idx::Int=0, end_idx::Int=0,
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                            optimizer=HiGHS.Optimizer)
+                            graph_type::AbstractGraphType=GeneralGraph(),
+                            optimizer=HiGHS.Optimizer, env=nothing)
     # Create search parameters object
     params = SearchParameters(
         pin_set=pin_set,
@@ -296,10 +468,9 @@ function search_single_rule(graph_dict::Dict{String, SimpleGraph{Int}},
 
     # Execute search on the graph dictionary
     return _execute_graph_search(
-        graph_dict, bit_num, ground_states, rule_id,
-        params.pin_set, split_idx, params.split_size, params.start_idx,
-        params.end_idx, params.greedy, params.threshold,
-        params.max_samples, optimizer
+        graph_dict, bit_num, ground_states, params, split_idx, rule_id,
+        optimizer, env;
+        graph_type=graph_type
     )
 end
 
@@ -330,7 +501,8 @@ function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{
                             rule_id::Int=-1,
                             pin_set::Vector{Int}=Int[],
                             greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                            optimizer=HiGHS.Optimizer)
+                            graph_type::AbstractGraphType=GeneralGraph(),
+                            optimizer=HiGHS.Optimizer, env=nothing)
     # Create search parameters object
     params = SearchParameters(
         pin_set=pin_set,
@@ -346,12 +518,15 @@ function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{
     # Process ground states
     ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
 
+    # Determine search strategy based on bit_num
+    search_strategy = determine_search_strategy(bit_num)
+
     # Search on the single graph
-    pins, weight = _search_on_single_graph(graph, bit_num, ground_states, params, optimizer)
+    pins, weight = search_on_single_graph(search_strategy, graph, bit_num, ground_states, params, optimizer, env)
 
     # Return result if found
     if !isnothing(pins)
-        return convert_to_result(0, graph, pins, weight, ground_states, rule_id)
+        return convert_to_gadget(graph_type, 0, graph, pins, weight, ground_states, rule_id)
     else
         @info "No valid solution found in this graph."
         return nothing
@@ -362,201 +537,41 @@ end
 function _execute_graph_search(graph_dict::Dict{String, SimpleGraph{Int}},
                                 bit_num::Union{Int, Vector{Int}},
                                 ground_state::Vector{Int},
+                                params::SearchParameters,
+                                split_idx::Int=0,
                                 rule_id::Int=-1,
-                                pin_set::Vector{Int}=Int[],
-                                split_idx::Int=0, split_size::Int=700_000,
-                                start_idx::Int=0, end_idx::Int=0,
-                                greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-                                optimizer=HiGHS.Optimizer)
+                                optimizer=HiGHS.Optimizer, env=nothing;
+                                graph_type::AbstractGraphType=GeneralGraph())
     # Calculate base offset for graph IDs
-    base_offset = split_idx == 0 ? 0 : (split_idx - 1) * split_size
+    base_offset = split_idx == 0 ? 0 : (split_idx - 1) * params.split_size
 
     # Filter and enumerate the graphs to process
     filtered_graphs = Iterators.enumerate(graph_dict) |>
         iter -> Iterators.filter(((i, _),) ->
-            (start_idx <= 0 || base_offset + i >= start_idx) &&
-            (end_idx <= 0 || base_offset + i <= end_idx), iter)
+            (params.start_idx <= 0 || base_offset + i >= params.start_idx) &&
+            (params.end_idx <= 0 || base_offset + i <= params.end_idx), iter)
 
     # Process each graph
     for (i, (gname, graph)) in filtered_graphs
         # Print progress message every 10,000 graphs
-        (base_offset + i) % 10000 == 0 && println("Searched $(base_offset + i) graphs...")
+        # (base_offset + i) % 10000 == 0 && println("Searched $(base_offset + i) graphs...")
 
-        # Create search parameters object
-        params = SearchParameters(
-            pin_set=pin_set,
-            max_file_size_mb=30, # Not used for this version but needed for struct
-            split_size=split_size,
-            start_idx=start_idx,
-            end_idx=end_idx,
-            greedy=greedy,
-            threshold=threshold,
-            max_samples=max_samples
-        )
+        # Determine search strategy based on bit_num
+        search_strategy = determine_search_strategy(bit_num)
 
         # Perform the search on the current graph
-        pins, weight = _search_on_single_graph(graph, bit_num, ground_state, params, optimizer)
+        pins, weight = search_on_single_graph(search_strategy, graph, bit_num, ground_state, params, optimizer, env)
 
         # If a valid solution is found, return the result
         if !isnothing(pins)
             # Calculate graph ID based on split information
             graph_id = _extract_numbers(gname) + (split_idx == 0 ? 0 : base_offset)
-            return convert_to_result(graph_id, graph, pins, weight, ground_state, rule_id)
+            return convert_to_gadget(graph_type, graph_id, graph, pins, weight, ground_state, rule_id)
         end
     end
 
     # No solution found
     return nothing
-end
-
-"""_search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Int, ground_states::Vector{Int}, params::SearchParameters, optimizer=HiGHS.Optimizer)
-
-Search for a solution on a single graph for generic constraints.
-
-# Arguments
-- `graph::SimpleGraph{Int}`: The graph to search
-- `bit_num::Int`: Number of bits
-- `ground_states::Vector{Int}`: Ground states to satisfy
-- `params::SearchParameters`: Search parameters including pin_set, greedy, threshold, and max_samples
-- `optimizer`: Optimization solver to use
-
-# Returns
-- Tuple of (pins, weights) if a solution is found, otherwise (nothing, nothing)
-"""
-function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Int, ground_states::Vector{Int}, params::SearchParameters, optimizer=HiGHS.Optimizer)
-    # This is a version for generic constraints.
-    # Ground states form a vector by converting binary numbers (e.g. 101) to their corresponding decimal values (e.g. 5).
-    @assert length(ground_states) > 0 && maximum(ground_states) < 2^bit_num
-
-    # Graph must be connected.
-    Graphs.is_connected(graph) || return nothing, nothing
-    vertex_num = Graphs.nv(graph)
-
-    # Find all maximal independent sets of this graph.
-    mis_result, _ = find_maximal_independent_sets(graph)
-
-    # Generate all pin vectors, i.e. the permutations of `bit_num` vertices in `pin_set`.
-    local pin_set = params.pin_set
-    if isempty(pin_set)
-        pin_set = collect(1:vertex_num)
-    end
-    @assert length(pin_set) >= bit_num
-    all_candidates = _generate_constraint_bit(pin_set, bit_num)
-
-    # Iterate over all possible pin vectors and search the vertex weight.
-    for candidate in all_candidates
-        # Check if the `ground_states` are contained in the MISs under the choice of `candidate`.
-        target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate, ground_states, params.greedy)
-        isempty(target_mis_indices_all) && continue
-
-        # Sample combinations if threshold and max_samples are set
-        local selected_combinations
-        if params.threshold > 0 && params.max_samples > 0
-            selected_combinations = _sample_possible_mis(target_mis_indices_all, params.threshold, params.max_samples)
-        else
-            selected_combinations = collect(Iterators.product(target_mis_indices_all...))
-        end
-
-        # Try each combination
-        for combination in selected_combinations
-            # Split MIS set into target and wrong sets
-            target_mis_set, wrong_mis_set = _split_mis_set(mis_result, vcat(combination...))
-
-            # Find weights
-            weight = _find_weight(vertex_num, target_mis_set, wrong_mis_set, optimizer)
-            isempty(weight) && continue
-
-            # Return solution if found
-            return candidate, weight
-        end
-    end
-    return nothing, nothing
-end
-
-
-"""_search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, ground_states::Vector{Int}, params::SearchParameters, optimizer=HiGHS.Optimizer)
-
-Search for a solution on a single graph for logic gates.
-
-# Arguments
-- `graph::SimpleGraph{Int}`: The graph to search
-- `bit_num::Vector{Int}`: Vector of [input_bits, output_bits]
-- `ground_states::Vector{Int}`: Ground states to satisfy
-- `params::SearchParameters`: Search parameters including pin_set, greedy, threshold, and max_samples
-- `optimizer`: Optimization solver to use
-
-# Returns
-- Tuple of (pins, weights) if a solution is found, otherwise (nothing, nothing)
-"""
-function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, ground_states::Vector{Int}, params::SearchParameters, optimizer=HiGHS.Optimizer)
-    # This is a version for a logic gate.
-    @assert length(bit_num) == 2
-    @assert length(ground_states) > 0 && maximum(ground_states) < 2^(sum(bit_num))
-    input_num = bit_num[1]
-    output_num = bit_num[2]
-
-    # Graph must be connected
-    Graphs.is_connected(graph) || return nothing, nothing
-    vertex_num = Graphs.nv(graph)
-
-    # Find all maximal independent sets of this graph
-    mis_result, mis_num = find_maximal_independent_sets(graph)
-
-    # Check if there are enough MISs for the input bits
-    mis_num < 2^(input_num) && return nothing, nothing
-
-    # Generate input candidates
-    local pin_set = params.pin_set
-    if isempty(pin_set)
-        # If the pin set is not provided, all vertices are considered as potential pins
-        pin_set = collect(1:vertex_num)
-        # Generate valid input pin combinations
-        input_candidates = _generate_pin_set(graph, mis_result, input_num)
-    else
-        # If the pin set is provided, all selections in `pin_set` are considered valid by default
-        input_candidates = _generate_gate_input(pin_set, input_num)
-    end
-
-    # Check if there are any valid input candidates
-    isempty(input_candidates) && return nothing, nothing
-
-    # Try each input candidate
-    for candidate in input_candidates
-        # Find remaining elements for output pins
-        remain_elements = setdiff(pin_set, candidate)
-
-        # Try each possible output pin combination
-        for output_bits in permutations(remain_elements, output_num)
-            # Combine input and output pins
-            candidate_full = vcat(candidate, output_bits)
-
-            # Check if ground states are contained in MISs
-            target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate_full, ground_states, params.greedy)
-            isempty(target_mis_indices_all) && continue
-
-            # Sample combinations if threshold and max_samples are set
-            local selected_combinations
-            if params.threshold > 0 && params.max_samples > 0
-                selected_combinations = _sample_possible_mis(target_mis_indices_all, params.threshold, params.max_samples)
-            else
-                selected_combinations = collect(Iterators.product(target_mis_indices_all...))
-            end
-
-            # Try each combination
-            for combination in selected_combinations
-                # Split MIS set into target and wrong sets
-                target_mis_set, wrong_mis_set = _split_mis_set(mis_result, vcat(combination...))
-
-                # Find weights
-                weight = _find_weight(vertex_num, target_mis_set, wrong_mis_set, optimizer)
-                isempty(weight) && continue
-
-                # Return solution if found
-                return candidate_full, weight
-            end
-        end
-    end
-    return nothing, nothing
 end
 
 
@@ -580,19 +595,28 @@ Search for a solution on a single graph for a specific rule ID.
 # Returns
 - Tuple of (pins, weights) if a solution is found, otherwise (nothing, nothing)
 """
-function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, rule_id::Int; pin_set::Vector{Int}=Int[], greedy::Bool=true, threshold::Int=0, max_samples::Int=0, optimizer=HiGHS.Optimizer)
+function _search_on_single_graph(graph::SimpleGraph{Int}, bit_num::Vector{Int}, rule_id::Int; pin_set::Vector{Int}=Int[], greedy::Bool=true, threshold::Int=0, max_samples::Int=0, optimizer=HiGHS.Optimizer, env=nothing)
     @assert length(bit_num) == 2
+
+    # Create a minimal SearchParameters object with only the needed parameters
     params = SearchParameters(
         pin_set=pin_set,
-        max_file_size_mb=30, # Not used for this version but needed for struct
-        split_size=700_000,  # Not used for this version but needed for struct
-        start_idx=0,         # Not used for this version but needed for struct
-        end_idx=0,           # Not used for this version but needed for struct
         greedy=greedy,
         threshold=threshold,
-        max_samples=max_samples
+        max_samples=max_samples,
+        # Default values for unused parameters
+        max_file_size_mb=30,
+        split_size=700_000,
+        start_idx=0,
+        end_idx=0
     )
-    return _search_on_single_graph(graph, bit_num, generic_rule(rule_id, bit_num), params, optimizer)
+
+    # Get ground states for the rule
+    ground_states = generic_rule(rule_id, bit_num)
+
+    # Determine search strategy and execute search
+    search_strategy = determine_search_strategy(bit_num)
+    return search_on_single_graph(search_strategy, graph, bit_num, ground_states, params, optimizer, env)
 end
 
 
@@ -652,7 +676,8 @@ function find_maximal_independent_sets(g::SimpleGraph{Int})::Tuple{AbstractMatri
     return mis_result, length(ones_vertex)
 end
 
-"""_check_grstates_in_candidate(mis_result::AbstractMatrix{Int}, candidate::Vector{Int}, grstates::Vector{Int}, greedy::Bool=false)::Vector{Vector{Int}}
+"""
+    _check_grstates_in_candidate(mis_result::AbstractMatrix{Int}, candidate::Vector{Int}, grstates::Vector{Int}, greedy::Bool=false)::Vector{Vector{Int}}
 
 Check if ground states are contained in the candidate MISs.
 
@@ -709,26 +734,6 @@ function _split_mis_set(mis_result::AbstractMatrix{Int}, target_indices::Vector{
     return target_set, wrong_set
 end
 
-# function compute_target_diffs(target_set::AbstractMatrix)
-#     n = size(target_set, 1)
-#     target_diffs = Matrix{eltype(target_set)}(undef, n * (n - 1) ÷ 2, size(target_set, 2))
-
-#     idx = 1
-#     for i in 1:(n-1)
-#         for j in (i+1):n
-#             target_diffs[idx, :] = target_set[i, :] .- target_set[j, :]
-#             idx += 1
-#         end
-#     end
-#     return target_diffs
-# end
-
-# function compute_wrong_target_diffs(target_set::AbstractMatrix, wrong_set::AbstractMatrix)
-#     wrong_target_diffs = vcat([(target_set[i, :] .- wrong_set[j, :])' for i in axes(target_set, 1), j in axes(wrong_set, 1)]...)
-#     return wrong_target_diffs
-# end
-
-
 """
     _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_set::AbstractMatrix{Int}, optimizer=HiGHS.Optimizer)
 
@@ -743,11 +748,13 @@ Find vertex weights that satisfy the given constraints.
 # Returns
 - Vector of vertex weights if a solution is found, otherwise empty vector
 """
-function _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_set::AbstractMatrix{Int}, optimizer=HiGHS.Optimizer)
+function _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_set::AbstractMatrix{Int}, optimizer=HiGHS.Optimizer, env=nothing)
     # Create optimization model
-    model = direct_model(optimizer())
+    opt = isnothing(env) ? optimizer() : optimizer(env)
+    model = direct_model(opt)
     set_silent(model)
     set_string_names_on_creation(model, false)
+    # set_optimizer_attribute(model, "Threads", 4)
 
     # Define variables
     @variable(model, x[1:vertex_num])
@@ -778,6 +785,54 @@ function _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_se
     return Float64[]
 end
 
+function _find_weight_new(mis_matrix::AbstractMatrix, prefix_buckets, optimizer=HiGHS.Optimizer, env=nothing)
+    opt = isnothing(env) ? optimizer() : optimizer(env)
+    model = direct_model(opt)
+    set_silent(model)
+    set_string_names_on_creation(model, false)
+    # set_optimizer_attribute(model, "Threads", 4)
+
+    y_dim, vertex_num = size(mis_matrix)
+
+    @variable(model, x[1:vertex_num] >= 1, Int)
+    @variable(model, y[1:y_dim], Bin)
+    @variable(model, C)
+
+    selected_indices = reduce(vcat, prefix_buckets)
+    selected_set = Set(selected_indices)
+
+    for idxs in prefix_buckets
+        @constraint(model, sum(y[i] for i in idxs) == 1)
+    end
+
+    @constraint(model, [i=1:y_dim; i ∉ selected_set], y[i] == 0)
+
+    row_sums = [sum(mis_matrix[i,:]) for i in 1:y_dim]
+    M_big = 2 * maximum(row_sums)
+
+    for i in 1:y_dim
+        row = mis_matrix[i, :]
+        # 当 y_i = 1 时 强制 row⋅x = c；当 y_i = 0 时 这两条约束放宽
+        @constraint(model, dot(row, x) - C <=  M_big*(1 - y[i]))
+        @constraint(model, C - dot(row, x) <=  M_big*(1 - y[i]))
+    end
+
+    for i in 1:y_dim
+        row = mis_matrix[i, :]
+        @constraint(model, dot(row, x) <= C - 1 + M_big*y[i])
+    end
+
+    @objective(model, Min, sum(x))
+    set_time_limit_sec(model, 30)
+    optimize!(model)
+
+    if is_solved_and_feasible(model)
+        @info "Optimization successful!"
+        return [value(x[i]) for i in 1:vertex_num]
+    end
+    return []
+end
+
 
 function _select_columns(mis::AbstractMatrix{Int}, input_num::Int)::Vector{Int}
     # Compute the row-wise sum of each column in the MIS matrix.
@@ -804,50 +859,6 @@ function _generate_constraint_bit(valid_columns::Vector{Int}, bit_num::Int)::Vec
     return collect(permutations(valid_columns, bit_num))
 end
 
-
-"""convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}, weight::Vector{T}, ground_states::Vector{Int}, rule_id::Int=0) where T <: Real
-
-Convert search results to a Gadget object.
-
-# Arguments
-- `graph_id::Int`: ID of the graph
-- `g::SimpleGraph{Int}`: The graph
-- `pins::Vector{Int}`: Pin vertices
-- `weight::Vector{T}`: Vertex weights
-- `ground_states::Vector{Int}`: Ground states
-- `rule_id::Int=0`: ID of the logic gate
-
-# Returns
-- A Gadget object containing the search results
-"""
-function convert_to_result(graph_id::Int, g::SimpleGraph{Int}, pins::Vector{Int}, weight::Vector{T}, ground_states::Vector{Int}, rule_id::Int=0) where T <: Real
-    # Format ground states for output
-    ground_state_io = format_grstate_output(ground_states, length(pins))
-
-    # Format edges and nodes for display
-    edges_str = join(["$(src(e)) -- $(dst(e))" for e in Graphs.edges(g)], ", ")
-    nodes_str = join(["$i -- $(weight[i])" for i in 1:length(weight)], ", ")
-
-    # Log the result
-    @info """ === Result ===
-    Gate ID: $rule_id
-    Ground States: $ground_state_io
-    Graph ID: $graph_id
-    Edges: $edges_str
-    Nodes: $nodes_str
-    """
-
-    # Create and return the Gadget object
-    return Gadget(
-        rule_id,
-        ground_state_io,
-        graph_id,
-        g,
-        pins,
-        weight
-    )
-end
-
 """
     save_results_to_json(results::Vector{Gadget}, file_path::String)
 
@@ -860,10 +871,10 @@ Save search results to a JSON file.
 # Returns
 - The file path where results were saved
 """
-function save_results_to_json(results::Vector{Gadget}, file_path::String)
+function save_results_to_json(results::Vector{<:AbstractGadget}, file_path::String)
     # Convert each result to a serializable dictionary
     json_results = map(results) do res
-        Dict(
+        base_dict = Dict(
             "rule_id" => res.rule_id,
             "ground_states" => res.ground_states,
             "pins" => res.pins,
@@ -873,6 +884,13 @@ function save_results_to_json(results::Vector{Gadget}, file_path::String)
                 "graph_id" => res.graph_id
             )
         )
+
+        # Add position data if it's a grid_gadget
+        if isa(res, grid_gadget)
+            base_dict["graph"]["positions"] = [Dict("id" => i, "position" => [pos[1], pos[2]]) for (i, pos) in enumerate(res.pos)]
+        end
+
+        return base_dict
     end
 
     # Write to JSON file with pretty formatting
@@ -882,4 +900,3 @@ function save_results_to_json(results::Vector{Gadget}, file_path::String)
 
     return file_path
 end
-

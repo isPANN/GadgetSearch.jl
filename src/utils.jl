@@ -1,4 +1,7 @@
-"""Read a dictionary of graphs from a file
+"""
+    read_graph_dict(path::String)::Dict{String, SimpleGraph{Int}}
+
+Read a dictionary of graphs from a file
 
 # Arguments
 - `path::String`: Path to the graph file
@@ -11,7 +14,10 @@ function read_graph_dict(path::String)::Dict{String, SimpleGraph{Int}}
     return graph
 end
 
-"""Read a single graph from a file
+"""
+    read_graph(path::String, id::Int)
+
+Read a single graph from a file
 
 # Arguments
 - `path::String`: Path to the graph file
@@ -25,15 +31,7 @@ function read_graph(path::String, id::Int)
     return graph
 end
 
-"""Split a large file into smaller files
 
-# Arguments
-- `path::String`: Path to the large file
-- `split_size::Int=700_000`: Maximum number of lines per split file
-
-# Returns
-- Vector of paths to the split files
-"""
 function _split_large_file(path::String, split_size::Int=700_000)::Vector{String}
     # Generate a new directory under the same path to store the split files
     tmp_dir_path = _create_tmp_dir(path, split_size)
@@ -41,37 +39,13 @@ function _split_large_file(path::String, split_size::Int=700_000)::Vector{String
     return split_file_paths
 end
 
-"""Extract the first number from a string
 
-# Arguments
-- `s::String`: String containing numbers
-
-# Returns
-- The first number found in the string
-
-# Example
-```julia
-_extract_numbers("graph123") # Returns 123
-```
-"""
 function _extract_numbers(s::String)
     # Extract `graph_id` from a key of a `graph_dict`, e.g. "graph1" -> 1.
     return parse.(Int, collect(eachmatch(r"\d+", s)) .|> x -> x.match)[1]
 end
 
-"""Create a temporary directory for split files
 
-# Arguments
-- `path::String`: Path to the original file
-- `split_size::Int`: Size of each split file
-
-# Returns
-- Path to the created temporary directory
-
-# Details
-The temporary directory name is constructed as `tmp_<n>_<split_size>`,
-where `<n>` is the last component of the provided `path`.
-"""
 function _create_tmp_dir(path::String, split_size::Int)::Union{String, Vector{String}}
     # The temporary directory name is constructed as `tmp_<name>_<split_size>`, where `<name>` is the last component of the provided `path`.
     name = last(split(path, "/"))
@@ -82,16 +56,7 @@ function _create_tmp_dir(path::String, split_size::Int)::Union{String, Vector{St
     return split_dir_path
 end
 
-"""Split a large file into smaller files with a specified number of lines
 
-# Arguments
-- `path::String`: Path to the large file
-- `output_path::String`: Directory to store the split files
-- `num_lines::Int=700_000`: Maximum number of lines per split file
-
-# Returns
-- Vector of paths to the split files
-"""
 function _split_large_file(path::String, output_path::String, num_lines::Int=700_000)::Vector{String}
     if !isdir(output_path)
         @info "Creating directory: $output_path"
@@ -126,7 +91,10 @@ function _split_large_file(path::String, output_path::String, num_lines::Int=700
     return split_files
 end
 
-"""Check a gadget by computing its ground states and rule ID
+"""
+    check_gadget(bit_num, gadget_info::Union{Gadget, grid_gadget})
+
+Check a gadget by computing its ground states and rule ID
 
 # Arguments
 - `bit_num`: Number of bits or vector of input/output bits
@@ -352,33 +320,20 @@ function show_rule_info(rule_id::Int, bits::Int)
     println("State constraint $rule_id allows $count states.")
 end
 
-"""Convert an integer to its binary representation as a vector
 
-# Arguments
-- `x::Int`: Integer to convert
-- `n::Int`: Number of bits in the output vector
-
-# Returns
-- Vector of binary digits (0s and 1s)
-"""
 function bin(x::Int, n::Int)::Vector{Int}
     return digits(x, base=2, pad=n) |> reverse
 end
 
-"""Generate all n-bit input combinations
 
-# Arguments
-- `n::Int`: Number of bits
-- `truth_table::Bool=false`: Whether to return binary vectors or decimal values
-
-# Returns
-- Vector of all possible n-bit combinations
-"""
 function generate_n_bit_combinations(n::Int, truth_table::Bool=false)
     return [truth_table == true ? bin(i, n) : i for i in 0:(2^n - 1)]
 end
 
-"""Generate all degeneracy cases for n-bit input combinations
+"""
+    generate_degeneracy_cases(n::Int; truth_table::Bool=false)
+
+Generate all degeneracy cases for n-bit input combinations
 
 # Arguments
 - `n::Int`: Number of bits
@@ -419,16 +374,7 @@ function generate_degeneracy_cases(n::Int; truth_table::Bool=false)
     return degeneracy_cases
 end
 
-"""Generate a matrix of bit vectors from a vector of index vectors
-
-# Arguments
-- `bit_num::Int`: Number of bits in each vector
-- `indices::Vector{Vector{Int}}`: Vector of index vectors, where each index vector
-  specifies which bits should be set to 1
-
-# Returns
-- Matrix of bit vectors, where each row is a bit vector
-"""
+# Generate a matrix of bit vectors from a vector of index vectors
 function generate_bitvectors(bit_num::Int, indices::Vector{Vector{Int}})::Matrix{Int}
     # Initialize matrix with zeros
     bit_vectors = zeros(Int, length(indices), bit_num)
@@ -462,7 +408,10 @@ function format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
             end for row in eachrow(truth_table)]
 end
 
-"""Format a vector of binary vectors into a vector of integers
+"""
+    format_truth_table(truth_table::AbstractMatrix)::Vector{Int}
+
+Format a vector of binary vectors into a vector of integers
 
 # Arguments
 - `truth_table::Vector{Vector{Int}}`: Vector of binary vectors
@@ -498,7 +447,10 @@ function format_grstate_output(ground_states::Vector{Int}, bit_length::Int)::Vec
     return [join(reverse(digits(x, base=2, pad=bit_length))) for x in ground_states]
 end
 
-"""Convert a matrix of binary values to decimal values based on selected columns
+"""
+    get_candidate_grstates(index_matrix::AbstractMatrix{Int}, index::Vector{Int})::Vector{Int}
+
+Convert a matrix of binary values to decimal values based on selected columns
 
 # Arguments
 - `index_matrix::AbstractMatrix{Int}`: Matrix of binary values
@@ -528,7 +480,10 @@ function get_candidate_grstates(index_matrix::AbstractMatrix{Int}, index::Vector
     return decimal_values
 end
 
-"""Compute the Hamming distance matrix for a set of binary vectors
+"""
+    hamming_distance_matrix(index_matrix::AbstractMatrix{Int})
+
+Compute the Hamming distance matrix for a set of binary vectors
 
 # Arguments
 - `index_matrix::AbstractMatrix{Int}`: Matrix where each row is a binary vector
@@ -551,7 +506,10 @@ function hamming_distance_matrix(index_matrix::AbstractMatrix{Int})
     return H
 end
 
-"""Find the most distant binary vectors in a matrix
+"""
+    find_most_distant(index_matrix::AbstractMatrix{Int}, top_k::Vector{Int})
+
+Find the most distant binary vectors in a matrix
 
 # Arguments
 - `index_matrix::AbstractMatrix{Int}`: Matrix where each row is a binary vector
@@ -587,56 +545,22 @@ function find_most_distant(index_matrix::AbstractMatrix{Int}, top_k::Vector{Int}
     return sorted_indices[top_k]
 end
 
-"""Extract rule IDs from a JSON file
-
-# Arguments
-- `file_path::String`: Path to the JSON file
-
-# Returns
-- Vector of rule IDs
-"""
 function extract_rule_ids(file_path::String)
     data = JSON.parsefile(file_path)
     rule_ids = [item["rule_id"] for item in data if haskey(item, "rule_id")]
     return rule_ids
 end
 
-"""Extract graph IDs from a JSON file
-
-# Arguments
-- `file_path::String`: Path to the JSON file
-
-# Returns
-- Vector of graph IDs
-"""
 function extract_graph_ids(file_path::String)
     data = JSON.parsefile(file_path)
     graph_ids = [item["graph"]["graph_id"] for item in data if haskey(item["graph"], "graph_id")]
     return graph_ids
 end
 
-"""Convert (row, col) tuples to linear indices
-
-# Arguments
-- `tups::Vector{Tuple{Int, Int}}`: Vector of (row, col) tuples
-- `shape::Tuple{Int, Int}`: Shape of the matrix (rows, cols)
-
-# Returns
-- Vector of linear indices
-"""
 function _tuple_to_index(tups::Vector{Tuple{Int, Int}}, shape::Tuple{Int, Int})
     return [LinearIndices(shape)[CartesianIndex(tup)] for tup in tups]
 end
 
-"""Convert linear indices to (row, col) tuples
-
-# Arguments
-- `indices::Vector{Int}`: Vector of linear indices
-- `shape::Tuple{Int, Int}`: Shape of the matrix (rows, cols)
-
-# Returns
-- Vector of (row, col) tuples
-"""
 function _index_to_tuple(indices::Vector{Int}, shape::Tuple{Int, Int})
     return [Tuple(CartesianIndices(shape)[idx]) for idx in indices]
 end

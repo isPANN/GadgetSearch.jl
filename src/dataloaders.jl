@@ -1,7 +1,7 @@
-#TODO: separate input pins and output pins
 # Note: Gadget struct is now defined in GadgetSearch.jl
 
-"""Represents a gadget with grid position information
+"""
+Represents a gadget with grid position information
 
 # Fields
 - `rule_id::Int`: ID of the logic gate
@@ -22,7 +22,8 @@ struct grid_gadget{T<:Real} <: AbstractGadget
     pos::Vector{Tuple{Int, Int}}
 end
 
-"""Represents an unweighted gadget with grid position information
+"""
+Represents an unweighted gadget with grid position information
 
 # Fields
 - `graph::SimpleGraph{Int}`: The graph structure
@@ -35,14 +36,7 @@ struct unweighted_grid_gadget <: AbstractGadget
     pos::Vector{Tuple{Int, Int}}
 end
 
-"""Get a function to process weights based on rounding preference
-
-# Arguments
-- `round_weight::Bool`: Whether to round weights to integers
-
-# Returns
-- A function that processes weights according to the rounding preference
-"""
+# Get a function to process weights based on rounding preference
 function _get_weight_function(round_weight::Bool)
     if round_weight
         @info "The weights will be converted to integers by rounding."
@@ -52,7 +46,10 @@ function _get_weight_function(round_weight::Bool)
     end
 end
 
-"""Load gadgets from a JSON file
+"""
+    load_gadget(gadget_file_name::String; key::Symbol=:rule_id, round_weight::Bool=true)
+
+Load gadgets from a JSON file
 
 # Arguments
 - `gadget_file_name::String`: Path to the JSON file containing gadget data
@@ -104,7 +101,57 @@ function load_gadget(gadget_file_name::String; key::Symbol=:rule_id, round_weigh
 end
 
 
-"""Load grid gadgets from JSON files
+function load_grid_gadget(gadget_file_name::String; key::Symbol=:rule_id, round_weight::Bool=true)
+    # Parse the JSON files
+    gadget_data = JSON.parsefile(gadget_file_name)
+    # Initialize result dictionary and weight function
+    result_dict = Dict{Int, grid_gadget}()
+    weight_func = _get_weight_function(round_weight)
+
+    # Process each gadget entry
+    for entry in gadget_data
+        # Extract key and rule ID
+        dict_key = entry[String(key)]
+        rule_id = Int(entry["rule_id"])
+
+        # Extract and process node weights
+        node_weights = [weight_func(node["weight"]) for node in entry["graph"]["nodes"]]
+
+        # Create graph from edges
+        g = SimpleGraph(length(node_weights))
+        for edge in entry["graph"]["edges"]
+            add_edge!(g, edge["source"], edge["target"])
+        end
+
+        # Extract pins and graph ID
+        pins = Int.(entry["pins"])
+        graph_id = Int(entry["graph"]["graph_id"])
+
+        positions_data = entry["graph"]["positions"]
+        pos = [(Int(p["position"][1]), Int(p["position"][2])) for p in sort(positions_data, by = p -> Int(p["id"]))]
+        # Extract ground states
+        ground_states = String.(entry["ground_states"])
+
+        # Create and store the grid_gadget object
+        result_dict[dict_key] = grid_gadget(
+            rule_id,
+            ground_states,
+            graph_id,
+            g,
+            pins,
+            node_weights,
+            pos
+        )
+    end
+
+    return result_dict
+end
+
+
+"""
+    load_grid_gadget_old(m::Int, n::Int, pin_pad::Int, gadget_file_name::String, pos_file_name::String; key::Symbol=:rule_id, round_weight::Bool=true)
+
+Load grid gadgets from JSON files
 
 # Arguments
 - `m::Int`: Number of rows in the grid
@@ -120,7 +167,7 @@ end
 # Returns
 - A dictionary mapping keys to grid_gadget objects
 """
-function load_grid_gadget(m::Int, n::Int, pin_pad::Int, gadget_file_name::String, pos_file_name::String; key::Symbol=:rule_id, round_weight::Bool=true)
+function load_grid_gadget_old(m::Int, n::Int, pin_pad::Int, gadget_file_name::String, pos_file_name::String; key::Symbol=:rule_id, round_weight::Bool=true)
     # Parse the JSON files
     gadget_data = JSON.parsefile(gadget_file_name)
     pos_data = JSON.parsefile(pos_file_name)
@@ -170,7 +217,10 @@ function load_grid_gadget(m::Int, n::Int, pin_pad::Int, gadget_file_name::String
     return result_dict
 end
 
-"""Load unweighted grid gadgets from files
+"""
+    load_unweighted_grid_gadget(m::Int, n::Int, pin_pad::Int, gadget_file_name::String, pos_file_name::String, pin_set::Vector{Int})
+    
+Load unweighted grid gadgets from files
 
 # Arguments
 - `m::Int`: Number of rows in the grid
@@ -211,14 +261,5 @@ function load_unweighted_grid_gadget(m::Int, n::Int, pin_pad::Int, gadget_file_n
 
     return result_dict
 end
-
-# function find_by_gateid(data::Dict{Integer, NamedTuple}, rule_id::Int)
-#     return get(data, rule_id, "Gate not found.")
-# end
-
-# function find_by_gateid(filename::String, rule_id::Int)
-#     data = load_gate_json(filename, :rule_id)
-#     return find_by_gateid(data, rule_id)
-# end
 
 

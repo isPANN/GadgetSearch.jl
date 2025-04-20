@@ -31,13 +31,22 @@ struct Gadget{T<:Real} <: AbstractGadget
 # Include other modules
 include("dataloaders.jl")   # Data loading utilities
 include("utils.jl")         # Utility functions
-include("graphsearch.jl")   # Core search algorithms
+include("types.jl")         # Type definitions
+include("traits.jl")        # Trait system for graph types and search strategies
+include("graphsearch_new.jl")   # Core search algorithms
 include("generateUDG.jl")   # UDG generation
 include("visualize.jl")     # Visualization tools
 
 # Export public API
 # Core search functions
 export search_single_rule, search_rules
+
+# Type definitions
+export SearchParameters
+
+# Trait system
+export AbstractGraphType, GeneralGraph, GridGraph
+export AbstractSearchStrategy, GenericConstraintSearch, LogicGateSearch
 
 # Graph utilities
 export find_maximal_independent_sets
