@@ -39,8 +39,10 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                     is_grid_graph::Bool=false, pos_data_path=nothing, grid_dims=(0,0),
                     # Optimizer Settings
                     optimizer=HiGHS.Optimizer, env=nothing,
-                    # Batch size for parallel processing
-                    batch_size::Int=100
+                    # Parallel processing parameters
+                    batch_size::Int=50,
+                    save_frequency::Int=10,  # 每找到多少个解决方案保存一次结果
+                    log_frequency::Int=500   # 每处理多少个图打印一次日志
                     )
 
     # Determine graph type using traits
@@ -79,17 +81,45 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
     # 预先计算所有规则的基态
     rule_ground_states = Dict(rule_id => generic_rule(rule_id, bit_num) for rule_id in gate_list)
 
-    # 创建线程安全的锁
+    # 创建线程安全的锁和计数器
     results_lock = ReentrantLock()
     rules_lock = ReentrantLock()
 
-    # 显示当前使用的线程数
-    @info "Using $(Threads.nthreads()) threads for parallel processing"
+    # 创建线程本地结果存储，减少锁竞争
+    thread_local_results = [Vector{AbstractGadget}() for _ in 1:Threads.nthreads()]
+    thread_local_found_count = zeros(Int, Threads.nthreads())
+
+    # 创建统计计数器
+    processed_graphs = Threads.Atomic{Int}(0)
+    found_solutions = Threads.Atomic{Int}(0)
+
+    # 记录开始时间
+    start_time = time()
+
+    # 显示当前使用的线程数和其他参数
+    @info "Starting parallel search with $(Threads.nthreads()) threads"
+    @info "Batch size: $batch_size, Save frequency: $save_frequency, Log frequency: $log_frequency"
+
+    # 预热函数，避免运行时编译引起的性能问题
+    if !isempty(gate_list) && !isempty(graph_chunks)
+        @info "Preheating functions..."
+        dummy_graph = SimpleGraph(3)
+        add_edge!(dummy_graph, 1, 2)
+        dummy_mis, _ = find_maximal_independent_sets(dummy_graph)
+        dummy_rule_id = first(gate_list)
+        dummy_ground_states = rule_ground_states[dummy_rule_id]
+        _check_grstates_in_candidate(dummy_mis, [1, 3], dummy_ground_states, false)
+        @info "Preheating completed"
+    end
 
     # 处理每个图块
     for (chunk_idx, chunk_path) in graph_chunks
         # 如果所有规则都已找到解决方案，提前退出
         isempty(remaining_rules) && break
+
+        # 打印当前块信息
+        chunk_start_time = time()
+        @info "Processing chunk $(chunk_idx): $(chunk_path)"
 
         # Load graph dictionary once per chunk
         graph_dict = read_graph_dict(chunk_path)
@@ -117,6 +147,9 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
         # 打印批次信息
         @info "Processing $(total_graphs) graphs in $(length(batch_indices)) batches"
 
+        # 初始化每个线程的求解器环境，避免竞争
+        thread_envs = [isnothing(env) ? nothing : deepcopy(env) for _ in 1:Threads.nthreads()]
+
         # 处理每个批次
         for batch_start in batch_indices
             # 如果所有规则都已找到解决方案，提前退出
@@ -128,6 +161,12 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
 
             # 并行处理批次中的每个图
             Threads.@threads for (i, (gname, graph)) in batch
+                # 当前线程ID
+                thread_id = Threads.threadid()
+
+                # 获取线程本地的求解器环境
+                thread_env = thread_envs[thread_id]
+
                 # 检查是否还有规则需要处理
                 local_rules = lock(rules_lock) do
                     isempty(remaining_rules) ? Int[] : copy(remaining_rules)
@@ -142,14 +181,21 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                 # 计算原始图ID
                 graph_id = _extract_numbers(gname) + base_offset
 
-                # 当前线程ID
-                thread_id = Threads.threadid()
+                # 更新处理的图计数
+                Threads.atomic_add!(processed_graphs, 1)
+                current_processed = processed_graphs[]
+
+                # 打印进度信息
+                if current_processed % log_frequency == 0
+                    elapsed = time() - start_time
+                    graphs_per_second = current_processed / elapsed
+                    remaining_count = length(remaining_rules)
+                    found_count = found_solutions[]
+                    @info "Progress: processed $(current_processed) graphs in $(round(elapsed, digits=2))s ($(round(graphs_per_second, digits=2)) graphs/s), found $(found_count) solutions, $(remaining_count) rules remaining"
+                end
 
                 # 计算最大独立集（MIS）- 这是计算密集型操作，只需计算一次
                 mis_result, mis_num = find_maximal_independent_sets(graph)
-
-                # 打印进度信息
-                i % 1000 == 0 && println("Thread $(thread_id): Processing graph $(graph_id)")
 
                 # 根据搜索策略类型选择不同的处理方法
                 if isa(search_strategy, LogicGateSearch)
@@ -193,6 +239,8 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                             candidate_full = vcat(candidate, output_bits)
 
                             # 对每个剩余的规则进行处理
+                            found_any = false
+
                             for rule_id in collect(local_rules)
                                 # 检查规则是否已被其他线程处理
                                 lock(rules_lock) do
@@ -212,24 +260,43 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                                 # 将target_mis_indices_all转换为_find_weight_new期望的格式
                                 prefix_buckets = [collect(indices) for indices in target_mis_indices_all]
 
-                                # 寻找权重
-                                weight = _find_weight_new(mis_result, prefix_buckets, optimizer, env)
+                                # 寻找权重 - 使用线程本地的求解器环境
+                                weight = _find_weight_new(mis_result, prefix_buckets, optimizer, thread_env)
                                 isempty(weight) && continue
 
                                 # 如果找到解决方案
                                 result = convert_to_gadget(graph_type, graph_id, graph, candidate_full, weight, ground_states, rule_id)
 
-                                # 保存结果并更新规则状态
-                                lock(results_lock) do
-                                    push!(save_res, result)
-                                    save_results_to_json(save_res, save_path)
-                                end
+                                # 将结果存储在线程本地结果中，减少锁竞争
+                                push!(thread_local_results[thread_id], result)
+                                thread_local_found_count[thread_id] += 1
+                                found_any = true
 
+                                # 更新找到的解决方案计数
+                                Threads.atomic_add!(found_solutions, 1)
+
+                                # 从剩余规则中移除
                                 lock(rules_lock) do
                                     delete!(remaining_rules, rule_id)
                                     delete!(local_rules, rule_id)
                                     println("Thread $(thread_id): Found solution for rule $(rule_id) on graph $(graph_id), $(length(remaining_rules)) rules remaining")
                                 end
+
+                                # 如果线程本地结果达到一定数量，就合并到全局结果并保存
+                                if thread_local_found_count[thread_id] >= save_frequency
+                                    lock(results_lock) do
+                                        append!(save_res, thread_local_results[thread_id])
+                                        save_results_to_json(save_res, save_path)
+                                        # 清空线程本地结果
+                                        empty!(thread_local_results[thread_id])
+                                        thread_local_found_count[thread_id] = 0
+                                    end
+                                end
+                            end
+
+                            # 如果找到了解决方案，更新内存使用情况
+                            if found_any && thread_id % 4 == 0  # 只有部分线程执行垃圾回收
+                                GC.gc(false)  # 非阻塞垃圾回收，减少内存压力
                             end
                         end
                     end
@@ -247,7 +314,9 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                         # 检查是否还有规则需要处理
                         isempty(local_rules) && break
 
-                        # 对每个剩余的规则进行处理
+                        # 寴每个剩余的规则进行处理
+                        found_any = false
+
                         for rule_id in collect(local_rules)
                             # 检查规则是否已被其他线程处理
                             lock(rules_lock) do
@@ -267,30 +336,74 @@ function search_rules_parallel(graph_path, bit_num, gate_list, save_path;
                             # 将target_mis_indices_all转换为_find_weight_new期望的格式
                             prefix_buckets = [collect(indices) for indices in target_mis_indices_all]
 
-                            # 寻找权重
-                            weight = _find_weight_new(mis_result, prefix_buckets, optimizer, env)
+                            # 寻找权重 - 使用线程本地的求解器环境
+                            weight = _find_weight_new(mis_result, prefix_buckets, optimizer, thread_env)
                             isempty(weight) && continue
 
                             # 如果找到解决方案
                             result = convert_to_gadget(graph_type, graph_id, graph, candidate, weight, ground_states, rule_id)
 
-                            # 保存结果并更新规则状态
-                            lock(results_lock) do
-                                push!(save_res, result)
-                                save_results_to_json(save_res, save_path)
-                            end
+                            # 将结果存储在线程本地结果中，减少锁竞争
+                            push!(thread_local_results[thread_id], result)
+                            thread_local_found_count[thread_id] += 1
+                            found_any = true
 
+                            # 更新找到的解决方案计数
+                            Threads.atomic_add!(found_solutions, 1)
+
+                            # 从剩余规则中移除
                             lock(rules_lock) do
                                 delete!(remaining_rules, rule_id)
                                 delete!(local_rules, rule_id)
                                 println("Thread $(thread_id): Found solution for rule $(rule_id) on graph $(graph_id), $(length(remaining_rules)) rules remaining")
                             end
+
+                            # 如果线程本地结果达到一定数量，就合并到全局结果并保存
+                            if thread_local_found_count[thread_id] >= save_frequency
+                                lock(results_lock) do
+                                    append!(save_res, thread_local_results[thread_id])
+                                    save_results_to_json(save_res, save_path)
+                                    # 清空线程本地结果
+                                    empty!(thread_local_results[thread_id])
+                                    thread_local_found_count[thread_id] = 0
+                                end
+                            end
+                        end
+
+                        # 如果找到了解决方案，更新内存使用情况
+                        if found_any && thread_id % 4 == 0  # 只有部分线程执行垃圾回收
+                            GC.gc(false)  # 非阻塞垃圾回收，减少内存压力
                         end
                     end
                 end
             end
         end
     end
+
+    # 合并所有线程本地结果到全局结果并保存
+    lock(results_lock) do
+        for thread_id in 1:Threads.nthreads()
+            if !isempty(thread_local_results[thread_id])
+                append!(save_res, thread_local_results[thread_id])
+                empty!(thread_local_results[thread_id])
+            end
+        end
+
+        # 保存最终结果
+        if !isempty(save_res)
+            save_results_to_json(save_res, save_path)
+        end
+    end
+
+    # 打印最终统计信息
+    elapsed = time() - start_time
+    total_processed = processed_graphs[]
+    total_found = found_solutions[]
+
+    @info "Search completed in $(round(elapsed, digits=2)) seconds"
+    @info "Processed $(total_processed) graphs ($(round(total_processed/elapsed, digits=2)) graphs/s)"
+    @info "Found $(total_found) solutions for $(length(gate_list) - length(remaining_rules)) rules"
+    @info "$(length(remaining_rules)) rules remain unsolved"
 
     # 返回未找到解决方案的规则
     return collect(remaining_rules)
