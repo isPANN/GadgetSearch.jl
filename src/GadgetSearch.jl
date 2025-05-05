@@ -68,11 +68,11 @@ export show_rule_info, generic_rule, reconstruct_rule_id
 export generate_degeneracy_cases
 
 # Gadget handling
-export load_gadget, load_unweighted_grid_gadget, load_grid_gadget
+export load_gadget, load_unweighted_grid_gadget, load_grid_gadget, load_grid_gadget_old
 export check_gadget
 
 # Visualization
-export plot_single_gadget
+export plot_single_gadget, plot_single_gadget_new, plot_single_gadget_mis
 
 # UDG generation
 export generate_grid_udgs
