@@ -64,7 +64,7 @@ function _generate_mask(index_map, n)
     return mask
 end
 
-#TODO: use Luxor to add colorbar
+#TODO: maybe colorbar
 function plot_single_gadget(gadget::grid_gadget, save_path::String; plot_size=400, margin=20, preserve_aspect_ratio=true, discrete_color_scheme=ColorSchemes.seaborn_bright, continuous_color_scheme=ColorSchemes.viridis)
     x_new_vals, y_new_vals, x_scale_factor, y_scale_factor = _map_and_scale(gadget, plot_size, plot_size, margin, preserve_aspect_ratio)
     

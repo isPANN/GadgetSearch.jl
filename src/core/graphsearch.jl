@@ -63,80 +63,6 @@ end
 # Returns
 - List of rule IDs for which no solution was found
 """
-# function search_rules(graph_path, bit_num, gate_list, save_path;
-#                     pin_set::Vector{Int} = Int[],
-#                     # File processing parameters
-#                     max_file_size_mb::Int=30, split_size::Int=700_000,
-#                     # Search strategy parameters
-#                     start_idx::Int=0, end_idx::Int=0,
-#                     greedy::Bool=false, threshold::Int=0, max_samples::Int=0,
-#                     # Grid graph parameters
-#                     is_grid_graph::Bool=false, pos_data_path=nothing, grid_dims=(0,0),
-#                     # Optimizer Setttings
-#                     optimizer=HiGHS.Optimizer, env=nothing)
-
-#     # Determine graph type using traits
-#     graph_type = is_grid_graph ? GridGraph(pos_data_path, grid_dims) : GeneralGraph()
-
-#     # Create appropriate result vector based on graph type
-#     save_res = create_result_vector(graph_type)
-
-#     # Create search parameters object
-#     params = SearchParameters(
-#         pin_set=pin_set,
-#         max_file_size_mb=max_file_size_mb,
-#         split_size=split_size,
-#         start_idx=start_idx,
-#         end_idx=end_idx,
-#         greedy=greedy,
-#         threshold=threshold,
-#         max_samples=max_samples
-#     )
-
-#     # Prepare graph chunks for processing
-#     graph_chunks = if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
-#         # Split the file into smaller parts and return as (index, path) pairs
-#         [(i, path) for (i, path) in enumerate(_split_large_file(graph_path, params.split_size))]
-#     else
-#         # Just use the original file with index 0
-#         [(0, graph_path)]
-#     end
-
-#     # Process each graph chunk
-#     for (chunk_idx, chunk_path) in graph_chunks
-#         # Load graph dictionary once per chunk
-#         graph_dict = read_graph_dict(chunk_path)
-
-#         # Process each rule in the gate list
-#         for rule_id in gate_list
-#             # Skip rules that have already been found
-#             rule_id in map(r -> r.rule_id, save_res) && continue
-
-#             @show rule_id
-#             # Process ground states
-#             ground_states = generic_rule(rule_id, bit_num)
-
-#             # Execute search on this chunk of the graph database
-#             result = _execute_graph_search(
-#                 graph_dict, bit_num, ground_states, params, chunk_idx, rule_id,
-#                 optimizer, env;
-#                 graph_type=graph_type
-#             )
-
-#             # Save result if found
-#             if !isnothing(result)
-#                 push!(save_res, result)
-#                 save_results_to_json(save_res, save_path)
-#             end
-#         end
-#     end
-
-#     # Identify rules that weren't found
-#     found_rules = Set(map(r -> r.rule_id, save_res))
-#     non_results = filter(r -> !(r in found_rules), gate_list)
-
-#     return non_results
-# end
 function search_rules(graph_path, bit_num, gate_list, save_path;
                     pin_set::Vector{Int} = Int[],
                     # File processing parameters
@@ -176,108 +102,108 @@ function search_rules(graph_path, bit_num, gate_list, save_path;
         [(0, graph_path)]
     end
 
-    # 跟踪尚未找到解决方案的规则
+    # Track rules for which solutions have not yet been found
     remaining_rules = Set(gate_list)
 
-    # 确定搜索策略
+    # Determine search strategy
     search_strategy = determine_search_strategy(bit_num)
 
-    # 预先计算所有规则的基态
+    # Pre-compute ground states for all rules
     rule_ground_states = Dict(rule_id => generic_rule(rule_id, bit_num) for rule_id in gate_list)
 
     # Process each graph chunk
     for (chunk_idx, chunk_path) in graph_chunks
-        # 如果所有规则都已找到解决方案，提前退出
+        # Exit early if solutions for all rules have been found
         isempty(remaining_rules) && break
 
         # Load graph dictionary once per chunk
         graph_dict = read_graph_dict(chunk_path)
 
-        # 对每个图进行处理
+        # Process each graph
         for (i, (gname, graph)) in enumerate(graph_dict)
-            # 检查图是否连通，如果不连通则跳过
+            # Skip if graph is not connected
             Graphs.is_connected(graph) || continue
 
-            # 计算原始图ID
+            # Calculate original graph ID
             graph_id = _extract_numbers(gname) + (chunk_idx == 0 ? 0 : (chunk_idx - 1) * params.split_size)
 
-            # 计算最大独立集（MIS）- 这是计算密集型操作，只需计算一次
+            # Find maximal independent sets (MIS) - this is a computationally intensive operation, only needs to be done once
             mis_result, mis_num = find_maximal_independent_sets(graph)
 
-            # 打印进度信息
+            # Print progress message
             i % 1000 == 0 && println("Searched $(i)-th graph...")
 
-            # 根据搜索策略类型选择不同的处理方法
+            # Choose different processing methods based on search strategy type
             if isa(search_strategy, LogicGateSearch)
                 input_num = bit_num[1]
                 output_num = bit_num[2]
 
-                # 如果MIS数量不足，跳过当前图
+                # Skip current graph if there aren't enough MISs
                 if mis_num < 2^(input_num)
                     continue
                 end
 
-                # 生成输入引脚候选
+                # Generate input pin candidates
                 local pin_set = params.pin_set
                 if isempty(pin_set)
-                    # 如果未提供引脚集，所有顶点都被视为潜在引脚
+                    # If no pin set is provided, all vertices are considered potential pins
                     pin_set = collect(1:Graphs.nv(graph))
-                    # 生成有效的输入引脚组合
+                    # Generate valid input pin combinations
                     input_candidates = _generate_pin_set(graph, mis_result, input_num)
                 else
-                    # 如果提供了引脚集，则默认pin_set中的所有选择都有效
+                    # If pin set is provided, all choices in pin_set are considered valid by default
                     input_candidates = _generate_gate_input(pin_set, input_num)
                 end
 
-                # 如果没有有效的输入候选，跳过当前图
+                # Skip current graph if there are no valid input candidates
                 isempty(input_candidates) && continue
 
-                # 尝试每个输入候选
+                # Try each input candidate
                 for candidate in input_candidates
-                    # 找到输出引脚的剩余元素
+                    # Find remaining elements for output pins
                     remain_elements = setdiff(pin_set, candidate)
 
-                    # 尝试每种可能的输出引脚组合
+                    # Try each possible output pin combination
                     for output_bits in permutations(remain_elements, output_num)
-                        # 组合输入和输出引脚
+                        # Combine input and output pins
                         candidate_full = vcat(candidate, output_bits)
 
-                        # 对每个剩余的规则进行处理
+                        # Process each remaining rule
                         for rule_id in collect(remaining_rules)
-                            # 获取该规则的基态
+                            # Get ground states for this rule
                             ground_states = rule_ground_states[rule_id]
 
-                            # 检查基态是否包含在MIS中
+                            # Check if ground states are contained in MIS
                             target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate_full, ground_states, params.greedy)
                             isempty(target_mis_indices_all) && continue
 
-                            # 寻找权重
+                            # Find weights
                             weight = _find_weight_new(mis_result, target_mis_indices_all, optimizer, env)
                             isempty(weight) && continue
 
-                            # 如果找到解决方案
+                            # If solution is found
                             result = convert_to_gadget(graph_type, graph_id, graph, candidate_full, weight, ground_states, rule_id)
 
-                            # 保存结果
+                            # Save result
                             push!(save_res, result)
                             save_results_to_json(save_res, save_path)
 
-                            # 从剩余规则中移除
+                            # Remove from remaining rules
                             delete!(remaining_rules, rule_id)
 
-                            # 如果所有规则都已找到解决方案，提前退出
+                            # Exit early if solutions for all rules have been found
                             isempty(remaining_rules) && break
                         end
 
-                        # 如果所有规则都已找到解决方案，提前退出
+                        # Exit early if solutions for all rules have been found
                         isempty(remaining_rules) && break
                     end
 
-                    # 如果所有规则都已找到解决方案，提前退出
+                    # Exit early if solutions for all rules have been found
                     isempty(remaining_rules) && break
                 end
-            else  # 对于GenericConstraintSearch策略
-                # 生成所有引脚向量，即`pin_set`中`bit_num`个顶点的排列
+            else  # For GenericConstraintSearch strategy
+                # Generate all pin vectors, i.e., permutations of `bit_num` vertices from `pin_set`
                 local pin_set = params.pin_set
                 if isempty(pin_set)
                     pin_set = collect(1:Graphs.nv(graph))
@@ -285,46 +211,46 @@ function search_rules(graph_path, bit_num, gate_list, save_path;
                 @assert length(pin_set) >= bit_num
                 all_candidates = _generate_constraint_bit(pin_set, bit_num)
 
-                # 遍历所有可能的引脚向量
+                # Iterate through all possible pin vectors
                 for candidate in all_candidates
-                    # 对每个剩余的规则进行处理
+                    # Process each remaining rule
                     for rule_id in collect(remaining_rules)
-                        # 获取该规则的基态
+                        # Get ground states for this rule
                         ground_states = rule_ground_states[rule_id]
 
-                        # 检查在选择`candidate`的情况下，`ground_states`是否包含在MIS中
+                        # Check if `ground_states` are contained in MIS when `candidate` is selected
                         target_mis_indices_all = _check_grstates_in_candidate(mis_result, candidate, ground_states, params.greedy)
                         isempty(target_mis_indices_all) && continue
 
-                        # 寻找权重
+                        # Find weights
                         weight = _find_weight_new(mis_result, target_mis_indices_all, optimizer, env)
                         isempty(weight) && continue
 
-                        # 如果找到解决方案
+                        # If solution is found
                         result = convert_to_gadget(graph_type, graph_id, graph, candidate, weight, ground_states, rule_id)
 
-                        # 保存结果
+                        # Save result
                         push!(save_res, result)
                         save_results_to_json(save_res, save_path)
 
-                        # 从剩余规则中移除
+                        # Remove from remaining rules
                         delete!(remaining_rules, rule_id)
 
-                        # 如果所有规则都已找到解决方案，提前退出
+                        # Exit early if solutions for all rules have been found
                         isempty(remaining_rules) && break
                     end
 
-                    # 如果所有规则都已找到解决方案，提前退出
+                    # Exit early if solutions for all rules have been found
                     isempty(remaining_rules) && break
                 end
             end
 
-            # 如果所有规则都已找到解决方案，提前退出
+            # Exit early if solutions for all rules have been found
             isempty(remaining_rules) && break
         end
     end
 
-    # 返回未找到解决方案的规则
+    # Return rules for which no solution was found
     return collect(remaining_rules)
 end
 
@@ -759,7 +685,7 @@ function _find_weight(vertex_num::Int, target_set::AbstractMatrix{Int}, wrong_se
     # Define variables
     @variable(model, x[1:vertex_num])
     @variable(model, C)
-    
+
     # Define constraints
     ϵ = 1  # Separation constant
 
@@ -796,7 +722,6 @@ function _find_weight_new(mis_matrix::AbstractMatrix, prefix_buckets, optimizer=
 
     @variable(model, x[1:vertex_num] >= 1, Int)
     @variable(model, y[1:y_dim], Bin)
-    @variable(model, C)
 
     selected_indices = reduce(vcat, prefix_buckets)
     selected_set = Set(selected_indices)
@@ -810,16 +735,30 @@ function _find_weight_new(mis_matrix::AbstractMatrix, prefix_buckets, optimizer=
     row_sums = [sum(mis_matrix[i,:]) for i in 1:y_dim]
     M_big = 2 * maximum(row_sums)
 
-    for i in 1:y_dim
-        row = mis_matrix[i, :]
-        # 当 y_i = 1 时 强制 row⋅x = c；当 y_i = 0 时 这两条约束放宽
-        @constraint(model, dot(row, x) - C <=  M_big*(1 - y[i]))
-        @constraint(model, C - dot(row, x) <=  M_big*(1 - y[i]))
+    # Find the first selected index to use as a reference
+    reference_indices = [first(idxs) for idxs in prefix_buckets]
+
+    # Make all rows where y=1 equal to each other
+    for i in selected_indices
+        for ref_idx in reference_indices
+            row_i = mis_matrix[i, :]
+            row_ref = mis_matrix[ref_idx, :]
+            # When both y_i and y_ref are 1, force their dot products to be equal
+            # When either is 0, the constraint is relaxed
+            @constraint(model, dot(row_i, x) - dot(row_ref, x) <= M_big * (2 - y[i] - y[ref_idx]))
+            @constraint(model, dot(row_ref, x) - dot(row_i, x) <= M_big * (2 - y[i] - y[ref_idx]))
+        end
     end
 
+    # Make all rows where y=0 have lower values than rows where y=1
     for i in 1:y_dim
-        row = mis_matrix[i, :]
-        @constraint(model, dot(row, x) <= C - 1 + M_big*y[i])
+        for j in selected_indices
+            row_i = mis_matrix[i, :]
+            row_j = mis_matrix[j, :]
+            # When y_i=0 and y_j=1, force row_i's dot product to be less than row_j's
+            # Otherwise, the constraint is relaxed
+            @constraint(model, dot(row_i, x) <= dot(row_j, x) - 1 + M_big * (1 - y[j] + y[i]))
+        end
     end
 
     @objective(model, Min, sum(x))

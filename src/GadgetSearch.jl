@@ -1,3 +1,15 @@
+"""
+GadgetSearch
+
+A Julia package for searching and analyzing gadgets in graph structures.
+Provides functionality for graph search, gadget generation, and visualization.
+
+# Features
+- Graph search algorithms
+- Gadget generation and analysis
+- Visualization tools
+- Data loading and processing utilities
+"""
 module GadgetSearch
 
 # Core dependencies
@@ -15,36 +27,28 @@ using JSON3, JSON
 using Karnak, Luxor
 
 # Type definitions
+include("types/gadgets.jl")
+include("types/parameters.jl")
+include("types/graph_types.jl")
 
-"""Abstract type for all gadget types in the system"""
-abstract type AbstractGadget end
+# Include core functionality
+include("core/graphsearch.jl")
+include("core/generateudg.jl")
 
-"""Represents a gadget with its properties"""
-struct Gadget{T<:Real} <: AbstractGadget
-    rule_id::Int
-    ground_states::Vector{String}
-    graph_id::Int
-    graph::SimpleGraph{Int}
-    pins::Vector{Int}
-    weights::Vector{T}
- end
+# Include utilities
+include("utils/dataloaders.jl")
+include("utils/utils.jl")
 
-# Include other modules
-include("dataloaders.jl")   # Data loading utilities
-include("utils.jl")         # Utility functions
-include("types.jl")         # Type definitions
-include("traits.jl")        # Trait system for graph types and search strategies
-include("graphsearch.jl")   # Core search algorithms
-include("search_rules_parallel.jl")  # Parallel search algorithms
-include("generateUDG.jl")   # UDG generation
-include("visualize.jl")     # Visualization tools
+# Include settings and visualization
+include("settings.jl")
+include("visualization/visualize.jl")
 
 # Export public API
 # Core search functions
-export search_single_rule, search_rules, search_rules_parallel
+export search_single_rule, search_rules
 
 # Type definitions
-export SearchParameters
+export SearchParameters, AbstractGadget, Gadget
 
 # Trait system
 export AbstractGraphType, GeneralGraph, GridGraph
@@ -72,4 +76,5 @@ export plot_single_gadget
 
 # UDG generation
 export generate_grid_udgs
-end
+
+end # module

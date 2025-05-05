@@ -1,32 +1,6 @@
 # Trait system for GadgetSearch
 
 """
-Abstract trait for graph types in the search system.
-"""
-abstract type AbstractGraphType end
-
-"""
-Trait for general graphs without position information.
-"""
-struct GeneralGraph <: AbstractGraphType end
-
-"""
-Trait for grid graphs with position information.
-"""
-struct GridGraph <: AbstractGraphType
-    pos_data_path::Union{String, Nothing}
-    grid_dims::Tuple{Int, Int}
-
-    # Constructor with path to position data
-    function GridGraph(pos_data_path::Union{String, Nothing}, grid_dims::Tuple{Int, Int}=(0, 0))
-        new(pos_data_path, grid_dims)
-    end
-end
-
-# Default constructor with empty position data
-GridGraph() = GridGraph(nothing)
-
-"""
 Abstract trait for search strategies.
 """
 abstract type AbstractSearchStrategy end
