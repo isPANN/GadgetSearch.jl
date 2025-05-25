@@ -40,7 +40,7 @@ function _split_large_file(path::String, split_size::Int=700_000)::Vector{String
 end
 
 
-function _extract_numbers(s::String)
+function extract_gids(s::String)
     # Extract `graph_id` from a key of a `graph_dict`, e.g. "graph1" -> 1.
     return parse.(Int, collect(eachmatch(r"\d+", s)) .|> x -> x.match)[1]
 end
@@ -76,7 +76,7 @@ function _split_large_file(path::String, output_path::String, num_lines::Int=700
             line_count += 1
 
             if line_count >= num_lines
-                close(out_io)
+                Base.close(out_io)
                 file_count += 1
                 output_file = joinpath(output_path, "part_$(file_count).g6")
                 out_io = open(output_file, "w")
@@ -85,7 +85,7 @@ function _split_large_file(path::String, output_path::String, num_lines::Int=700
             end
         end
     finally
-        close(out_io)
+        Base.close(out_io)
     end
 
     return split_files
@@ -109,6 +109,7 @@ function check_gadget(bit_num, gadget_info::Union{Gadget, grid_gadget})
 
     # Find all maximal independent sets
     mis_result, mis_num = find_maximal_independent_sets(g)
+    @show mis_result
 
     # Extract pin values for each MIS
     pin_value_vector = format_truth_table(mis_result[:, gadget_info.pins])
@@ -122,7 +123,11 @@ function check_gadget(bit_num, gadget_info::Union{Gadget, grid_gadget})
 
     # Sort ground states and reconstruct rule ID
     ground_states = sort(pin_value_vector[max_indices])
-    rule_id = reconstruct_rule_id(ground_states, bit_num)
+    if length(bit_num) == 2
+        rule_id = reconstruct_rule_id(ground_states, bit_num)
+    else
+        rule_id = reconstruct_rule_id(ground_states)
+    end
 
     # Display information
     @info "Corresponding energy values: $(max_value)."
@@ -239,6 +244,7 @@ function reconstruct_rule_id(ground_states::Vector{Int}, bit_num::Vector{Int})::
     return rule_id
 end
 
+#TODO: Check if this is correct!!!
 function reconstruct_rule_id(ground_states::Vector{Int})::Int
     # Reconstructs a unique state constraint identifier based on the provided ground states.
     return sum(1 << i for i in ground_states)

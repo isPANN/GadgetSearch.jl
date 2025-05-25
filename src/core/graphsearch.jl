@@ -1,18 +1,18 @@
 # Search parameters are defined in types.jl
 
-"""_process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
+# _process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
 
-Process ground states from either direct input, truth table, or rule ID.
+# Process ground states from either direct input, truth table, or rule ID.
 
-# Arguments
-- `ground_states::Vector{Int}`: Ground states to satisfy
-- `truth_table::AbstractMatrix`: Truth table of the logic gate
-- `bit_num::Union{Int, Vector{Int}}`: Number of bits or vector of input/output bits
-- `rule_id::Int`: ID of the logic gate
+# # Arguments
+# - `ground_states::Vector{Int}`: Ground states to satisfy
+# - `truth_table::AbstractMatrix`: Truth table of the logic gate
+# - `bit_num::Union{Int, Vector{Int}}`: Number of bits or vector of input/output bits
+# - `rule_id::Int`: ID of the logic gate
 
-# Returns
-- Tuple of (ground_states, rule_id)
-"""
+# # Returns
+# - Tuple of (ground_states, rule_id)
+
 function _process_ground_states(ground_states::Vector{Int}, truth_table::AbstractMatrix, bit_num::Union{Int, Vector{Int}}, rule_id::Int)
     if isempty(ground_states)
         if isempty(truth_table)
@@ -125,7 +125,7 @@ function search_rules(graph_path, bit_num, gate_list, save_path;
             Graphs.is_connected(graph) || continue
 
             # Calculate original graph ID
-            graph_id = _extract_numbers(gname) + (chunk_idx == 0 ? 0 : (chunk_idx - 1) * params.split_size)
+            graph_id = extract_gids(gname) + (chunk_idx == 0 ? 0 : (chunk_idx - 1) * params.split_size)
 
             # Find maximal independent sets (MIS) - this is a computationally intensive operation, only needs to be done once
             mis_result, mis_num = find_maximal_independent_sets(graph)
@@ -312,6 +312,7 @@ function search_single_rule(graph_path::String, bit_num::Union{Int, Vector{Int}}
 
     # Process ground states
     ground_states, rule_id = _process_ground_states(ground_states, truth_table, bit_num, rule_id)
+    @show ground_states, rule_id
 
     # Prepare graph chunks for processing
     graph_chunks = if (filesize(graph_path) / (1024 * 1024)) > params.max_file_size_mb
@@ -454,7 +455,7 @@ function search_single_rule(graph::SimpleGraph{Int}, bit_num::Union{Int, Vector{
     if !isnothing(pins)
         return convert_to_gadget(graph_type, 0, graph, pins, weight, ground_states, rule_id)
     else
-        @info "No valid solution found in this graph."
+        # @info "No valid solution found in this graph."
         return nothing
     end
 end
@@ -491,7 +492,7 @@ function _execute_graph_search(graph_dict::Dict{String, SimpleGraph{Int}},
         # If a valid solution is found, return the result
         if !isnothing(pins)
             # Calculate graph ID based on split information
-            graph_id = _extract_numbers(gname) + (split_idx == 0 ? 0 : base_offset)
+            graph_id = extract_gids(gname) + (split_idx == 0 ? 0 : base_offset)
             return convert_to_gadget(graph_type, graph_id, graph, pins, weight, ground_state, rule_id)
         end
     end

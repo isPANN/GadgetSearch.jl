@@ -1,23 +1,20 @@
-"""
-GadgetSearch
-
-A Julia package for searching and analyzing gadgets in graph structures.
-Provides functionality for graph search, gadget generation, and visualization.
-
-# Features
-- Graph search algorithms
-- Gadget generation and analysis
-- Visualization tools
-- Data loading and processing utilities
-"""
 module GadgetSearch
 
 # Core dependencies
-using JuMP, HiGHS
+using JuMP
+using HiGHS
 using Suppressor
-using Graphs, GraphIO, IterTools
+using Graphs, GraphIO
+# using HDF5
+using ProgressMeter
+using JLD2
+# using SQLite
+# using Serialization
+# using DBInterface
+# using DataFrames
+using IterTools
 using Combinatorics
-using LinearAlgebra, Statistics
+using LinearAlgebra
 using Random
 using Base.Threads
 
@@ -42,6 +39,9 @@ include("utils/utils.jl")
 # Include settings and visualization
 include("settings.jl")
 include("visualization/visualize.jl")
+
+# After refactoring
+include("graphio/database.jl")
 
 # Export public API
 # Core search functions
@@ -75,6 +75,13 @@ export check_gadget
 export plot_single_gadget, plot_single_gadget_new, plot_single_gadget_mis
 
 # UDG generation
-export generate_grid_udgs
+export generate_grid_udgs, _split_large_file
+
+
+# After refactoring
+export save_g6_graph, save_g6_graphs
+export read_g6_graph, read_g6_graphs
+export get_gids
+export GraphBatchManager
 
 end # module

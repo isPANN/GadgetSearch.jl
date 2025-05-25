@@ -9,4 +9,4 @@ struct Gadget{T<:Real} <: AbstractGadget
     graph::SimpleGraph{Int}
     pins::Vector{Int}
     weights::Vector{T}
-end 
+end

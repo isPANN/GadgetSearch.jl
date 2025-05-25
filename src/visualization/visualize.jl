@@ -64,6 +64,19 @@ function _generate_mask(index_map, n)
     return mask
 end
 
+
+function _generate_pin_mask(special_index, n; normal_fill::String="", special_fill::String="")
+    mask = fill(normal_fill, n)  # generate an empty mask
+    for (i, idx) in enumerate(special_index)
+        if length(special_fill) == 0
+            mask[idx] = string(i)  # use the special_index to fill the mask
+        else
+            mask[idx] = special_fill  # use the special fill value
+        end
+    end
+    return mask
+end
+
 #TODO: maybe colorbar
 function plot_single_gadget(gadget::grid_gadget, save_path::String; plot_size=400, margin=20, preserve_aspect_ratio=true, discrete_color_scheme=ColorSchemes.seaborn_bright, continuous_color_scheme=ColorSchemes.viridis)
     x_new_vals, y_new_vals, x_scale_factor, y_scale_factor = _map_and_scale(gadget, plot_size, plot_size, margin, preserve_aspect_ratio)
@@ -171,29 +184,32 @@ function plot_single_gadget_new(
                             )
     @pdf begin
         background("white")
-        
         sethue("black")
-        if show_weights
-            node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
-            # mask = _generate_pin_mask(gadget.pins, nv(gadget.graph))
-            drawgraph(gadget.graph, 
-                    vertexlabels=gadget.weights,  
-                    vertexshapesizes=10, 
-                    vertexlabelfontsizes=15, 
-                    vertexfillcolors=node_colors,
-                    edgestrokeweights=2,
-                    layout=spring,
-                    )
-        else
-            drawgraph(gadget.graph, 
-                    vertexlabels=collect(1:nv(gadget.graph)),  
-                    vertexshapesizes=10, 
-                    vertexlabelfontsizes=15, 
-                    edgestrokeweights=2,
-                    layout=spring,
-                    )
-        end
-    
+        node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
+        drawgraph(gadget.graph, 
+                vertexfunction=(v, c) -> begin
+                    index = findfirst(==(v), gadget.pins)
+                    sethue(node_colors[v])
+                    translate(c[v])
+                    circle(O, 10, :fill)
+                    sethue("white")
+                    fontsize(15)
+                    if show_weights
+                        text("$(gadget.weights[v])", O, halign=:center, valign=:middle)
+                    end
+                    sethue("red")
+                    if !isnothing(index)
+                        pos = c[v]
+                        x, y = pos
+                        # dx = x < 0 ? -20 : (x > 0 ? 20 : 0)
+                        dy = y < 0 ? -20 : (y > 0 ? 20 : 0)
+                        translate(O + (0, dy))
+                        text("PIN $index", O, halign=:center, valign=:middle)
+                    end
+                end,
+                edgestrokeweights=2,
+                layout=stress,
+                )
     end plot_size plot_size save_path
 
     finish()
@@ -208,14 +224,14 @@ function plot_single_gadget_mis(
     mis_matrix, n = find_maximal_independent_sets(gadget.graph)
     for i in 1:n
         save_single_path = save_path * "$i"
-        @pdf begin
+        @svg begin
             # background(none)
             drawgraph(gadget.graph, 
                     vertexlabels=collect(1:nv(gadget.graph)),  
-                    vertexshapesizes=10, 
-                    vertexlabelfontsizes=15,
+                    vertexshapesizes=18, 
+                    vertexlabelfontsizes=22,
                     vertexfillcolors=ifelse.(BitVector(mis_matrix[i, :]), RGB(1,0,0), RGB(0,0,0)),
-                    edgestrokeweights=2,
+                    edgestrokeweights=3,
                     layout=spring,
                     )
         end plot_size plot_size save_single_path

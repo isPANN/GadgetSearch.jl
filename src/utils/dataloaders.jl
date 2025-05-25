@@ -245,7 +245,7 @@ function load_unweighted_grid_gadget(m::Int, n::Int, pin_pad::Int, gadget_file_n
     for entry in keys(graph_data)
         # Get the graph and extract its ID
         g = graph_data[entry]
-        graph_id = _extract_numbers(entry)
+        graph_id = extract_gids(entry)
 
         # Convert position indices to tuples
         pos_int = Int.(pos_data["$graph_id"])
