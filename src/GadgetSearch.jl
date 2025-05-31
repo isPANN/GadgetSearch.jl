@@ -6,8 +6,9 @@ using HiGHS
 using Suppressor
 using Graphs, GraphIO
 # using HDF5
-using ProgressMeter
-using JLD2
+# using ProgressMeter
+# using JLD2
+using Serialization
 # using SQLite
 # using Serialization
 # using DBInterface
@@ -41,7 +42,9 @@ include("settings.jl")
 include("visualization/visualize.jl")
 
 # After refactoring
+include("graphio/graph6.jl")
 include("graphio/database.jl")
+include("graphio/graphloader.jl")
 
 # Export public API
 # Core search functions
@@ -82,6 +85,11 @@ export generate_grid_udgs, _split_large_file
 export save_g6_graph, save_g6_graphs
 export read_g6_graph, read_g6_graphs
 export get_gids
-export GraphBatchManager
+export each_g6_graph
+
+
+export GraphDataset
+export GraphLoader
+
 
 end # module
