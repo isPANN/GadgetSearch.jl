@@ -6,7 +6,7 @@ using HiGHS
 using Suppressor
 using Graphs, GraphIO
 # using HDF5
-# using ProgressMeter
+using ProgressMeter
 # using JLD2
 using Serialization
 # using SQLite
@@ -25,26 +25,27 @@ using JSON3, JSON
 using Karnak, Luxor
 
 # Type definitions
-include("types/gadgets.jl")
-include("types/parameters.jl")
-include("types/graph_types.jl")
+# include("types/gadgets.jl")
+# include("types/parameters.jl")
+# include("types/graph_types.jl")
 
-# Include core functionality
-include("core/graphsearch.jl")
-include("core/generateudg.jl")
+# # Include core functionality
+# include("core/graphsearch.jl")
+# include("core/generateudg.jl")
 
-# Include utilities
-include("utils/dataloaders.jl")
-include("utils/utils.jl")
+# # Include utilities
+# include("utils/dataloaders.jl")
+# include("utils/utils.jl")
 
-# Include settings and visualization
-include("settings.jl")
-include("visualization/visualize.jl")
+# # Include settings and visualization
+# include("settings.jl")
+# include("visualization/visualize.jl")
 
 # After refactoring
 include("graphio/graph6.jl")
-include("graphio/database.jl")
 include("graphio/graphloader.jl")
+
+include("core/search.jl")
 
 # Export public API
 # Core search functions
@@ -82,14 +83,15 @@ export generate_grid_udgs, _split_large_file
 
 
 # After refactoring
-export save_g6_graph, save_g6_graphs
-export read_g6_graph, read_g6_graphs
-export get_gids
-export each_g6_graph
+# export save_g6_graph, save_g6_graphs
+# export read_g6_graph, read_g6_graphs
+# export get_gids
+# export each_g6_graph
 
 
 export GraphDataset
 export GraphLoader
+export search_over_dataset
 
 
 end # module

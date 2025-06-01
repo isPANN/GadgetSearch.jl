@@ -38,7 +38,7 @@ function read_g6_graphs(path::String)::Dict{String, SimpleGraph{Int}}
             key, g6_code = length(parts) == 2 ? (parts[1], strip(parts[2])) : ("graph$(line_num)", parts[1])
             
             try
-                # graph = GraphIO.Graph6._g6StringToGraph(g6_code)
+                graph = GraphIO.Graph6._g6StringToGraph(g6_code)
                 graph = _parse_g6_string(g6_code, temp_bitvec)
                 graph_dict[key] = graph
             catch e

@@ -16,6 +16,10 @@ using Test
 # @testset "dataloaders.jl" begin
 #     include("dataloaders.jl")
 # end
-@testset "Gadget Search" begin
-    include("graphio.jl")
+# @testset "Gadget Search" begin
+#     include("graphio.jl")
+# end
+
+@testset "Search Strategy" begin
+    include("search.jl")
 end

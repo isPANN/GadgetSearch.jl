@@ -49,3 +49,5 @@ function _parse_g6_string(s::AbstractString, temp_bitvec::BitVector)::SimpleGrap
 
     return g
 end
+
+# function to convert graph to g6, we can use GraphIO.Graph6._graphToG6String(g)

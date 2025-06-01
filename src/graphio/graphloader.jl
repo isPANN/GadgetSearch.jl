@@ -8,6 +8,7 @@ end
 mutable struct GraphLoader
     # Graph dataset and parsing
     dataset::GraphDataset
+    pinset::Union{Nothing, Vector{Int}}
     temp_bitvec::BitVector
 
     # Layout info (optional)
@@ -57,7 +58,7 @@ function GraphDataset(path::String)
                 key = @view line[1:sep-1]
                 g6  = @view line[sep+1:end]
             else
-                key = "graph$i"
+                key = string(i)
                 g6  = line
             end
             push!(keys, key)
@@ -73,7 +74,7 @@ function GraphDataset(path::String)
 end
 
 
-function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, layoutfile::Union{Nothing, String}=nothing)
+function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, layoutfile::Union{Nothing, String}=nothing, pinset::Union{Nothing, Vector{Int}}=nothing)
     ds = GraphDataset(path)
     parsed_cache = Dict{String, SimpleGraph{Int}}()
     bitvec = BitVector(undef, 0)
@@ -92,10 +93,10 @@ function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, ma
         end
     end
 
-    return GraphLoader(ds, bitvec, layoutfile, Dict{String, Vector{Int}}(), enable_cache, max_cached, cachepath, parsed_cache, String[])
+    return GraphLoader(ds, pinset, bitvec, layoutfile, Dict{String, Vector{Int}}(), enable_cache, max_cached, cachepath, parsed_cache, String[])
 end
 
-GraphLoader(path::String) = GraphLoader(path; enable_cache=false)
+# GraphLoader(path::String) = GraphLoader(path; enable_cache=false)
 
 
 function Base.getindex(cds::GraphLoader, key::String)
@@ -118,7 +119,15 @@ function Base.getindex(cds::GraphLoader, key::String)
     end
 end
 
+function Base.getindex(cds::GraphLoader, key::Int)
+    return cds[string(key)]
+end
+
 Base.getindex(l::LayoutAccessor, key::String) = getlayout(l.cds, key)
+
+function Base.getindex(l::LayoutAccessor, key::Int)
+    return getlayout(l.cds, string(key))
+end
 
 function getlayout(cds::GraphLoader, key::String)::Union{Nothing, Vector{Int}}
     if cds.layoutfile === nothing
@@ -127,14 +136,7 @@ function getlayout(cds::GraphLoader, key::String)::Union{Nothing, Vector{Int}}
     if isempty(cds.layoutcache)
         cds.layoutcache = JSON3.read(cds.layoutfile, Dict{String, Vector{Int}})
     end
-    # Use numeric ID as the JSON key
-    if startswith(key, "graph")
-        numkey = match(r"graph(\d+)", key)
-        if numkey !== nothing
-            return get(cds.layoutcache, numkey.captures[1], nothing)
-        end
-    end
-    return nothing
+    return get(cds.layoutcache, key, nothing)
 end
 
 Base.keys(cds::GraphLoader) = cds.dataset.keys
