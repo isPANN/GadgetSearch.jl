@@ -5,14 +5,8 @@ using JuMP
 using HiGHS
 using Suppressor
 using Graphs, GraphIO
-# using HDF5
 using ProgressMeter
-# using JLD2
 using Serialization
-# using SQLite
-# using Serialization
-# using DBInterface
-# using DataFrames
 using IterTools
 using Combinatorics
 using LinearAlgebra
@@ -44,42 +38,43 @@ using Karnak, Luxor
 # After refactoring
 include("graphio/graph6.jl")
 include("graphio/graphloader.jl")
-
+include("utils/ruleio.jl")
 include("core/search.jl")
+include("utils/gadget.jl")
 
 # Export public API
 # Core search functions
-export search_single_rule, search_rules
+# export search_single_rule, search_rules
 
-# Type definitions
-export SearchParameters, AbstractGadget, Gadget
+# # Type definitions
+# export SearchParameters, AbstractGadget, Gadget
 
-# Trait system
-export AbstractGraphType, GeneralGraph, GridGraph
-export AbstractSearchStrategy, GenericConstraintSearch, LogicGateSearch
+# # Trait system
+# export AbstractGraphType, GeneralGraph, GridGraph
+# export AbstractSearchStrategy, GenericConstraintSearch, LogicGateSearch
 
-# Graph utilities
-export find_maximal_independent_sets
-export read_graph_dict, read_graph
+# # Graph utilities
+# export find_maximal_independent_sets
+# export read_graph_dict, read_graph
 
-# Data handling
-export save_results_to_json
-export format_truth_table
-export extract_rule_ids, extract_graph_ids
+# # Data handling
+# export save_results_to_json
+# export format_truth_table
+# export extract_rule_ids, extract_graph_ids
 
-# Rule utilities
-export show_rule_info, generic_rule, reconstruct_rule_id
-export generate_degeneracy_cases
+# # Rule utilities
+# export show_rule_info, generic_rule, reconstruct_rule_id
+# export generate_degeneracy_cases
 
-# Gadget handling
-export load_gadget, load_unweighted_grid_gadget, load_grid_gadget, load_grid_gadget_old
-export check_gadget
+# # Gadget handling
+# export load_gadget, load_unweighted_grid_gadget, load_grid_gadget, load_grid_gadget_old
+# export check_gadget
 
-# Visualization
-export plot_single_gadget, plot_single_gadget_new, plot_single_gadget_mis
+# # Visualization
+# export plot_single_gadget, plot_single_gadget_new, plot_single_gadget_mis
 
-# UDG generation
-export generate_grid_udgs, _split_large_file
+# # UDG generation
+# export generate_grid_udgs, _split_large_file
 
 
 # After refactoring
@@ -92,6 +87,9 @@ export generate_grid_udgs, _split_large_file
 export GraphDataset
 export GraphLoader
 export search_over_dataset
+
+export Gadget, GadgetWithPos
+export save_results_to_json
 
 
 end # module
