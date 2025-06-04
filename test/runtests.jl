@@ -23,3 +23,7 @@ using Test
 @testset "Search Strategy" begin
     include("search.jl")
 end
+
+@testset "GraphLoader" begin
+    include("graphloader.jl")
+end

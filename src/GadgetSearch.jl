@@ -86,7 +86,8 @@ include("utils/gadget.jl")
 
 export GraphDataset
 export GraphLoader
-export search_over_dataset
+export find_matching_gadget
+export save_cache
 
 export Gadget, GadgetWithPos
 export save_results_to_json

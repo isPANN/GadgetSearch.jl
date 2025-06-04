@@ -1,4 +1,75 @@
-function search_over_dataset(loader::GraphLoader; filter=nothing, limit::Union{Int,Nothing}=nothing, keys_range::Union{Nothing, Vector{Int}}=nothing)
+# Search for multiple truth tables by reusing search_over_dataset
+function search_by_truth_tables(
+    loader::GraphLoader,
+    truth_tables::Vector{BitMatrix};
+    bit_num,
+    optimizer,
+    env=nothing,
+    connected::Bool=false,
+    objective=nothing,
+    allow_defect::Bool=false,
+    limit=nothing
+)
+    results = Dict{BitMatrix, Gadget}()
+
+    for tt in truth_tables
+        filter_fn = make_filter(tt, bit_num, optimizer, env;
+                                connected=connected,
+                                objective=objective,
+                                allow_defect=allow_defect)
+        gadget = find_matching_gadget(loader; filter=filter_fn, limit=limit)
+        if gadget !== nothing
+            results[tt] = gadget
+        end
+    end
+
+    return results
+end
+
+# Alternative: iterate over each graph once and test multiple truth tables per graph
+function search_graphs_for_truth_tables(
+    loader::GraphLoader,
+    truth_tables::Vector{BitMatrix};
+    bit_num,
+    optimizer,
+    env=nothing,
+    connected::Bool=false,
+    objective=nothing,
+    allow_defect::Bool=false,
+    limit=nothing
+)
+    results = Dict{String, Tuple{BitMatrix, Gadget}}()
+
+    keys_to_search = keys(loader)
+    if limit !== nothing
+        keys_to_search = Iterators.take(keys_to_search, limit)
+    end
+
+    @showprogress for key in keys_to_search
+        g = loader[key]
+        connected && !Graphs.is_connected(g) && continue
+        pin_set = loader.pinset
+
+        vertex_num = Graphs.nv(g)
+        mis_result = find_maximal_independent_sets(g)
+
+        for tt in truth_tables
+            all_candidates = generate_pin_variants(pin_set, bit_num)
+            for candidate in all_candidates
+                target_indices = match_rows_by_pinset(mis_result, tt, candidate)
+                weights = solve_weight_enumerate(mis_result, target_indices, vertex_num, optimizer, env, objective, allow_defect)
+                if !isempty(weights)
+                    results[key] = (tt, Gadget(tt, g, candidate, weights, loader.layout[key]))
+                    break
+                end
+            end
+            haskey(results, key) && break
+        end
+    end
+    return results
+end
+
+function find_matching_gadget(loader::GraphLoader; filter=nothing, limit::Union{Int,Nothing}=nothing, keys_range::Union{Nothing, Vector{Int}}=nothing)
     keys_raw = keys_range === nothing ? keys(loader) : keys_range
     keys_to_search = isa(keys_raw[1], Int) ? keys_raw : parse.(Int, keys_raw)
     total = limit === nothing ? length(keys_to_search) : min(length(keys_to_search), limit)
@@ -16,7 +87,7 @@ function search_over_dataset(loader::GraphLoader; filter=nothing, limit::Union{I
 end
 
 # Create a filter closure for search_over_dataset
-function make_filter(truth_table::BitMatrix, bit_num::Union{Int, Tuple{Int, Int}}, optimizer, env; connected::Bool=false, objective=nothing)
+function make_filter(truth_table::BitMatrix, bit_num::Union{Int, Tuple{Int, Int}}, optimizer, env; connected::Bool=false, objective=nothing, allow_defect::Bool=false)
   
     return function(graph::SimpleGraph{Int}, pin_set::Union{Nothing, Vector{Int}}=nothing)
         if !connected
@@ -35,7 +106,7 @@ function make_filter(truth_table::BitMatrix, bit_num::Union{Int, Tuple{Int, Int}
 
         for candidate in all_candidates
             target_mis_indices_all = match_rows_by_pinset(mis_result, truth_table, candidate)
-            weights = solve_weight_enumerate(mis_result, target_mis_indices_all, vertex_num; optimizer=optimizer, env=env, objective=objective)
+            weights = solve_weight_enumerate(mis_result, target_mis_indices_all, vertex_num, optimizer, env, objective, allow_defect)
             if !isempty(weights)
                 return weights, truth_table, candidate
             end
@@ -105,10 +176,11 @@ end
 function solve_weight_enumerate(
     mis_result::Vector{UInt16},
     target_mis_indices_all::Vector{Vector{Int}},
-    vertex_num::Int;
+    vertex_num::Int,
     optimizer,
     env=nothing,
-    objective=nothing
+    objective=nothing,
+    allow_defect::Bool=false
 )
     if optimizer === nothing
         error("Optimizer must be provided.")
@@ -124,7 +196,7 @@ function solve_weight_enumerate(
         target_set = mis_result[target_indices_set]
         wrong_set = mis_result[wrong_indices]
 
-        weights = _find_weight_mask(vertex_num, target_set, wrong_set, optimizer, env, objective)
+        weights = _find_weight(vertex_num, target_set, wrong_set, optimizer, env, objective, allow_defect)
         if !isempty(weights)
             return weights
         end
@@ -136,13 +208,18 @@ function solve_weight_enumerate(
     return Float64[]
 end
 
-function _find_weight_mask(vertex_num::Int, target_masks::Vector{UInt16}, wrong_masks::Vector{UInt16}, optimizer, env, objective)
+function _find_weight(vertex_num::Int, target_masks::Vector{UInt16}, wrong_masks::Vector{UInt16}, optimizer, env, objective, allow_defect::Bool)
     opt = isnothing(env) ? optimizer() : optimizer(env)
     model = direct_model(opt)
     set_silent(model)
     set_string_names_on_creation(model, false)
 
-    @variable(model, x[1:vertex_num] >= 1)
+    if allow_defect
+        @variable(model, x[1:vertex_num] >= 0, Int)
+    else
+        @variable(model, x[1:vertex_num] >= 1, Int)
+    end
+
     @variable(model, C)
 
     for m in target_masks
@@ -234,5 +311,3 @@ end
 #     end
 #     return Float64[]
 # end
-
-

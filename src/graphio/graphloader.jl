@@ -13,9 +13,9 @@ mutable struct GraphLoader
 
     # Layout info (optional)
     layoutfile::Union{Nothing, String}
-    layoutcache::Dict{String, Vector{Int}}
+    layoutcache::Dict{String, Vector{Tuple{Float64, Float64}}}
 
-    # Caching parsed graphs
+    # Caching parsed graphs (optional)
     enable_cache::Bool
     max_cached::Int
     cachepath::Union{Nothing, String}
@@ -93,10 +93,8 @@ function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, ma
         end
     end
 
-    return GraphLoader(ds, pinset, bitvec, layoutfile, Dict{String, Vector{Int}}(), enable_cache, max_cached, cachepath, parsed_cache, String[])
+    return GraphLoader(ds, pinset, bitvec, layoutfile, Dict{String, Vector{Tuple{Float64, Float64}}}(), enable_cache, max_cached, cachepath, parsed_cache, String[])
 end
-
-# GraphLoader(path::String) = GraphLoader(path; enable_cache=false)
 
 
 function Base.getindex(cds::GraphLoader, key::String)
@@ -129,12 +127,21 @@ function Base.getindex(l::LayoutAccessor, key::Int)
     return getlayout(l.cds, string(key))
 end
 
-function getlayout(cds::GraphLoader, key::String)::Union{Nothing, Vector{Int}}
+function getlayout(cds::GraphLoader, key::String)
     if cds.layoutfile === nothing
+        @info "No layout file provided"
         return nothing
     end
     if isempty(cds.layoutcache)
-        cds.layoutcache = JSON3.read(cds.layoutfile, Dict{String, Vector{Int}})
+        try
+            rawlayout = JSON3.read(cds.layoutfile, Dict{String, Vector{Float64}})
+            for (k, v) in rawlayout
+                cds.layoutcache[k] = [(v[i], v[i+1]) for i in 1:2:length(v)]
+            end
+        catch e
+            @warn "Failed to read layout file: $e"
+            return nothing
+        end
     end
     return get(cds.layoutcache, key, nothing)
 end

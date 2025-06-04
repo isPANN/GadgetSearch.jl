@@ -1,50 +1,31 @@
-function filter_nonisomorphic(gs::AbstractVector{<:SimpleGraph}, fixed_vertices=nothing)
-    # use characteristic_number to classify graphs
-    groups = Dict{UInt64, Vector{Tuple{SimpleGraph, Int}}}()
-    for (idx, g) in enumerate(gs)
-        cn = characteristic_number(g)
-        push!(get!(groups, cn, []), (g, idx))
-    end
-
-    # filter nonisomorphic graphs
-    unique_graphs = SimpleGraph[]
-    unique_indices = Int[]
-    for bucket in values(groups)
-        graphs = [g for (g, _) in bucket]
-        indices = [idx for (_, idx) in bucket]
-        filtered_graphs = filter_nonisomorphic_naive(graphs, fixed_vertices)
-        append!(unique_graphs, filtered_graphs)
-        append!(unique_indices, [indices[findfirst(==(g), graphs)] for g in filtered_graphs])
-    end
-
-    return unique_graphs, unique_indices
+function run_labelg(input_g6::String, output_g6::String)
+    cmd = `labelg -q $input_g6 $output_g6`
+    success(run(cmd)) || error("labelg failed")
 end
 
-function characteristic_number(g::SimpleGraph)
-    # up to second order
-    hash(sort([hash(sort(degree.(Ref(g), neighbors(g, i)))) for i = 1:nv(g)]))   # degrees
+function read_g6_lines(file::String)::Vector{String}
+    return filter(!isempty, strip.(readlines(file)))
 end
 
-function filter_nonisomorphic_naive(gs::AbstractVector{<:SimpleGraph}, fixed_vertices)
-    ng = length(gs)
-    mask = trues(ng)
-    for i = 1:ng
-        mask[i] || continue # skip if already filtered
-        for j = i+1:ng
-            mask[j] || continue
-            if fixed_vertices === nothing
-                if Graphs.Experimental.has_isomorph(gs[i], gs[j])
-                    mask[j] = false
-                end
-            else
-                weights = [i <= sum(fixed_vertices) ? 1 : 0 for i in 1:nv(gs[i])]
-                if Graphs.Experimental.has_isomorph(gs[i], gs[j]; vertex_relation=(u, v) -> weights[u] == weights[v])
-                    mask[j] = false
-                end
-            end
+function filter_nonisomorphic(gs::Vector{SimpleGraph}, fixed_vertices=nothing; temp_g6_path="__temp.g6", canon_path="__canon.g6")
+    open(temp_g6_path, "w") do io
+        for (i, g) in enumerate(gs)
+            savegraph(io, g, "graph$i", GraphIO.Graph6.Graph6Format())
         end
     end
-    return gs[mask]
+
+    run_labelg(temp_g6_path, canon_path)
+    canon_lines = read_g6_lines(canon_path)
+
+    seen = Dict{String, Tuple{SimpleGraph, Int}}()
+    for (i, canon) in enumerate(canon_lines)
+        seen[canon] = (gs[i], i)
+    end
+
+    unique_graphs = [v[1] for v in values(seen)]
+    unique_indices = [v[2] for v in values(seen)]
+
+    return unique_graphs, unique_indices
 end
 
 function unit_disk_graph(locs::AbstractVector, unit::Real)
@@ -56,29 +37,6 @@ function unit_disk_graph(locs::AbstractVector, unit::Real)
         end
     end
     return g
-end
-
-function canonical_form(comb, m, n)
-    # generate all possible different combinations
-    sorted_comb = sort(comb)
-
-    # rotate 90, 180, 270
-    r180 = sort([(m - x + 1, n - y + 1) for (x, y) in sorted_comb])
-    
-    # reflect x, y
-    ref_x = sort([(m - x + 1, y) for (x, y) in sorted_comb])
-    ref_y = sort([(x, n - y + 1) for (x, y) in sorted_comb])
-    
-    if n == m
-        r90 = sort([(y, m - x + 1) for (x, y) in sorted_comb])
-        r270 = sort([(n - y + 1, x) for (x, y) in sorted_comb])
-        # reflect diagonal
-        ref_diag = sort([(y, x) for (x, y) in sorted_comb])
-        # return the hash of the minimum of all combinations
-        return hash(minimum([sorted_comb, r90, r180, r270, ref_x, ref_y, ref_diag]))
-    else
-        return hash(minimum([sorted_comb, r180, ref_x, ref_y]))
-    end
 end
 
 # returns a vector of grid configurations, classified by the number of nodes
@@ -132,9 +90,6 @@ function generate_grid_udgs(m::Int, n::Int, pin_pad::Int, directions::Vector{Sym
         end
     end
     final_unique_graphs, idx = filter_nonisomorphic(unique_graphs, 1:length(directions))
-    # for i in length(final_unique_graphs)
-    #     @assert nv(final_unique_graphs[i]) == length(pos_list[idx[i]])
-    # end
     @info "After embedding unique graphs: $(length(final_unique_graphs))"
     if length(save_path) > 0
         filename = "m$(m)n$(n)pad$(pin_pad)_min$(min_num_node)max$(max_num_node)_direct$(length(directions))"
