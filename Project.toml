@@ -23,7 +23,7 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
 ColorSchemes = "3.29.0"
-Colors = "0.12.11"
+Colors = "0.13"
 DocumenterTools = "0.1.20"
 GraphIO = "0.7.1"
 Graphs = "1.9.0"
@@ -37,6 +37,8 @@ ProgressMeter = "1.10.4"
 Random = "1.11.0"
 Revise = "3.6.2"
 julia = "1"
+JuMP = "1"
+Combinatorics = "1"
 
 [extras]
 HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
