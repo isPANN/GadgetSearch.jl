@@ -56,12 +56,11 @@ function check_gadget(gadget::Gadget)
         energy_value[i] = total
     end
 
-    # 取能量最大的 MIS
+    # Check the energy value of each MIS
     @show energy_value
     max_energy = maximum(energy_value)
     max_indices = findall(x -> x == max_energy, energy_value)
 
-    # 输出信息
     @info "Max energy value: $max_energy"
     for idx in max_indices
         config = mis_result[idx]

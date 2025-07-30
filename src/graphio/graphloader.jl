@@ -1,7 +1,7 @@
 struct GraphDataset
-    g6codes::Vector{SubString{String}}
+    g6codes::Vector{<:AbstractString}
     layouts::Vector{Union{Nothing, Vector{Tuple{Float64, Float64}}}}
-    n::Int
+    n::Int  # number of graphs
 end
 
 mutable struct GraphLoader
@@ -22,12 +22,32 @@ struct LayoutAccessor
     cds::GraphLoader
 end
 
+# Constructors for direct data input
+function GraphDataset(g6codes::Vector{<:AbstractString}, layouts::Union{Nothing, Vector{Vector{Tuple{Float64, Float64}}}})
+    n = length(g6codes)
+    if length(layouts) != n
+        throw(ArgumentError("g6codes and layouts must have the same length"))
+    end
+    # Convert to SubString{String} for consistency
+    codes_string = String[string(code) for code in g6codes]
+    return GraphDataset(codes_string, layouts, n)
+end
+
+function GraphDataset(g6codes::Vector{<:AbstractString})
+    n = length(g6codes)
+    layouts = fill(nothing, n)
+    # Convert to SubString{String} for consistency  
+    codes_string = String[string(code) for code in g6codes]
+    return GraphDataset(codes_string, layouts, n)
+end
+
+# Constructors for reading from file
+# Each line of the file should contain a g6 code and optionally a layout
 function GraphDataset(path::String)
     raw = read(path, String)
     codes = SubString{String}[]
     layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[]
-    i = 1
-    line_start = 1
+    i = 1; line_start = 1
     len = lastindex(raw)
 
     while line_start <= len
@@ -84,8 +104,7 @@ function GraphDataset(path::String)
 end
 
 
-function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, pinset::Union{Nothing, Vector{Int}}=nothing)
-    ds = GraphDataset(path)
+function GraphLoader(dataset::GraphDataset; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, pinset::Union{Nothing, Vector{Int}}=nothing)
     parsed_cache = Dict{String, SimpleGraph{Int}}()
     bitvec = BitVector(undef, 0)
 
@@ -103,7 +122,12 @@ function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, ma
         end
     end
 
-    return GraphLoader(ds, pinset, bitvec, enable_cache, max_cached, cachepath, parsed_cache, String[])
+    return GraphLoader(dataset, pinset, bitvec, enable_cache, max_cached, cachepath, parsed_cache, String[])
+end
+
+function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, pinset::Union{Nothing, Vector{Int}}=nothing)
+    ds = GraphDataset(path)
+    return GraphLoader(ds; cachepath=cachepath, max_cached=max_cached, enable_cache=enable_cache, pinset=pinset)
 end
 
 
