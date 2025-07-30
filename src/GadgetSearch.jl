@@ -1,31 +1,42 @@
 module GadgetSearch
 
-using JuMP, HiGHS, COPT, GLPK
-using Suppressor
-using Graphs, GraphIO, IterTools
-using Colors, ColorSchemes
+# Core dependencies
+using JuMP
+# using Suppressor
+using Graphs, GraphIO
+using ProgressMeter
+using IterTools
 using Combinatorics
-using JSON3, JSON
-using Karnak, Luxor
+using LinearAlgebra
 using Random
 
-include("dataloaders.jl")
-include("utils.jl")
-include("graphsearch.jl")
-include("generateUDG.jl")
-include("visualize.jl")
+# Visualization and data handling
+using Colors, ColorSchemes
+using JSON3, JSON
+using Karnak, Luxor
 
-export search_single_rule, search_rules
-export find_maximal_independent_sets
+
+include("graphio/graph6.jl")
+include("graphio/graphloader.jl")
+include("graphio/savegraph.jl")
+include("graphio/udg.jl")
+include("utils/ruleio.jl")
+include("core/search.jl")
+include("utils/gadget.jl")
+include("utils/visualize.jl")
+
+export GraphDataset
+export GraphLoader
+export find_matching_gadget
+export save_cache
+export save_graph
+
+export Square, Triangular
+export generate_full_grid_udg
+
+export Gadget, GadgetWithPos
 export save_results_to_json
-export read_graph_dict, read_graph
-export format_truth_table
-export show_rule_info, generic_rule, reconstruct_rule_id
-export generate_degeneracy_cases
-export load_gadget, load_unweighted_grid_gadget, load_grid_gadget
-export plot_single_gadget
-export extract_rule_ids, extract_graph_ids
-export check_gadget, generate_degeneracy_cases
-export generate_grid_udgs
 
-end
+export get_radius
+
+end # module

@@ -1,18 +1,15 @@
 using GadgetSearch
 using Test
 
-@testset "utils.jl" begin
-    include("utils.jl")
+@testset "Search Strategy" begin
+    include("core/search.jl")
 end
 
-@testset "generateUDG.jl" begin
-    include("generateUDG.jl")
+@testset "UDG Generation" begin
+    include("graphio/udg.jl")
 end
 
-@testset "graphsearch.jl" begin
-    include("graphsearch.jl")
+@testset "Core Search Functions" begin
+    include("core/search.jl")
 end
 
-@testset "dataloaders.jl" begin
-    include("dataloaders.jl")
-end

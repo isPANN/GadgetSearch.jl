@@ -3,9 +3,94 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://isPANN.github.io/GadgetSearch.jl/stable/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://isPANN.github.io/GadgetSearch.jl/dev/)
 [![Build Status](https://github.com/isPANN/GadgetSearch.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/isPANN/GadgetSearch.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/isPANN/GadgetSearch.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/isPANN/GadgetSearch.jl)
 
-# TO BE UPDATED
+A Julia package for searching and analyzing gadgets in graph structures. This package provides tools for graph search, gadget generation, and visualization, with a focus on finding and analyzing gadgets that satisfy specific constraints or implement logic gates.
+
+## Features
+
+- **Graph Search Algorithms**: Implement both generic constraint search and logic gate search
+- **Gadget Generation**: Generate and analyze gadgets with different graph types (general and grid)
+- **Visualization Tools**: Visualize gadgets and their properties
+- **Data Handling**: Load, save, and process graph data in various formats
+
+## Installation
+
+```julia
+using Pkg
+Pkg.add("GadgetSearch")
+```
+
+## Quick Start
+
+```julia
+using GadgetSearch
+
+# Search for a gadget implementing a specific rule
+result = search_single_rule("path/to/graph.g6", 2; truth_table=[0 1; 1 0])
+
+# Generate grid UDGs
+udgs = generate_grid_udgs(3, 3)  # Generate 3x3 grid UDGs
+
+# Visualize a gadget
+plot_single_gadget(gadget, "output.png")
+```
+
+## Main Components
+
+### Graph Types
+- `GeneralGraph`: For general graph structures
+- `GridGraph`: For grid-based graph structures with position information
+
+### Search Strategies
+- `GenericConstraintSearch`: For searching gadgets with general constraints
+- `LogicGateSearch`: For searching gadgets that implement logic gates
+
+### Core Functions
+- `search_single_rule`: Search for a gadget implementing a specific rule
+- `search_rules`: Search for multiple rules
+- `find_maximal_independent_sets`: Find all maximal independent sets in a graph
+- `generate_grid_udgs`: Generate grid-based UDGs
+
+### Data Handling
+- `load_gadget`: Load a gadget from file
+- `save_results_to_json`: Save search results to JSON
+- `format_truth_table`: Format truth table data
+
+### Visualization
+- `plot_single_gadget`: Visualize a single gadget
+
+## Examples
+
+### Searching for a Logic Gate
+```julia
+# Search for a 2-input, 1-output logic gate
+params = SearchParameters(
+    pin_set = [1, 2, 3],
+    max_file_size_mb = 1,
+    split_size = 1000
+)
+
+result = search_single_rule(
+    "path/to/graph.g6",
+    [2, 1],  # 2 inputs, 1 output
+    ground_states = [0, 3],  # XOR-like behavior
+    params = params
+)
+```
+
+### Working with Grid Graphs
+```julia
+# Create a grid graph with position data
+grid = GridGraph("positions.json", (3, 3))
+
+# Search on the grid graph
+result = search_single_rule(
+    "path/to/graph.g6",
+    2,
+    graph_type = grid
+)
+```
+
 
 ## [Datasets](https://github.com/isPANN/GadgetSearch.jl/tree/main/datasets)
 
