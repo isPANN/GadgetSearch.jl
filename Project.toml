@@ -23,7 +23,7 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
 ColorSchemes = "3.29.0"
-Colors = "0.12.11"
+Colors = "0.12.11, 0.13"
 DocumenterTools = "0.1.20"
 GraphIO = "0.7.1"
 Graphs = "1.9.0"
