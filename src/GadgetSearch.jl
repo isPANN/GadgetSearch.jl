@@ -38,9 +38,12 @@ using Karnak, Luxor
 # After refactoring
 include("graphio/graph6.jl")
 include("graphio/graphloader.jl")
+include("graphio/savegraph.jl")
+include("graphio/udg.jl")
 include("utils/ruleio.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
+include("utils/visualize.jl")
 
 # Export public API
 # Core search functions
@@ -88,6 +91,9 @@ export GraphDataset
 export GraphLoader
 export find_matching_gadget
 export save_cache
+export save_graph
+
+export generate_full_ksg
 
 export Gadget, GadgetWithPos
 export save_results_to_json

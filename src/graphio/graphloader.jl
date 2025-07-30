@@ -1,8 +1,7 @@
 struct GraphDataset
-    keys::Vector{SubString{String}}
     g6codes::Vector{SubString{String}}
-    raw::String
-    key_to_index::Dict{String, Int}
+    layouts::Vector{Union{Nothing, Vector{Tuple{Float64, Float64}}}}
+    n::Int
 end
 
 mutable struct GraphLoader
@@ -10,10 +9,6 @@ mutable struct GraphLoader
     dataset::GraphDataset
     pinset::Union{Nothing, Vector{Int}}
     temp_bitvec::BitVector
-
-    # Layout info (optional)
-    layoutfile::Union{Nothing, String}
-    layoutcache::Dict{String, Vector{Tuple{Float64, Float64}}}
 
     # Caching parsed graphs (optional)
     enable_cache::Bool
@@ -29,10 +24,8 @@ end
 
 function GraphDataset(path::String)
     raw = read(path, String)
-    keys = SubString{String}[]
     codes = SubString{String}[]
-    key_to_index = Dict{String, Int}()
-
+    layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[]
     i = 1
     line_start = 1
     len = lastindex(raw)
@@ -53,28 +46,45 @@ function GraphDataset(path::String)
 
         if start <= stop
             line = @view raw[start:stop]
-            sep = findfirst(==(' '), line)
-            if sep !== nothing
-                key = @view line[1:sep-1]
-                g6  = @view line[sep+1:end]
-            else
-                key = string(i)
-                g6  = line
-            end
-            push!(keys, key)
+            sep = findfirst(isspace, line)
+            g6 = sep === nothing ? line : @view line[1:sep-1]
             push!(codes, g6)
-            key_to_index[key] = i
+
+            if sep === nothing
+                push!(layouts, nothing)
+            else
+                coords_str = String(line[sep+1:end])
+                coord_parts = split(coords_str, ';')
+                parsed_coords = Tuple{Float64, Float64}[]
+                valid = true
+                for part in coord_parts
+                    m = match(r"\(?\s*([-+eE.\d]+)\s*,\s*([-+eE.\d]+)\s*\)?", part)
+                    if m === nothing
+                        valid = false
+                        break
+                    end
+                    x = tryparse(Float64, m.captures[1])
+                    y = tryparse(Float64, m.captures[2])
+                    if x === nothing || y === nothing
+                        valid = false
+                        break
+                    end
+                    push!(parsed_coords, (x, y))
+                end
+                push!(layouts, valid ? parsed_coords : nothing)
+            end
+
             i += 1
         end
 
         line_start = line_end + 1
     end
 
-    return GraphDataset(keys, codes, raw, key_to_index)
+    return GraphDataset(codes, layouts, length(codes))
 end
 
 
-function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, layoutfile::Union{Nothing, String}=nothing, pinset::Union{Nothing, Vector{Int}}=nothing)
+function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, max_cached::Int=10_000, enable_cache::Bool=false, pinset::Union{Nothing, Vector{Int}}=nothing)
     ds = GraphDataset(path)
     parsed_cache = Dict{String, SimpleGraph{Int}}()
     bitvec = BitVector(undef, 0)
@@ -93,15 +103,23 @@ function GraphLoader(path::String; cachepath::Union{Nothing, String}=nothing, ma
         end
     end
 
-    return GraphLoader(ds, pinset, bitvec, layoutfile, Dict{String, Vector{Tuple{Float64, Float64}}}(), enable_cache, max_cached, cachepath, parsed_cache, String[])
+    return GraphLoader(ds, pinset, bitvec, enable_cache, max_cached, cachepath, parsed_cache, String[])
 end
 
 
 function Base.getindex(cds::GraphLoader, key::String)
+    idx = tryparse(Int, key)
+    if idx === nothing
+        error("GraphLoader: String key \"$key\" is not a valid integer index.")
+    end
+    return cds[idx]
+end
+
+function Base.getindex(cds::GraphLoader, idx::Int)
+    key = string(idx)
     if cds.enable_cache && haskey(cds.parsed, key)
         return cds.parsed[key]
     else
-        idx = cds.dataset.key_to_index[key]
         g6 = cds.dataset.g6codes[idx]
         g = _parse_g6_string(g6, cds.temp_bitvec)
 
@@ -117,10 +135,6 @@ function Base.getindex(cds::GraphLoader, key::String)
     end
 end
 
-function Base.getindex(cds::GraphLoader, key::Int)
-    return cds[string(key)]
-end
-
 Base.getindex(l::LayoutAccessor, key::String) = getlayout(l.cds, key)
 
 function Base.getindex(l::LayoutAccessor, key::Int)
@@ -128,26 +142,12 @@ function Base.getindex(l::LayoutAccessor, key::Int)
 end
 
 function getlayout(cds::GraphLoader, key::String)
-    if cds.layoutfile === nothing
-        @info "No layout file provided"
-        return nothing
-    end
-    if isempty(cds.layoutcache)
-        try
-            rawlayout = JSON3.read(cds.layoutfile, Dict{String, Vector{Float64}})
-            for (k, v) in rawlayout
-                cds.layoutcache[k] = [(v[i], v[i+1]) for i in 1:2:length(v)]
-            end
-        catch e
-            @warn "Failed to read layout file: $e"
-            return nothing
-        end
-    end
-    return get(cds.layoutcache, key, nothing)
+    idx = parse(Int, key)
+    return cds.dataset.layouts[idx]
 end
 
-Base.keys(cds::GraphLoader) = cds.dataset.keys
-Base.length(cds::GraphLoader) = length(cds.dataset.keys)
+Base.keys(cds::GraphLoader) = 1:cds.dataset.n
+Base.length(cds::GraphLoader) = cds.dataset.n
 
 # Allow property-like access for layout: cds.layout[key]
 Base.getproperty(cds::GraphLoader, name::Symbol) = name === :layout ? LayoutAccessor(cds) : getfield(cds, name)
@@ -162,8 +162,8 @@ function save_cache(cds::GraphLoader)
 end
 
 function Base.show(io::IO, loader::GraphLoader)
-    nkeys = length(loader.dataset.keys)
+    nkeys = length(loader.dataset.g6codes)
     print(io, "GraphLoader with $nkeys graphs",
           loader.enable_cache ? ", cache enabled" : ", no cache",
-          loader.layoutfile !== nothing ? ", layout: ✔" : "")
+          "")
 end

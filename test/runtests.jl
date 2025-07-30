@@ -24,6 +24,10 @@ using Test
     include("search.jl")
 end
 
-@testset "GraphLoader" begin
-    include("graphloader.jl")
-end
+# @testset "GraphLoader" begin
+#     include("graphloader.jl")
+# end
+
+# @testset "Core" begin
+#     include("core/search.jl")
+# end

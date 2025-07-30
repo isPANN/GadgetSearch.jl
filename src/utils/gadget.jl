@@ -7,7 +7,7 @@ struct Gadget{T<:Real}
 end
 
 
-function save_results_to_json(results::Vector{Gadget{T}}, file_path::String) where T
+function save_results_to_json(results::Vector{Gadget}, file_path::String)
     # Convert each result to a serializable dictionary
     json_results = map(results) do res
         base_dict = Dict(
@@ -33,4 +33,41 @@ function save_results_to_json(results::Vector{Gadget{T}}, file_path::String) whe
     end
 
     return file_path
+end
+
+function check_gadget(gadget::Gadget)
+    g = gadget.graph
+    weights = gadget.weights
+    pins = gadget.pins
+
+    # Get all maximal independent sets (MIS), assume the result type is a Vector{UInt}
+    mis_result, mis_num = find_maximal_independent_sets(g)
+
+    # Calculate energy for each MIS
+    energy_value = Vector{Float64}(undef, mis_num)
+    for i in 1:mis_num
+        config = mis_result[i]
+        total = 0.0
+        for v in 1:nv(g)
+            if ((config >> (v - 1)) & 0x1) == 1
+                total += weights[v]
+            end
+        end
+        energy_value[i] = total
+    end
+
+    # 取能量最大的 MIS
+    @show energy_value
+    max_energy = maximum(energy_value)
+    max_indices = findall(x -> x == max_energy, energy_value)
+
+    # 输出信息
+    @info "Max energy value: $max_energy"
+    for idx in max_indices
+        config = mis_result[idx]
+        pin_values = [((config >> (p - 1)) & 0x1) for p in pins]
+        @info "MIS index: $idx, pins = $pin_values"
+    end
+
+    return nothing
 end

@@ -25,7 +25,7 @@
 @testset "match_rows_by_pinset" begin
     g6string = "I??FEb_z_"
     g = GadgetSearch._parse_g6_string(g6string, BitVector(undef, 1024))
-    mis_result = GadgetSearch.find_maximal_independent_sets(g)
+    mis_result, _ = GadgetSearch.find_maximal_independent_sets(g)
     @test length(mis_result) == 6
 
     tt = BitMatrix([0 0 1 1;0 1 1 1; 1 0 0 0])
