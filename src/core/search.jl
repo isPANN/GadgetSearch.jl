@@ -159,7 +159,7 @@ function make_filter(truth_table::BitMatrix, optimizer, env; connected::Bool=fal
         
         for candidate in all_candidates
             target_mis_indices_all = match_rows_by_pinset(maximal_independent_sets, truth_table, candidate)
-            weights = solve_weight_enumerate(maximal_independent_sets, target_mis_indices_all, vertex_num, optimizer, env, objective, allow_defect, max_samples)
+            weights = solve_weight_enumerate(maximal_independent_sets, target_mis_indices_all, vertex_num, length(candidate), optimizer, env, objective, allow_defect, max_samples)
             if !isempty(weights)
                 return weights, truth_table, candidate
             end
@@ -274,6 +274,7 @@ function solve_weight_enumerate(
     mis_result::Vector{UInt32},
     target_mis_indices_all::Vector{Vector{Int}},
     vertex_num::Int,
+    pin_num::Int,
     optimizer,
     env=nothing,
     objective=nothing,
@@ -294,7 +295,7 @@ function solve_weight_enumerate(
         target_set = mis_result[target_indices_set]
         wrong_set = mis_result[wrong_indices]
 
-        weights = _find_weight(vertex_num, target_set, wrong_set, optimizer, env, objective, allow_defect)
+        weights = _find_weight(vertex_num, pin_num, target_set, wrong_set, optimizer, env, objective, allow_defect)
         if !isempty(weights)
             return weights
         end
@@ -320,18 +321,18 @@ Find vertex weights using optimization to distinguish target and wrong maximal i
 # Returns
 - `Vector{Float64}`: Vertex weights if solution found, empty vector otherwise
 """
-function _find_weight(vertex_num::Int, target_masks::Vector{UInt32}, wrong_masks::Vector{UInt32}, optimizer, env, objective, allow_defect::Bool)
+function _find_weight(vertex_num::Int, pin_num::Int, target_masks::Vector{UInt32}, wrong_masks::Vector{UInt32}, optimizer, env, objective, allow_defect::Bool)
     opt = isnothing(env) ? optimizer() : optimizer(env)
     model = direct_model(opt)
     set_silent(model)
     set_string_names_on_creation(model, false)
 
-    # if allow_defect
-    #     x = @variable(model, [i=1:vertex_num], lower_bound = i <= 4 ? 1 : 0)
-    # else
-    #     @variable(model, x[1:vertex_num] >= 1)
-    # end
-    @variable(model, x[1:vertex_num] >= 1)
+    if allow_defect
+        x = @variable(model, [i=1:vertex_num], lower_bound = i <= pin_num ? 1 : 0)
+    else
+        @variable(model, x[1:vertex_num] >= 1)
+    end
+    # @variable(model, x[1:vertex_num] >= 1)
 
     @variable(model, C)
 
