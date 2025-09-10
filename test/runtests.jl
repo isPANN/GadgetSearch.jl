@@ -13,3 +13,6 @@ end
     include("core/search.jl")
 end
 
+@testset "Visualization" begin
+    include("utils/visualize.jl")
+end

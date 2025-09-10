@@ -5,13 +5,6 @@ using HiGHS
 using JSON3
 using Combinatorics
 
-# Test constants are defined correctly
-@testset "Constants" begin
-    @test GadgetSearch.MAX_SUPPORTED_VERTICES == 32
-    @test GadgetSearch.DEFAULT_EPSILON == 1.0
-    @test GadgetSearch.DEFAULT_MAX_SAMPLES == 100
-end
-
 # Helper function to create a simple test graph
 function create_test_graph()
     g = SimpleGraph(4)
@@ -47,6 +40,92 @@ function create_mock_optimizer()
     return () -> HiGHS.Optimizer()
 end
 
+# Test constants are defined correctly
+@testset "Constants" begin
+    @test GadgetSearch.MAX_SUPPORTED_VERTICES == 32
+    @test GadgetSearch.DEFAULT_EPSILON == 1.0
+    @test GadgetSearch.DEFAULT_MAX_SAMPLES == 100
+end
+
+
+@testset "Cache utilities" begin
+    # Ensure cache can be cleared and stats reported
+    GadgetSearch.clear_cache!()
+    stats = GadgetSearch.get_cache_stats()
+    @test stats.size == 0
+    
+    # Populate cache by calling MIS on a small graph
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    GadgetSearch.find_maximal_independent_sets(g)
+    stats2 = GadgetSearch.get_cache_stats()
+    @test stats2.size >= 1
+    
+    # Clear again
+    GadgetSearch.clear_cache!()
+    @test GadgetSearch.get_cache_stats().size == 0
+end
+
+@testset "_graph_hash stability and connectivity check" begin
+    # _graph_hash should be stable across identical graphs
+    g1 = SimpleGraph(3)
+    add_edge!(g1, 1, 2); add_edge!(g1, 2, 3)
+    g2 = SimpleGraph(3)
+    # Add edges in different order
+    add_edge!(g2, 2, 3); add_edge!(g2, 1, 2)
+    h1 = GadgetSearch._graph_hash(g1)
+    h2 = GadgetSearch._graph_hash(g2)
+    @test h1 == h2
+
+    # connectivity check after removal
+    g3 = SimpleGraph(4)
+    add_edge!(g3, 1, 2); add_edge!(g3, 2, 3); add_edge!(g3, 3, 4)
+    # Removing vertex index 2 (0-based -> [1]) should disconnect 1 from 3-4
+    @test !GadgetSearch.check_connectivity_after_removal(g3, [1])
+    # No removal keeps original connectivity
+    @test GadgetSearch.check_connectivity_after_removal(g3, Int[]) == Graphs.is_connected(g3)
+end
+
+@testset "make_filter - pin_candidates behavior" begin
+    truth_table = BitMatrix([1 0; 0 1])
+    optimizer = create_mock_optimizer()
+    filter_fn = GadgetSearch.make_filter(truth_table, optimizer, nothing; connected=false,
+                                         pin_candidates=[[1, 2]], max_samples=20)
+    # Triangle graph often yields a valid solution in our setup
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 1, 3); add_edge!(g, 2, 3)
+    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
+    weights, tt, pins = filter_fn(g, pos, nothing)
+    @test tt == truth_table
+    if weights !== nothing
+        @test pins == [1, 2]
+    end
+end
+
+@testset "solve_weight_enumerate - sampling path" begin
+    # Construct a case where combinations exceed max_samples to trigger sampling
+    mis_result = UInt32[0x1, 0x2, 0x4, 0x3, 0x5, 0x6]
+    target_mis_indices_all = [collect(1:3), collect(1:3)]  # 9 combinations
+    vertex_num = 3
+    pin_set = [1, 2]
+    w = GadgetSearch.solve_weight_enumerate(mis_result, target_mis_indices_all, vertex_num,
+                                            pin_set, create_mock_optimizer(), nothing, nothing,
+                                            false, 1)  # max_samples=1 forces sampling path
+    @test w isa Vector{Float64}
+    @test length(w) == vertex_num || isempty(w)
+end
+
+@testset "find_matching_gadget - early termination" begin
+    # Build a loader and a filter that always returns a result
+    loader = create_test_loader()
+    simple_filter = function(g, pos, pins)
+        # Return weights sized to the graph to avoid inconsistencies
+        return (ones(Float64, nv(g)), BitMatrix([1 0; 0 1]), [1, 2])
+    end
+    res = GadgetSearch.find_matching_gadget(loader; filter=simple_filter, max_results=1)
+    @test length(res) == 1
+end
 @testset "find_maximal_independent_sets" begin
     # Test with a simple triangle graph
     g = SimpleGraph(3)
@@ -94,9 +173,10 @@ end
     target_masks = UInt32[0x1, 0x2]  # Masks that should have equal energy
     wrong_masks = UInt32[0x4]        # Mask that should have higher energy
     optimizer = create_mock_optimizer()
+    pin_set = [1, 2]
     
     weights = GadgetSearch._find_weight(
-        vertex_num, target_masks, wrong_masks, optimizer, nothing, nothing, false
+        vertex_num, pin_set, target_masks, wrong_masks, optimizer, nothing, nothing, false, nothing, false
     )
     
     # Check that we get a result (weights should be found for this simple case)
@@ -113,9 +193,10 @@ end
     target_mis_indices_all = [[1], [2]]  # Simple target indices
     vertex_num = 3
     optimizer = create_mock_optimizer()
+    pin_set = [1, 2]
     
     weights = GadgetSearch.solve_weight_enumerate(
-        mis_result, target_mis_indices_all, vertex_num, optimizer
+        mis_result, target_mis_indices_all, vertex_num, pin_set, optimizer
     )
     
     # Should return weights or empty vector
@@ -128,15 +209,16 @@ end
     mis_result = UInt32[0x1, 0x2]
     target_mis_indices_all = [[1], [2]]
     vertex_num = 2
+    pin_set = [1, 2]
     
     @test_throws ErrorException GadgetSearch.solve_weight_enumerate(
-        mis_result, target_mis_indices_all, vertex_num, nothing
+        mis_result, target_mis_indices_all, vertex_num, pin_set, nothing
     )
     
     # Test empty target indices
     empty_target = [Int[], [1]]
     weights = GadgetSearch.solve_weight_enumerate(
-        mis_result, empty_target, vertex_num, create_mock_optimizer()
+        mis_result, empty_target, vertex_num, pin_set, create_mock_optimizer()
     )
     @test length(weights) == 0
 end
@@ -196,13 +278,15 @@ end
             max_result_num=1,
             save_path=temp_file
         )
-        
-        @test results isa Vector{GadgetSearch.Gadget}
+        # New API returns results grouped by truth table
+        @test results isa Vector{Vector{GadgetSearch.Gadget}}
         @test failed_tt isa Vector{BitMatrix}
-        @test length(results) <= 1  # Should respect max_result_num
+        # Should respect max_result_num on total flattened results
+        all_results = vcat(results...)
+        @test length(all_results) <= 1
         
         # Check that save file is created when results are found
-        if !isempty(results) && isfile(temp_file)
+        if !isempty(all_results) && isfile(temp_file)
             saved_data = JSON3.read(temp_file)
             @test saved_data isa Union{Vector, JSON3.Array}
             @test length(saved_data) > 0
@@ -234,9 +318,10 @@ end
             max_result_num=1,  # Should stop after 1 result
             save_path=temp_file
         )
-        
-        # Should respect the max_result_num limit
-        @test length(results) <= 1
+        # Should respect the max_result_num limit on total results
+        @test results isa Vector{Vector{GadgetSearch.Gadget}}
+        all_results = vcat(results...)
+        @test length(all_results) <= 1
         @test failed_tt isa Vector{BitMatrix}
         
     finally
@@ -266,5 +351,3 @@ end
     @test length(matched) == 2
     @test all(m isa Vector{Int} for m in matched)
 end
-
-

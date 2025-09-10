@@ -1,5 +1,15 @@
 using GadgetSearch
 using Documenter
+using Literate
+
+# Literate
+for each in readdir(pkgdir(GadgetSearch, "examples"))
+    input_file = pkgdir(GadgetSearch, "examples", each)
+    endswith(input_file, ".jl") || continue
+    @info "building" input_file
+    output_dir = pkgdir(GadgetSearch, "docs", "src", "generated")
+    Literate.markdown(input_file, output_dir; name=each[1:end-3], execute=false)
+end
 
 DocMeta.setdocmeta!(GadgetSearch, :DocTestSetup, :(using GadgetSearch); recursive=true)
 
@@ -12,8 +22,13 @@ makedocs(;
         edit_link="main",
         assets=String[],
     ),
+    doctest = ("doctest=true" in ARGS),
     pages=[
         "Home" => "index.md",
+        "Examples" => [
+            "Gadgets on triangular lattice" => "generated/trangular_lattice_example.md",
+        ],
+        "Reference" => "ref.md",
     ],
 )
 

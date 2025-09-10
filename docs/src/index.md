@@ -8,7 +8,3 @@ Documentation for [GadgetSearch](https://github.com/isPANN/GadgetSearch.jl).
 
 ```@index
 ```
-
-```@autodocs
-Modules = [GadgetSearch]
-```

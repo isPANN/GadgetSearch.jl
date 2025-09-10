@@ -92,28 +92,52 @@ end
 
 function _call_shortg(temp_path::String, mapping_file::String)
     if Sys.which("shortg") === nothing
-        error("Required external tool `shortg` not found in PATH. Please install Nauty/Traces and make sure `shortg` is accessible from the command line.")
+        # Make shortg optional: log and signal caller to fallback
+        @warn "Optional tool `shortg` not found; skipping canonicalization/dedup."
+        return false
     else
-        @info "shortg found in PATH"
+        @info "shortg found in PATH; running canonicalization"
     end
     run(pipeline(`shortg -v -u $(temp_path)`, stderr=mapping_file))
+    return true
 end
 
 function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph, Vector{Tuple{Float64, Float64}}}}, path::String)
+    # If shortg is unavailable, save directly without dedup/canonicalization.
+    if Sys.which("shortg") === nothing
+        @warn "`shortg` not found in PATH; saving graphs without deduplication."
+        save_graph(results, path)
+        return path
+    end
+
     mapping_file = tempname()
     temp_path = tempname()
 
     original_coords = getindex.(results, 2)
     save_graph(results, temp_path; g6_only=true)
 
-    _call_shortg(temp_path, mapping_file)
+    ok = _call_shortg(temp_path, mapping_file)
+    if !ok
+        # Fallback path if shortg disappeared between checks or failed early
+        @warn "Skipping canonicalization due to `shortg` issue; saving raw graphs."
+        try
+            isfile(mapping_file) && rm(mapping_file)
+            isfile(temp_path) && rm(temp_path)
+        catch
+        end
+        save_graph(results, path)
+        return path
+    end
 
     canonical_to_original, _ = _parse_shortg_mapping(mapping_file)
     
     _write_original_representatives(temp_path, canonical_to_original, original_coords, path)
 
-    rm(mapping_file)
-    rm(temp_path)
+    try
+        isfile(mapping_file) && rm(mapping_file)
+        isfile(temp_path) && rm(temp_path)
+    catch
+    end
     return path
 end
 
