@@ -35,38 +35,68 @@ function save_results_to_json(results::Vector{Gadget}, file_path::String)
     return file_path
 end
 
-function check_gadget(gadget::Gadget)
+"""
+    check_gadget(gadget::Gadget; _return_info::Bool=false)
+
+Validate a `Gadget` by enumerating its maximal independent sets (MIS) and
+reporting the maximum energy among them and the corresponding pin assignments.
+
+# Arguments
+- `gadget::Gadget`: The gadget to check.
+
+# Keyword Arguments
+- `_return_info::Bool=false`: If `true`, return a string; otherwise log with `@info`.
+
+# Returns
+- When `_return_info` is `true`, returns a formatted `String`; otherwise returns `nothing`.
+"""
+function check_gadget(gadget::Gadget; _return_info::Bool=false)
     g = gadget.graph
     weights = gadget.weights
     pins = gadget.pins
 
-    # Get all maximal independent sets (MIS), assume the result type is a Vector{UInt}
-    mis_result, mis_num = find_maximal_independent_sets(g)
+    # Basic validations
+    num_vertices = nv(g)
+    length(weights) == num_vertices || throw(ArgumentError("length(weights)=$(length(weights)) must equal nv(g)=$num_vertices"))
+    all(1 .<= pins .<= num_vertices) || throw(ArgumentError("pins must be within 1:nv(g)"))
 
-    # Calculate energy for each MIS
-    energy_value = Vector{Float64}(undef, mis_num)
-    for i in 1:mis_num
-        config = mis_result[i]
-        total = 0.0
-        for v in 1:nv(g)
+    # Enumerate MIS
+    mis_result, mis_count = find_maximal_independent_sets(g)
+    mis_count == length(mis_result) || (mis_count = length(mis_result))
+    mis_count > 0 || return _return_info ? "No maximal independent sets found." : (@info "No maximal independent sets found."; nothing)
+
+    # Helper to accumulate weights of set bits in config
+    @inline function _energy_of_config(config::Unsigned)
+        total = zero(float(eltype(weights)))
+        v = 1
+        while v <= num_vertices
             if ((config >> (v - 1)) & 0x1) == 1
                 total += weights[v]
             end
+            v += 1
         end
-        energy_value[i] = total
+        return total
     end
 
-    # Check the energy value of each MIS
-    @show energy_value
-    max_energy = maximum(energy_value)
-    max_indices = findall(x -> x == max_energy, energy_value)
+    # Compute energies
+    WeightFloat = float(eltype(weights))
+    energy_values = Vector{WeightFloat}(undef, mis_count)
+    @inbounds for i in 1:mis_count
+        energy_values[i] = _energy_of_config(mis_result[i])
+    end
 
-    @info "Max energy value: $max_energy"
+    # Find maxima
+    max_energy = maximum(energy_values)
+    max_indices = findall(==(max_energy), energy_values)
+
+    # Format report
+    lines = ["Max energy value: $(max_energy)"]
     for idx in max_indices
         config = mis_result[idx]
-        pin_values = [((config >> (p - 1)) & 0x1) for p in pins]
-        @info "MIS index: $idx, pins = $pin_values"
+        pin_values = @inbounds Int[((config >> (p - 1)) & 0x1) for p in pins]
+        push!(lines, "MaximalIS index=$(idx), pins=$(pin_values)")
     end
 
-    return nothing
+    msg = join(lines, "\n")
+    return _return_info ? msg : (@info msg; nothing)
 end

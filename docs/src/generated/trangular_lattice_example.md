@@ -4,18 +4,22 @@ EditURL = "../../../examples/trangular_lattice_example.jl"
 
 # Search for gadgets on triangular lattice
 
-````@example trangular_lattice_example
-using Pkg
-Pkg.add(["Combinatorics", "HiGHS"])
+This example demonstrates how to:
+- Search for gadgets logically equivalent to several 2-input, 1-output logic gates (OR/AND/NAND/NOR/XOR) on the triangular-lattice
+- Visualize found gadgets
+Please check [our paper (to be published)] for the searching details.
 
-using Revise
+Notes:
+- The search can be expensive. Tweak the choices of `max_samples`, lattice size, and `pin_candidates`
+
+````@example trangular_lattice_example
 using GadgetSearch
 using HiGHS
 using Combinatorics
-using FileIO
+using FileIO, ImageShow
 ````
 
-truth_table = GadgetSearch.generic_rule(110, (3, 1))
+We can simply specify the truth tables of the logic gates we want to search for.
 
 ````@example trangular_lattice_example
 truth_table = BitMatrix.([
@@ -25,14 +29,29 @@ truth_table = BitMatrix.([
     [0 0 1; 1 0 0; 0 1 0; 1 1 0],   # NOR  = not(OR)
     [0 0 0; 1 0 1; 0 1 1; 1 1 0]    # XOR
 ]);
-
-generate_full_grid_udg(Triangular(), 2, 2; path="dataset.g6")
-
-dataloader = GraphLoader("dataset.g6")
+nothing #hide
 ````
 
-Performance optimization: Reduce max_samples for faster initial search
-Increase max_samples (e.g., 1000) for thorough search if needed
+Before we start the search, we need to generate the candidate UDG dataset.
+Here we generate a 2x2 triangular-lattice UDG dataset. Here we add four boundary pins to the lattice.
+
+````@example trangular_lattice_example
+generate_full_grid_udg(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "dataset.g6"))
+````
+
+Then we load the dataset.
+
+````@example trangular_lattice_example
+dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "dataset.g6"))
+````
+
+Begin the search process:
+- Because we add four boundary pins to the lattice, we must specify both which pins are used and their order in `pin_candidates`.
+- If `allow_defect` is true, a vertex may be assigned weight 0, meaning the vertex and its associated edges can effectively be removed from the gadget.
+- The objective function minimizes the sum of vertex weights, encouraging the simplest possible gadget.
+- `max_result_num` limits how many gadgets are found for each truth table; once this limit is reached, the search for that truth table stops.
+- For each graph under a given pin assignment, the ground-state configurations may still have many possibilities, leading to a large search space. We use `max_samples` to enable early termination, though this typically results in incomplete exploration.
+- `check_connectivity` ensures that the resulting gadget remains connected.
 
 ````@example trangular_lattice_example
 results, failed = search_by_truth_tables(
@@ -43,7 +62,7 @@ results, failed = search_by_truth_tables(
            allow_defect=true,
            objective=x->sum(x),
            max_result_num=10,
-           max_samples=10000,  # Reduced from default 100 for faster execution
+           max_samples=10000,
            check_connectivity=true
        );
 
@@ -66,39 +85,63 @@ Clear cache if memory is an issue:
 GadgetSearch.clear_cache!()
 ````
 
-Plot one of the results for OR gate
+## Gadget examples on triangular lattice
+
+Note the gadget for the same truth table is not unique.
+
+### OR gate
 
 ````@example trangular_lattice_example
-GadgetSearch.plot_gadget(results[1][1], "gadget_OR.png"; show_weights=true, round_weights=true)
-display("image/png", read("gadget_OR.png"))
+outpath = pkgdir(GadgetSearch, "examples", "gadget_OR.png")
+GadgetSearch.plot_gadget(results[1][1], outpath; show_weights=true, round_weights=true)
+load(outpath)
 ````
 
-Plot one of the results for AND gate
+### AND gate
 
 ````@example trangular_lattice_example
-GadgetSearch.plot_gadget(results[2][1], "gadget_AND.png"; show_weights=true, round_weights=true)
-display("image/png", read("gadget_AND.png"))
+outpath = pkgdir(GadgetSearch, "examples", "gadget_AND.png")
+GadgetSearch.plot_gadget(results[2][1], outpath; show_weights=true, round_weights=true)
+load(outpath)
 ````
 
-Plot one of the results for NAND gate
+### NAND gate
 
 ````@example trangular_lattice_example
-GadgetSearch.plot_gadget(results[3][1], "gadget_NAND.png"; show_weights=true, round_weights=true)
-display("image/png", read("gadget_NAND.png"))
+outpath = pkgdir(GadgetSearch, "examples", "gadget_NAND.png")
+GadgetSearch.plot_gadget(results[3][1], outpath; show_weights=true, round_weights=true)
+load(outpath)
 ````
 
-Plot one of the results for NOR gate
+### NOR gate
 
 ````@example trangular_lattice_example
-GadgetSearch.plot_gadget(results[4][1], "gadget_NOR.png"; show_weights=true, round_weights=true)
-display("image/png", read("gadget_NOR.png"))
+outpath = pkgdir(GadgetSearch, "examples", "gadget_NOR.png")
+GadgetSearch.plot_gadget(results[4][1], outpath; show_weights=true, round_weights=true)
+load(outpath)
 ````
 
-Plot one of the results for XOR gate
+### XOR gate
 
 ````@example trangular_lattice_example
-GadgetSearch.plot_gadget(results[5][1], "gadget_XOR.png"; show_weights=true, round_weights=true)
-display("image/png", read("gadget_XOR.png"))
+outpath = pkgdir(GadgetSearch, "examples", "gadget_XOR.png")
+GadgetSearch.plot_gadget(results[5][1], outpath; show_weights=true, round_weights=true)
+load(outpath)
+````
+
+### Check correctness
+We can use `check_gadget` to check the correctness, i.e. the ground states, of the found gadgets.
+
+````@example trangular_lattice_example
+labels = ["OR", "AND", "NAND", "NOR", "XOR"]
+for i in 1:5
+    @info """===== Checking correctness of $(labels[i]) =====
+    => Truth table:
+    $(truth_table[i])
+    => Found gadget:
+    $(GadgetSearch.check_gadget(results[i][1]; _return_info=true))
+    """
+end
 ````
 
 ---

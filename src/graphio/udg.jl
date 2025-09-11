@@ -51,7 +51,7 @@ end
 """
     generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.g6") -> String
 
-Generate unit disk graphs on a grid lattice with boundary pins and save to file.
+Generate unit disk graphs on a grid lattice with four boundary pins and save to file.
 
 # Arguments  
 - `lattice`: Type of lattice (Square or Triangular)
