@@ -42,7 +42,7 @@ end
 
 function _generate_vertex_color(weights::AbstractVector, discrete_color_scheme, continuous_color_scheme)
     if any(w < 1 || w > length(discrete_color_scheme) || typeof(w) != Int for w in weights)
-        @info "Using continuous color scheme."
+        # @info "Using continuous color scheme."
         min_w, max_w = minimum(weights), maximum(weights)
         # generate colormap
         cmap = get(continuous_color_scheme, range(0, 1, length=length(weights)))
@@ -55,7 +55,7 @@ function _generate_vertex_color(weights::AbstractVector, discrete_color_scheme, 
             node_colors = [cmap[clamp(floor(Int, (w - min_w) / (max_w - min_w) * (length(cmap) - 1) + 1), 1, length(cmap))] for w in weights]
         end
     else
-        @info "Using discrete color scheme."
+        # @info "Using discrete color scheme."
         node_colors = [discrete_color_scheme[w] for w in weights]
     end
     return node_colors
@@ -211,11 +211,12 @@ function plot_gadget(
                       end
                       sethue("red")
                       if !isnothing(index)
-                          pos = pts[v]
-                          x, y = pos
-                          dy = y < 0 ? -20 : (y > 0 ? 20 : 0)
-                          translate(O + (0, dy))
-                          text("PIN $index", O, halign=:center, valign=:middle)
+                          # Place PIN label with a consistent vertical offset from the vertex.
+                          # Using relative coordinates avoids accumulating transforms.
+                          # If y is exactly 0, ensure a nonzero offset by preferring upward placement.
+                          y = pts[v].y
+                          dy = y >= 0 ? 20 : -20
+                          text("PIN $index", Point(0, dy), halign=:center, valign=:middle)
                       end
                   end,
                   edgestrokeweights=2,

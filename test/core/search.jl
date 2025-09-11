@@ -281,11 +281,11 @@ end
         # New API returns results grouped by truth table
         @test results isa Vector{Vector{GadgetSearch.Gadget}}
         @test failed_tt isa Vector{BitMatrix}
-        # Should respect max_result_num on total flattened results
-        all_results = vcat(results...)
-        @test length(all_results) <= 1
+        # Should respect max_result_num per truth table
+        @test all(length(r) <= 1 for r in results)
         
         # Check that save file is created when results are found
+        all_results = vcat(results...)
         if !isempty(all_results) && isfile(temp_file)
             saved_data = JSON3.read(temp_file)
             @test saved_data isa Union{Vector, JSON3.Array}
@@ -318,10 +318,9 @@ end
             max_result_num=1,  # Should stop after 1 result
             save_path=temp_file
         )
-        # Should respect the max_result_num limit on total results
+        # Should respect the max_result_num limit per truth table
         @test results isa Vector{Vector{GadgetSearch.Gadget}}
-        all_results = vcat(results...)
-        @test length(all_results) <= 1
+        @test all(length(r) <= 1 for r in results)
         @test failed_tt isa Vector{BitMatrix}
         
     finally

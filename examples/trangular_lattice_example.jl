@@ -1,11 +1,11 @@
 # # Search for gadgets on triangular lattice
-
 using Pkg
-Pkg.add(["Combinatorics", "HiGHS"])
+Pkg.activate(pkgdir(GadgetSearch)*"/docs")
 
 using GadgetSearch
 using HiGHS
 using Combinatorics
+using FileIO
 
 # truth_table = GadgetSearch.generic_rule(110, (3, 1))
 truth_table = BitMatrix.([
@@ -16,7 +16,7 @@ truth_table = BitMatrix.([
     [0 0 0; 1 0 1; 0 1 1; 1 1 0]    # XOR
 ]);
 
-generate_full_grid_udg(Triangular(), 1, 2; path="dataset.g6")
+generate_full_grid_udg(Triangular(), 2, 2; path="dataset.g6")
 
 dataloader = GraphLoader("dataset.g6")
 
@@ -32,11 +32,8 @@ results, failed = search_by_truth_tables(
            max_result_num=10,
            max_samples=10000,  # Reduced from default 100 for faster execution
            check_connectivity=true
-       )
+       );
 
-@show size(results)
-
-# Display results structure
 println("--------------------------------")
 @info "Results structure: $(length(results)) truth tables"
 for (i, tt_results) in enumerate(results)
@@ -46,13 +43,26 @@ end
 # Check cache performance
 @info "Cache statistics after search: $(GadgetSearch.get_cache_stats())"
 
-# Uncomment to clear cache if memory is an issue:
-# GadgetSearch.clear_cache!()
+# Clear cache if memory is an issue:
+GadgetSearch.clear_cache!()
 
-# Plot gadgets for each truth table
-for (tt_idx, tt_results) in enumerate(results)
-    for (gadget_idx, gadget) in enumerate(tt_results)
-        GadgetSearch.plot_gadget(gadget, "gadget$(tt_idx)_$(gadget_idx).pdf"; show_weights=true)
-    end
-end
+# Plot one of the results for OR gate
+GadgetSearch.plot_gadget(results[1][1], "gadget_OR.png"; show_weights=true, round_weights=true)
+display("image/png", read("gadget_OR.png"))
+
+# Plot one of the results for AND gate
+GadgetSearch.plot_gadget(results[2][1], "gadget_AND.png"; show_weights=true, round_weights=true)
+display("image/png", read("gadget_AND.png"))
+
+# Plot one of the results for NAND gate
+GadgetSearch.plot_gadget(results[3][1], "gadget_NAND.png"; show_weights=true, round_weights=true)
+display("image/png", read("gadget_NAND.png"))
+
+# Plot one of the results for NOR gate
+GadgetSearch.plot_gadget(results[4][1], "gadget_NOR.png"; show_weights=true, round_weights=true)
+display("image/png", read("gadget_NOR.png"))
+
+# Plot one of the results for XOR gate
+GadgetSearch.plot_gadget(results[5][1], "gadget_XOR.png"; show_weights=true, round_weights=true)
+display("image/png", read("gadget_XOR.png"))
 

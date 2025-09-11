@@ -47,6 +47,7 @@ Search for multiple truth tables by reusing the graph search functionality.
 - `save_path::String="results.json"`: Path to save intermediate results
 - `pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing`: Candidate pin combinations
 - `check_connectivity::Bool=true`: Whether to check graph connectivity after removing zero-weight vertices
+ - `max_result_num::Int=1`: Maximum number of results per truth table (per-TT limit)
 
 # Returns
 - `Tuple{Vector{Vector{Gadget}}, Vector{BitMatrix}}`: Found gadgets grouped by truth table and failed truth tables
@@ -72,6 +73,7 @@ function search_by_truth_tables(
         results[i] = Gadget[]
     end
     failed_tt = BitMatrix[]
+    # Track total only for logging if needed (not for limiting)
     total_found = 0
 
     # Performance monitoring
@@ -80,14 +82,7 @@ function search_by_truth_tables(
 
     for (i, tt) in enumerate(truth_tables)
         tt_start = time()
-        @info "searching for truth table: index $(i-1) [$total_found/$max_result_num found total]"
-        
-        # Calculate how many more results we need globally
-        remaining_results = max_result_num - total_found
-        if remaining_results <= 0
-            @info "Max result number reached, stopping search"
-            break
-        end
+        @info "searching for truth table: index $(i-1) [limit per TT=$max_result_num]"
         
         filter_fn = make_filter(tt, optimizer, env;
                                 connected=connected,
@@ -96,8 +91,8 @@ function search_by_truth_tables(
                                 max_samples=max_samples,
                                 pin_candidates=pin_candidates,
                                 check_connectivity=check_connectivity)
-        # Pass remaining_results as max_results for early termination
-        gadgets = find_matching_gadget(loader; filter=filter_fn, limit=limit, max_results=remaining_results)
+        # Limit results per truth table
+        gadgets = find_matching_gadget(loader; filter=filter_fn, limit=limit, max_results=max_result_num)
         
         tt_time = time() - tt_start
         @info "Truth table $(i-1) processed in $(round(tt_time, digits=2))s, found $(length(gadgets)) gadgets"
@@ -110,9 +105,6 @@ function search_by_truth_tables(
             # Save all results in flattened format for backward compatibility
             all_gadgets = vcat(results...)
             save_results_to_json(all_gadgets, save_path)
-            
-            # Break if we've reached the limit
-            total_found >= max_result_num && break
         else
             push!(failed_tt, tt)
         end
