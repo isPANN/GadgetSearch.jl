@@ -201,15 +201,15 @@ end
         
         # The function should now handle missing shortg gracefully (with a warning)
         # It will either succeed with shortg or save raw graphs without deduplication
-        result = generate_full_grid_udg(square, nx, ny; path=temp_file)
-        
+            result = generate_full_grid_udg(square, nx, ny; path=temp_file)
+            
         # Check the result
-        @test typeof(result) == String
-        @test result == temp_file
-        
-        # Clean up
-        if isfile(temp_file)
-            rm(temp_file)
+            @test typeof(result) == String
+            @test result == temp_file
+            
+            # Clean up
+            if isfile(temp_file)
+                rm(temp_file)
         end
     end
     

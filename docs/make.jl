@@ -26,7 +26,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Examples" => [
-            "Gadgets on triangular lattice" => "generated/trangular_lattice_example.md",
+            "Rydberg Gadgets on Triangular Lattice" => "generated/trangular_Rydberg_example.md",
+            "QUBO Gadgets on Triangular Lattice" => "generated/triangular_QUBO_example.md",
         ],
         "Reference" => "ref.md",
     ],
