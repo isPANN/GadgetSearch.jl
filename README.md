@@ -6,14 +6,6 @@
 
 A Julia package for searching computational gadgets in graph structures. This package finds weighted graphs that implement logic functions through their energy landscapes, supporting both **Rydberg atom** (MIS-based) and **QUBO** (general binary optimization) models.
 
-## Features
-
-- **Dual Energy Models**: Support for Rydberg (MIS) and QUBO (full state space) searches
-- **Flexible Constraints**: Truth tables or explicit state constraints
-- **Graph Generation**: Unit Disk Graphs (UDG) and complete graphs on lattices
-- **Visualization**: Render gadgets with weights, pins, and ground states
-- **Efficient Caching**: MIS computation caching for performance
-
 ## Installation
 
 ```julia
@@ -21,14 +13,21 @@ using Pkg
 Pkg.add("GadgetSearch")
 ```
 
+## Architecture
+
+![Architecture](docs/assets/pipeline.png)
+
+
 ## Energy Models
 
 GadgetSearch supports two energy models for gadget search:
 
 | Model | State Space | Energy Function | Use Case |
 |-------|-------------|-----------------|----------|
-| `RydbergModel` | Maximal Independent Sets (MIS) | E(σ) = Σᵢ hᵢσᵢ | Rydberg atom arrays |
-| `QUBOModel` | All 2ⁿ binary states | E(σ) = Σᵢ hᵢσᵢ + Σᵢⱼ Jᵢⱼσᵢσⱼ | General QUBO problems |
+| `RydbergModel` | Maximal Independent Sets (MIS) | $E(\boldsymbol{\sigma})=\sum_{i=1}^{n} h_i \sigma_i$ | Rydberg atom arrays |
+| `QUBOModel` | All 2ⁿ binary states | $E(\boldsymbol{\sigma})=\sum_{i=1}^{n} h_i \sigma_i + \sum_{i,j} J_{ij} \sigma_i \sigma_j$ | General QUBO problems |
+
+Here, $\boldsymbol{\sigma} = (\sigma_1, \sigma_2, \ldots, \sigma_n)$ is the binary state vector, $h_i$ is the vertex weight, and $J_{ij}$ is the edge weight.
 
 ## Quick Start
 
@@ -67,12 +66,10 @@ using GadgetSearch, HiGHS
 generate_full_grid_graph(Triangular(), 2, 3; path="qubo_graphs.g6")
 loader = GraphLoader("qubo_graphs.g6")
 
-# Define truth table constraints (ground states as rows)
+# Define state constraints (explicit ground states)
 constraints = [
-    # OR-like: pins 1,2 are inputs, pin 3 is output
-    TruthTableConstraint(Bool[0 0 1; 0 1 1; 1 0 1; 1 1 1]),
-    # AND-like: output=1 only when both inputs=1
-    TruthTableConstraint(Bool[0 0 0; 0 1 0; 1 0 0; 1 1 1])
+    StateConstraint(["001", "011", "101", "111"]),  # OR-like
+    StateConstraint(["000", "010", "100", "111"])   # AND-like
 ]
 
 # Search using QUBO model
@@ -100,7 +97,8 @@ end
 - `QUBOModel`: Full 2ⁿ state space, vertex + edge weights
 
 ### Constraint Types
-- `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table (each row is a ground state)
+- `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table
+- `StateConstraint(::Vector{String})`: Define ground states explicitly (e.g., `["00", "11"]`)
 
 ### Gadget
 ```julia
@@ -122,8 +120,9 @@ end
 # Unified search interface
 search_gadgets(ModelType, loader, constraints; kwargs...)
 
-# Convenience wrapper
+# Convenience wrappers
 search_by_truth_tables(loader, truth_tables; ...)      # Rydberg
+search_by_state_constraints(loader, constraints; ...)  # QUBO
 ```
 
 ### Graph Generation
@@ -139,18 +138,8 @@ generate_full_grid_graph(Square(), nx, ny; path="complete.g6")
 
 ### Visualization
 ```julia
-# Plot Rydberg gadget (vertex weights only)
-plot_gadget(rydberg_gadget, "rydberg.png"; 
-    show_weights=true, 
-    round_weights=true
-)
-
-# Plot QUBO gadget (vertex + edge weights)
-plot_gadget(qubo_gadget, "qubo.png"; 
-    show_weights=true,        # Show vertex weights
-    show_edge_weights=true,   # Show edge weights (QUBO)
-    round_weights=true
-)
+# Plot gadget with weights
+plot_gadget(gadget, "output.png"; show_weights=true, round_weights=true)
 
 # Verify gadget correctness
 check_gadget_rydberg(gadget)  # Using MIS state space

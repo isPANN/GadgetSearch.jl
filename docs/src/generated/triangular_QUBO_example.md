@@ -11,7 +11,7 @@ This example demonstrates how to search for **QUBO gadgets** using:
 
 Notes:
 - QUBO search is more general but computationally more expensive
-- Truth table constraints specify ground states as rows of a BitMatrix
+- State constraints are specified directly as ground state strings
 
 ````@example triangular_QUBO_example
 using GadgetSearch
@@ -26,27 +26,9 @@ Format: TruthTableConstraint(BitMatrix) where each row is a ground state
 
 ````@example triangular_QUBO_example
 constraints = [
-    # OR-like: ground states when output=1 for inputs (0,1), (1,0), (1,1)
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 1;
-        1 0 1;
-        1 1 1
-    ]),
-    # AND-like: ground states when output=1 only for input (1,1)
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 0;
-        1 0 0;
-        1 1 1
-    ]),
-    # XOR-like: ground states when output=1 for inputs with odd number of 1s
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 1;
-        1 0 1;
-        1 1 0
-    ]),
+    TruthTableConstraint(Bool[0 0 0; 0 1 1; 1 0 1; 1 1 1]),  # OR-like
+    TruthTableConstraint(Bool[0 0 0; 0 1 0; 1 0 0; 1 1 1]),  # AND-like
+    TruthTableConstraint(Bool[0 0 0; 0 1 1; 1 0 1; 1 1 0])   # XOR-like
 ]
 ````
 
@@ -54,7 +36,7 @@ Generate Complete Graph dataset on triangular lattice
 All vertices are connected (no distance restriction like UDG)
 
 ````@example triangular_QUBO_example
-generate_full_grid_graph(Triangular(), 2, 3; path=pkgdir(GadgetSearch, "examples", "qubo_dataset.g6"))
+generate_full_grid_graph(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "qubo_dataset.g6"))
 
 dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "qubo_dataset.g6"))
 ````
@@ -71,7 +53,6 @@ results, failed = search_gadgets(
     constraints;
     optimizer=HiGHS.Optimizer,
     allow_defect=true,
-    objective=(h, J) -> sum(h) + sum(J),  # Minimize total weights (linear)
     save_path=joinpath(pkgdir(GadgetSearch, "examples"), "triangular_QUBO_results.json"),
     max_result_num=5,
     max_samples=5000,
@@ -106,8 +87,12 @@ for (i, label) in enumerate(labels)
         Edge weights (J): $(gadget.edge_weights)
         Edge list: $(gadget.edge_list)
         """
-        outpath = pkgdir(GadgetSearch, "examples", "qubo_gadget_$(i).png")
-        GadgetSearch.plot_gadget(gadget, outpath; show_weights=true, round_weights=true)
+        outpath = pkgdir(GadgetSearch, "examples", "qubo_gadget_$(label).png")
+        GadgetSearch.plot_gadget(gadget, outpath;
+            show_weights=true,           # Show vertex weights
+            show_edge_weights=true,      # Show edge weights (QUBO specific)
+            round_weights=true
+        )
         @info "Saved to $outpath"
     end
 end

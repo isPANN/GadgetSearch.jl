@@ -17,29 +17,10 @@ using FileIO, ImageShow
 # Define truth table constraints for QUBO
 # Each constraint specifies which pin configurations should be ground states
 # Format: TruthTableConstraint(BitMatrix) where each row is a ground state
-
 constraints = [
-    # OR-like: ground states when output=1 for inputs (0,1), (1,0), (1,1)
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 1;
-        1 0 1;
-        1 1 1
-    ]),
-    # AND-like: ground states when output=1 only for input (1,1)
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 0;
-        1 0 0;
-        1 1 1
-    ]),
-    # XOR-like: ground states when output=1 for inputs with odd number of 1s
-    TruthTableConstraint(Bool[
-        0 0 0;
-        0 1 1;
-        1 0 1;
-        1 1 0
-    ]),
+    TruthTableConstraint(Bool[0 0 0; 0 1 1; 1 0 1; 1 1 1]),  # OR-like
+    TruthTableConstraint(Bool[0 0 0; 0 1 0; 1 0 0; 1 1 1]),  # AND-like
+    TruthTableConstraint(Bool[0 0 0; 0 1 1; 1 0 1; 1 1 0])   # XOR-like
 ]
 
 # Generate Complete Graph dataset on triangular lattice
