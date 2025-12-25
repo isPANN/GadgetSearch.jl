@@ -11,7 +11,7 @@ This example demonstrates how to search for **QUBO gadgets** using:
 
 Notes:
 - QUBO search is more general but computationally more expensive
-- State constraints are specified directly as ground state strings
+- Truth table constraints specify ground states as rows of a BitMatrix
 
 ````@example triangular_QUBO_example
 using GadgetSearch
@@ -20,15 +20,33 @@ using Combinatorics
 using FileIO, ImageShow
 ````
 
-Define state constraints for QUBO
+Define truth table constraints for QUBO
 Each constraint specifies which pin configurations should be ground states
-Format: StateConstraint(["pin1pin2pin3", ...])
+Format: TruthTableConstraint(BitMatrix) where each row is a ground state
 
 ````@example triangular_QUBO_example
 constraints = [
-    StateConstraint(["001", "011", "101", "111"]),  # OR-like: ground states when output=1 for inputs (0,1), (1,0), (1,1)
-    StateConstraint(["000", "010", "100", "111"]),  # AND-like: ground states when output=1 only for input (1,1)
-    StateConstraint(["000", "011", "101", "110"]),  # XOR-like: ground states when output=1 for inputs with odd number of 1s
+    # OR-like: ground states when output=1 for inputs (0,1), (1,0), (1,1)
+    TruthTableConstraint(Bool[
+        0 0 0;
+        0 1 1;
+        1 0 1;
+        1 1 1
+    ]),
+    # AND-like: ground states when output=1 only for input (1,1)
+    TruthTableConstraint(Bool[
+        0 0 0;
+        0 1 0;
+        1 0 0;
+        1 1 1
+    ]),
+    # XOR-like: ground states when output=1 for inputs with odd number of 1s
+    TruthTableConstraint(Bool[
+        0 0 0;
+        0 1 1;
+        1 0 1;
+        1 1 0
+    ]),
 ]
 ````
 
@@ -82,7 +100,7 @@ for (i, label) in enumerate(labels)
     if !isempty(results[i])
         gadget = results[i][1]
         @info """===== Found QUBO gadget for '$label' =====
-        Constraint: $(gadget.constraint.ground_states)
+        Constraint: $(gadget.ground_states)
         Pins: $(gadget.pins)
         Vertex weights (h): $(gadget.vertex_weights)
         Edge weights (J): $(gadget.edge_weights)

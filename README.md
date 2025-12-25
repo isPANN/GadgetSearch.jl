@@ -67,10 +67,12 @@ using GadgetSearch, HiGHS
 generate_full_grid_graph(Triangular(), 2, 3; path="qubo_graphs.g6")
 loader = GraphLoader("qubo_graphs.g6")
 
-# Define state constraints (explicit ground states)
+# Define truth table constraints (ground states as rows)
 constraints = [
-    StateConstraint(["001", "011", "101", "111"]),  # OR-like
-    StateConstraint(["000", "010", "100", "111"])   # AND-like
+    # OR-like: pins 1,2 are inputs, pin 3 is output
+    TruthTableConstraint(Bool[0 0 1; 0 1 1; 1 0 1; 1 1 1]),
+    # AND-like: output=1 only when both inputs=1
+    TruthTableConstraint(Bool[0 0 0; 0 1 0; 1 0 0; 1 1 1])
 ]
 
 # Search using QUBO model
@@ -98,8 +100,7 @@ end
 - `QUBOModel`: Full 2ⁿ state space, vertex + edge weights
 
 ### Constraint Types
-- `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table
-- `StateConstraint(::Vector{String})`: Define ground states explicitly (e.g., `["00", "11"]`)
+- `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table (each row is a ground state)
 
 ### Gadget
 ```julia
@@ -121,9 +122,8 @@ end
 # Unified search interface
 search_gadgets(ModelType, loader, constraints; kwargs...)
 
-# Convenience wrappers
+# Convenience wrapper
 search_by_truth_tables(loader, truth_tables; ...)      # Rydberg
-search_by_state_constraints(loader, constraints; ...)  # QUBO
 ```
 
 ### Graph Generation
@@ -139,8 +139,18 @@ generate_full_grid_graph(Square(), nx, ny; path="complete.g6")
 
 ### Visualization
 ```julia
-# Plot gadget with weights
-plot_gadget(gadget, "output.png"; show_weights=true, round_weights=true)
+# Plot Rydberg gadget (vertex weights only)
+plot_gadget(rydberg_gadget, "rydberg.png"; 
+    show_weights=true, 
+    round_weights=true
+)
+
+# Plot QUBO gadget (vertex + edge weights)
+plot_gadget(qubo_gadget, "qubo.png"; 
+    show_weights=true,        # Show vertex weights
+    show_edge_weights=true,   # Show edge weights (QUBO)
+    round_weights=true
+)
 
 # Verify gadget correctness
 check_gadget_rydberg(gadget)  # Using MIS state space

@@ -43,12 +43,11 @@ export save_results_to_json
 export EnergyModel, RydbergModel, QUBOModel
 
 # Constraint types
-export GadgetConstraint, TruthTableConstraint, StateConstraint
+export GadgetConstraint, TruthTableConstraint
 
 # Search functions
 export search_gadgets
 export search_by_truth_tables
-export search_by_state_constraints
 
 # Visualization
 export get_radius

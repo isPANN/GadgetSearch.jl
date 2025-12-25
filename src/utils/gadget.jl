@@ -98,7 +98,8 @@ function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:En
 
     # Find maxima (for MIS we maximize, for QUBO we might want to check ground states differently)
     max_energy = maximum(energy_values)
-    max_indices = findall(==(max_energy), energy_values)
+    # Use approximate equality for floating point comparison (tolerance 1e-6)
+    max_indices = findall(e -> abs(e - max_energy) < 1e-6, energy_values)
 
     # Format report
     model_name = model === RydbergModel ? "Rydberg (MIS)" : "QUBO (Full)"

@@ -139,6 +139,7 @@ function plot_gadget(
                             preserve_aspect_ratio=true, 
                             background_grid=false,
                             show_weights=true,
+                            show_edge_weights=true,
                             round_weights=false,
                             discrete_color_scheme=ColorSchemes.seaborn_bright, 
                             continuous_color_scheme=ColorSchemes.viridis
@@ -151,11 +152,28 @@ function plot_gadget(
     # Create mapping from old vertex indices to new ones
     old_to_new = Dict(v => i for (i, v) in enumerate(valid_vertices))
     
-    # Add edges between valid vertices
-    for e in edges(gadget.graph)
-        src, dst = Graphs.src(e), Graphs.dst(e)
-        if src in valid_vertices && dst in valid_vertices
-            add_edge!(new_graph, old_to_new[src], old_to_new[dst])
+    # Track edge weights for QUBO gadgets
+    has_edge_weights = !isempty(gadget.edge_weights)
+    edge_weight_map = Dict{Tuple{Int,Int}, Float64}()
+    
+    # Add edges between valid vertices and map edge weights
+    if has_edge_weights
+        for (idx, (src, dst)) in enumerate(gadget.edge_list)
+            if src in valid_vertices && dst in valid_vertices
+                new_src = old_to_new[src]
+                new_dst = old_to_new[dst]
+                add_edge!(new_graph, new_src, new_dst)
+                # Store edge weight (normalized order)
+                edge_key = new_src < new_dst ? (new_src, new_dst) : (new_dst, new_src)
+                edge_weight_map[edge_key] = gadget.edge_weights[idx]
+            end
+        end
+    else
+        for e in edges(gadget.graph)
+            src, dst = Graphs.src(e), Graphs.dst(e)
+            if src in valid_vertices && dst in valid_vertices
+                add_edge!(new_graph, old_to_new[src], old_to_new[dst])
+            end
         end
     end
     
@@ -166,7 +184,7 @@ function plot_gadget(
     # Create new positions array
     new_pos = gadget.pos[valid_vertices]
     
-    # Create new gadget with filtered data
+    # Create new gadget with filtered data (for compatibility)
     new_gadget = Gadget(gadget.ground_states, new_graph, new_pins, new_weights, new_pos)
 
     x_new_vals, y_new_vals, x_scale_factor, y_scale_factor = _map_and_scale(new_gadget, plot_size, plot_size, margin, preserve_aspect_ratio)
@@ -194,6 +212,54 @@ function plot_gadget(
         pts = [Point(x*x_scale_factor, y*y_scale_factor) for (x,y) in zip(x_new_vals, y_new_vals)]
         node_colors = _generate_vertex_color(new_gadget.weights, discrete_color_scheme, continuous_color_scheme)
 
+        # Draw edges first (so edge labels appear below vertices)
+        if has_edge_weights && show_edge_weights
+            for e in edges(new_graph)
+                src, dst = Graphs.src(e), Graphs.dst(e)
+                edge_key = src < dst ? (src, dst) : (dst, src)
+                
+                # Draw edge
+                sethue("black")
+                setline(2)
+                line(pts[src], pts[dst], :stroke)
+                
+                # Draw edge weight label offset from edge
+                if haskey(edge_weight_map, edge_key)
+                    weight = edge_weight_map[edge_key]
+                    
+                    # Calculate midpoint
+                    mid_x = (pts[src].x + pts[dst].x) / 2
+                    mid_y = (pts[src].y + pts[dst].y) / 2
+                    
+                    # Calculate perpendicular offset direction
+                    dx = pts[dst].x - pts[src].x
+                    dy = pts[dst].y - pts[src].y
+                    length = sqrt(dx^2 + dy^2)
+                    
+                    # Perpendicular vector (rotated 90 degrees)
+                    perp_x = -dy / length
+                    perp_y = dx / length
+                    
+                    # Offset distance (adjust based on edge direction to avoid overlap)
+                    offset = 12
+                    label_point = Point(mid_x + perp_x * offset, mid_y + perp_y * offset)
+                    
+                    # Background for text
+                    sethue("white")
+                    fontsize(11)
+                    weight_text = round_weights ? string(round(Int, weight)) : string(weight)
+                    text_width = textextents(weight_text)[3]
+                    text_height = textextents(weight_text)[4]
+                    box(label_point, text_width + 4, text_height + 4, :fill)
+                    
+                    # Draw text
+                    sethue("blue")
+                    fontsize(11)
+                    text(weight_text, label_point, halign=:center, valign=:middle)
+                end
+            end
+        end
+
         drawgraph(new_gadget.graph,
                   vertexfunction=(v, c) -> begin
                       index = findfirst(==(v), new_gadget.pins)
@@ -219,7 +285,7 @@ function plot_gadget(
                           text("PIN $index", Point(0, dy), halign=:center, valign=:middle)
                       end
                   end,
-                  edgestrokeweights=2,
+                  edgestrokeweights=has_edge_weights && show_edge_weights ? 0 : 2,  # Hide edges if we drew them manually
                   layout=pts,
                  )
     end

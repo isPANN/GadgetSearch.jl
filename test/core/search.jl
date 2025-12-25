@@ -385,25 +385,11 @@ end
 
 @testset "GadgetConstraint types" begin
     @test GadgetSearch.TruthTableConstraint <: GadgetSearch.GadgetConstraint
-    @test GadgetSearch.StateConstraint <: GadgetSearch.GadgetConstraint
     
     # Test TruthTableConstraint
     tt = BitMatrix([1 0; 0 1])
     ttc = GadgetSearch.TruthTableConstraint(tt)
     @test GadgetSearch.get_pin_num(ttc) == 2
-    
-    # Test StateConstraint
-    sc = GadgetSearch.StateConstraint(["00", "11"])
-    @test sc.pin_num == 2
-    @test GadgetSearch.get_pin_num(sc) == 2
-end
-
-@testset "StateConstraint conversion" begin
-    tt = BitMatrix([1 0; 0 1])
-    ttc = GadgetSearch.TruthTableConstraint(tt)
-    sc = GadgetSearch.to_state_constraint(ttc)
-    @test sc isa GadgetSearch.StateConstraint
-    @test Set(sc.ground_states) == Set(["10", "01"])
 end
 
 @testset "get_state_space" begin

@@ -85,42 +85,8 @@ end
 # Convenience constructor from BitMatrix
 TruthTableConstraint(tt::Matrix{Bool}) = TruthTableConstraint(BitMatrix(tt))
 
-"""
-    StateConstraint <: GadgetConstraint
-
-Constraint defined by explicit ground state strings (for general QUBO).
-
-# Fields
-- `ground_states::Vector{String}`: States that should have equal minimum energy (e.g., ["00", "01", "11"])
-- `pin_num::Int`: Number of pin bits
-"""
-struct StateConstraint <: GadgetConstraint
-    ground_states::Vector{String}
-    pin_num::Int
-    
-    function StateConstraint(ground_states::Vector{String})
-        isempty(ground_states) && error("ground_states cannot be empty")
-        pin_num = length(ground_states[1])
-        all(s -> length(s) == pin_num, ground_states) || error("All ground states must have same length")
-        new(ground_states, pin_num)
-    end
-end
-
 # Get pin number from constraint
 get_pin_num(c::TruthTableConstraint) = size(c.truth_table, 2)
-get_pin_num(c::StateConstraint) = c.pin_num
-
-# Convert TruthTableConstraint to StateConstraint for unified processing
-function to_state_constraint(c::TruthTableConstraint)::StateConstraint
-    tt = c.truth_table
-    ground_states = String[]
-    for row in 1:size(tt, 1)
-        push!(ground_states, join(string.(Int.(tt[row, :]))))
-    end
-    return StateConstraint(ground_states)
-end
-
-to_state_constraint(c::StateConstraint) = c
 
 # ============================================================================
 # Unified Gadget Types
@@ -180,21 +146,7 @@ function Base.getproperty(g::Gadget, s::Symbol)
         return getfield(g, :vertex_weights)
     elseif s == :ground_states
         c = getfield(g, :constraint)
-        if c isa TruthTableConstraint
-            return c.truth_table
-        else
-            # Convert StateConstraint to BitMatrix
-            gs = c.ground_states
-            n = length(gs)
-            m = length(gs[1])
-            tt = BitMatrix(undef, n, m)
-            for (i, s) in enumerate(gs)
-                for (j, c) in enumerate(s)
-                    tt[i, j] = c == '1'
-                end
-            end
-            return tt
-        end
+        return c.truth_table
     else
         return getfield(g, s)
     end
@@ -276,24 +228,6 @@ end
 # ============================================================================
 
 """
-    parse_state_string(s::String) -> UInt32
-
-Parse a state string like "01" or "110" to a bit mask.
-The leftmost character is bit 0 (LSB).
-"""
-function parse_state_string(s::String)::UInt32
-    mask::UInt32 = 0
-    for (i, c) in enumerate(s)
-        if c == '1'
-            mask |= UInt32(1) << (i - 1)
-        elseif c != '0'
-            error("Invalid character in state string: $c")
-        end
-    end
-    return mask
-end
-
-"""
     match_constraint_to_states(states, constraint, pin_set)
 
 Match constraint ground states to full graph states based on pin configuration.
@@ -303,18 +237,26 @@ Match constraint ground states to full graph states based on pin configuration.
 """
 function match_constraint_to_states(
     states::Vector{UInt32}, 
-    constraint::GadgetConstraint, 
+    constraint::TruthTableConstraint, 
     pin_set::Vector{Int}
 )::Vector{Vector{Int}}
     
-    sc = to_state_constraint(constraint)
-    length(pin_set) != sc.pin_num && 
-        error("Pin set length $(length(pin_set)) != constraint pin_num $(sc.pin_num)")
+    tt = constraint.truth_table
+    pin_num = size(tt, 2)
+    length(pin_set) != pin_num && 
+        error("Pin set length $(length(pin_set)) != constraint pin_num $(pin_num)")
     
-    result = Vector{Vector{Int}}(undef, length(sc.ground_states))
+    num_ground_states = size(tt, 1)
+    result = Vector{Vector{Int}}(undef, num_ground_states)
     
-    for (gs_idx, gs_str) in enumerate(sc.ground_states)
-        target_mask = parse_state_string(gs_str)
+    for gs_idx in 1:num_ground_states
+        # Convert truth table row to target mask
+        target_mask::UInt32 = 0
+        for (bit_pos, val) in enumerate(tt[gs_idx, :])
+            if val
+                target_mask |= UInt32(1) << (bit_pos - 1)
+            end
+        end
         
         matches = Int[]
         for (state_idx, state) in enumerate(states)
@@ -562,11 +504,7 @@ function _find_weights(
     set_string_names_on_creation(model, false)
 
     # Vertex weights (h_i)
-    if allow_defect
-        h = @variable(model, [i=1:vertex_num], lower_bound = i in pin_set ? 1 : 0, Int)
-    else
-        @variable(model, h[1:vertex_num] >= 1, Int)
-    end
+    @variable(model, h[1:vertex_num], Int)
     
     # Edge weights (J_ij)
     edge_num = length(edge_list)
@@ -605,6 +543,11 @@ function _find_weights(
         vertex_weights = [value(h[v]) for v in 1:vertex_num]
         edge_weights = edge_num > 0 ? [value(J[e]) for e in 1:edge_num] : Float64[]
         
+        for i in pin_set
+            if vertex_weights[i] == 0
+                return nothing
+            end
+        end
         if check_connectivity
             zero_weight_vertices = findall(w -> abs(w) < 1e-6, vertex_weights)
             
@@ -825,19 +768,6 @@ function search_by_truth_tables(
     results, failed = search_gadgets(RydbergModel, loader, constraints; kwargs...)
     failed_tt = [f.truth_table for f in failed]
     return results, failed_tt
-end
-
-"""
-    search_by_state_constraints(loader, constraints; kwargs...)
-
-Search for QUBO gadgets by state constraints (convenience function).
-"""
-function search_by_state_constraints(
-    loader::GraphLoader,
-    constraints::Vector{StateConstraint};
-    kwargs...
-)
-    return search_gadgets(QUBOModel, loader, constraints; kwargs...)
 end
 
 """
