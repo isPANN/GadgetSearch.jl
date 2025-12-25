@@ -96,22 +96,28 @@ end
     g = SimpleGraph(3)
     add_edge!(g, 1, 2); add_edge!(g, 1, 3); add_edge!(g, 2, 3)
     pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
-    weights, tt, pins = filter_fn(g, pos, nothing)
-    @test tt == truth_table
-    if weights !== nothing
-        @test pins == [1, 2]
+    result = filter_fn(g, pos, nothing)
+    # New API returns Gadget or nothing
+    @test result === nothing || result isa GadgetSearch.Gadget
+    if result !== nothing
+        @test result.pins == [1, 2]
     end
 end
 
 @testset "solve_weight_enumerate - sampling path" begin
     # Construct a case where combinations exceed max_samples to trigger sampling
+    # Need to provide a graph for the new API
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    
     mis_result = UInt32[0x1, 0x2, 0x4, 0x3, 0x5, 0x6]
     target_mis_indices_all = [collect(1:3), collect(1:3)]  # 9 combinations
     vertex_num = 3
     pin_set = [1, 2]
     w = GadgetSearch.solve_weight_enumerate(mis_result, target_mis_indices_all, vertex_num,
                                             pin_set, create_mock_optimizer(), nothing, nothing,
-                                            false, 1)  # max_samples=1 forces sampling path
+                                            false, 1, g, false)  # max_samples=1 forces sampling path
     @test w isa Vector{Float64}
     @test length(w) == vertex_num || isempty(w)
 end
@@ -120,12 +126,14 @@ end
     # Build a loader and a filter that always returns a result
     loader = create_test_loader()
     simple_filter = function(g, pos, pins)
-        # Return weights sized to the graph to avoid inconsistencies
-        return (ones(Float64, nv(g)), BitMatrix([1 0; 0 1]), [1, 2])
+        # Return a Gadget to match the new API
+        constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+        return GadgetSearch.Gadget(GadgetSearch.RydbergModel, constraint, g, [1, 2], ones(Float64, nv(g)), pos)
     end
     res = GadgetSearch.find_matching_gadget(loader; filter=simple_filter, max_results=1)
     @test length(res) == 1
 end
+
 @testset "find_maximal_independent_sets" begin
     # Test with a simple triangle graph
     g = SimpleGraph(3)
@@ -167,28 +175,40 @@ end
     @test result[3] == [2]  # Mask 0x3 (011) matches pattern 11 at positions [1,2]
 end
 
-@testset "_find_weight" begin
-    # Test with simple case
+@testset "_find_weights - RydbergModel" begin
+    # Test with simple case using new API
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    
     vertex_num = 3
-    target_masks = UInt32[0x1, 0x2]  # Masks that should have equal energy
-    wrong_masks = UInt32[0x4]        # Mask that should have higher energy
+    edge_list = [(1, 2), (2, 3)]
+    target_states = UInt32[0x1, 0x2]  # States that should have equal energy
+    wrong_states = UInt32[0x4]        # State that should have higher energy
     optimizer = create_mock_optimizer()
     pin_set = [1, 2]
     
-    weights = GadgetSearch._find_weight(
-        vertex_num, pin_set, target_masks, wrong_masks, optimizer, nothing, nothing, false, nothing, false
+    result = GadgetSearch._find_weights(
+        GadgetSearch.RydbergModel,
+        vertex_num, edge_list, pin_set, target_states, wrong_states, 
+        optimizer, nothing, nothing, false, g, false
     )
     
     # Check that we get a result (weights should be found for this simple case)
-    @test length(weights) == vertex_num || length(weights) == 0
-    
-    if length(weights) > 0
-        @test all(w >= 1.0 for w in weights)  # All weights should be >= 1
+    if result !== nothing
+        @test length(result) == vertex_num
+        @test all(w >= 1.0 for w in result)  # All weights should be >= 1
+    else
+        @test result === nothing  # Also valid if no solution found
     end
 end
 
 @testset "solve_weight_enumerate" begin
-    # Test with simple MIS result
+    # Test with simple MIS result - need to provide graph now
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    
     mis_result = UInt32[0x1, 0x2, 0x4]
     target_mis_indices_all = [[1], [2]]  # Simple target indices
     vertex_num = 3
@@ -196,7 +216,8 @@ end
     pin_set = [1, 2]
     
     weights = GadgetSearch.solve_weight_enumerate(
-        mis_result, target_mis_indices_all, vertex_num, pin_set, optimizer
+        mis_result, target_mis_indices_all, vertex_num, pin_set, optimizer,
+        nothing, nothing, false, 1000, g, false
     )
     
     # Should return weights or empty vector
@@ -205,6 +226,9 @@ end
 end
 
 @testset "solve_weight_enumerate - error handling" begin
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+    
     # Test error when optimizer is nothing
     mis_result = UInt32[0x1, 0x2]
     target_mis_indices_all = [[1], [2]]
@@ -212,13 +236,15 @@ end
     pin_set = [1, 2]
     
     @test_throws ErrorException GadgetSearch.solve_weight_enumerate(
-        mis_result, target_mis_indices_all, vertex_num, pin_set, nothing
+        mis_result, target_mis_indices_all, vertex_num, pin_set, nothing,
+        nothing, nothing, false, 1000, g, false
     )
     
     # Test empty target indices
     empty_target = [Int[], [1]]
     weights = GadgetSearch.solve_weight_enumerate(
-        mis_result, empty_target, vertex_num, pin_set, create_mock_optimizer()
+        mis_result, empty_target, vertex_num, pin_set, create_mock_optimizer(),
+        nothing, nothing, false, 1000, g, false
     )
     @test length(weights) == 0
 end
@@ -247,16 +273,16 @@ end
     pos = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
     pin_set = [1, 2]
     
-    # Test filter function (may return nothing if no solution found)
+    # Test filter function - now returns Gadget or nothing
     result = filter_fn(g, pos, pin_set)
-    @test result isa Tuple{Union{Nothing, Vector{Float64}}, BitMatrix, Union{Nothing, Vector{Int}}}
+    @test result === nothing || result isa GadgetSearch.Gadget
 end
 
 @testset "find_matching_gadget" begin
     loader = create_test_loader()
     
     # Simple filter that always returns nothing (no matches)
-    simple_filter = (g, pos, pins) -> (nothing, BitMatrix([1 0; 0 1]), nothing)
+    simple_filter = (g, pos, pins) -> nothing
     
     results = GadgetSearch.find_matching_gadget(loader; filter=simple_filter, limit=1)
     @test results isa Vector{GadgetSearch.Gadget}
@@ -349,4 +375,64 @@ end
     matched = GadgetSearch.match_rows_by_pinset(masks, truth_table, pin_set)
     @test length(matched) == 2
     @test all(m isa Vector{Int} for m in matched)
+end
+
+# New tests for the unified framework
+@testset "EnergyModel types" begin
+    @test GadgetSearch.RydbergModel <: GadgetSearch.EnergyModel
+    @test GadgetSearch.QUBOModel <: GadgetSearch.EnergyModel
+end
+
+@testset "GadgetConstraint types" begin
+    @test GadgetSearch.TruthTableConstraint <: GadgetSearch.GadgetConstraint
+    @test GadgetSearch.StateConstraint <: GadgetSearch.GadgetConstraint
+    
+    # Test TruthTableConstraint
+    tt = BitMatrix([1 0; 0 1])
+    ttc = GadgetSearch.TruthTableConstraint(tt)
+    @test GadgetSearch.get_pin_num(ttc) == 2
+    
+    # Test StateConstraint
+    sc = GadgetSearch.StateConstraint(["00", "11"])
+    @test sc.pin_num == 2
+    @test GadgetSearch.get_pin_num(sc) == 2
+end
+
+@testset "StateConstraint conversion" begin
+    tt = BitMatrix([1 0; 0 1])
+    ttc = GadgetSearch.TruthTableConstraint(tt)
+    sc = GadgetSearch.to_state_constraint(ttc)
+    @test sc isa GadgetSearch.StateConstraint
+    @test Set(sc.ground_states) == Set(["10", "01"])
+end
+
+@testset "get_state_space" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    
+    # Rydberg model uses MIS
+    mis_states, mis_count = GadgetSearch.get_state_space(GadgetSearch.RydbergModel, g)
+    @test mis_count > 0
+    @test length(mis_states) == mis_count
+    
+    # QUBO model uses all 2^n states
+    all_states, all_count = GadgetSearch.get_state_space(GadgetSearch.QUBOModel, g)
+    @test all_count == 2^3  # 8 states for 3 vertices
+    @test length(all_states) == 8
+end
+
+@testset "Gadget constructors" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    
+    # RydbergModel gadget
+    rydberg_gadget = GadgetSearch.Gadget(GadgetSearch.RydbergModel, constraint, g, [1, 2], [1.0, 2.0, 1.0], nothing)
+    @test rydberg_gadget.vertex_weights == [1.0, 2.0, 1.0]
+    @test isempty(rydberg_gadget.edge_weights)
+    
+    # Legacy compatibility
+    @test rydberg_gadget.weights == [1.0, 2.0, 1.0]
+    @test rydberg_gadget.ground_states == BitMatrix([1 0; 0 1])
 end

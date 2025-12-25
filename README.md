@@ -4,15 +4,15 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://isPANN.github.io/GadgetSearch.jl/dev/)
 [![Build Status](https://github.com/isPANN/GadgetSearch.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/isPANN/GadgetSearch.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-A Julia package for searching and analyzing computational gadgets in graph structures. This package provides tools for finding weighted graphs that can implement logic functions through their energy landscapes, particularly focusing on unit disk graphs (UDGs) and cellular automata-like computations.
+A Julia package for searching computational gadgets in graph structures. This package finds weighted graphs that implement logic functions through their energy landscapes, supporting both **Rydberg atom** (MIS-based) and **QUBO** (general binary optimization) models.
 
 ## Features
 
-- **Truth Table Search**: Search for gadgets that implement specific logic functions
-- **Graph Loading and Management**: Efficient loading and caching of large graph datasets  
-- **UDG Generation**: Generate unit disk graphs on square and triangular lattices
-- **Visualization**: Render gadgets with weights, pins, and energy landscapes
-- **Data Export**: Save results in JSON format for analysis
+- **Dual Energy Models**: Support for Rydberg (MIS) and QUBO (full state space) searches
+- **Flexible Constraints**: Truth tables or explicit state constraints
+- **Graph Generation**: Unit Disk Graphs (UDG) and complete graphs on lattices
+- **Visualization**: Render gadgets with weights, pins, and ground states
+- **Efficient Caching**: MIS computation caching for performance
 
 ## Installation
 
@@ -21,197 +21,191 @@ using Pkg
 Pkg.add("GadgetSearch")
 ```
 
+## Energy Models
+
+GadgetSearch supports two energy models for gadget search:
+
+| Model | State Space | Energy Function | Use Case |
+|-------|-------------|-----------------|----------|
+| `RydbergModel` | Maximal Independent Sets (MIS) | E(σ) = Σᵢ hᵢσᵢ | Rydberg atom arrays |
+| `QUBOModel` | All 2ⁿ binary states | E(σ) = Σᵢ hᵢσᵢ + Σᵢⱼ Jᵢⱼσᵢσⱼ | General QUBO problems |
+
 ## Quick Start
 
-```julia
-using GadgetSearch
-using HiGHS  # For optimization
-
-# Load a graph dataset
-loader = GraphLoader("path/to/graphs.g6")
-
-# Create truth tables to search for
-truth_tables = [
-    [1 0; 0 1],    # NOT gate (2 bits: input, output)
-    [1 1; 0 0]     # Another logic function
-]
-
-# Search for gadgets implementing these truth tables
-results, failed = search_by_truth_tables(
-    loader, 
-    truth_tables;
-    optimizer = () -> HiGHS.Optimizer()
-)
-
-# Visualize a found gadget
-if !isempty(results)
-    plot_single_gadget_new(results[1], "gadget.pdf")
-end
-```
-
-## Main Components
-
-### Core Data Structures
-- `Gadget`: Contains truth table, graph, pin assignments, weights, and positions
-- `GraphLoader`: Efficient loader for g6-format graph files with caching
-- `GraphDataset`: Container for graph codes and layout information
-
-### Core Functions
-- `search_by_truth_tables(loader, truth_tables; ...)`: Search for multiple logic functions
-- `find_matching_gadget(loader; filter, limit)`: Find gadgets matching custom criteria
-- `generate_full_grid_udg(lattice, nx, ny)`: Generate unit disk graphs on grids
-
-### Graph Generation
-- `Square` and `Triangular`: Lattice types for UDG generation
-- `unit_disk_graph(positions, radius)`: Create UDG from positions
-- `get_radius(lattice_type)`: Get default radius for lattice type
-
-### Visualization
-- `plot_single_gadget_new(gadget, path)`: Advanced gadget visualization
-- `plot_graph(graph, path; pos)`: Basic graph plotting
-- `check_gadget(gadget)`: Verify gadget energy landscape
-
-### Utility Functions
-- `save_results_to_json(results, path)`: Export results to JSON
-- `generic_rule(rule_id, (inputs, outputs))`: Generate truth tables by ID
-
-## Detailed Examples
-
-### Basic Logic Gate Search
+### Rydberg Model (MIS-based)
 
 ```julia
 using GadgetSearch, HiGHS
 
-# Load pre-generated graphs
-loader = GraphLoader("datasets/udgs/3in1out.g6")
+# Generate Unit Disk Graph dataset (Rydberg blockade constraint)
+generate_full_grid_udg(Triangular(), 2, 2; path="rydberg_graphs.g6")
+loader = GraphLoader("rydberg_graphs.g6")
 
-# Define an XOR-like function (3 inputs, 1 output)
-# Truth table: output is 1 when odd number of inputs are 1
-xor3_table = [
-    1 0 0 0;  # 000 -> 0
-    1 0 0 1;  # 001 -> 1  
-    1 0 1 0;  # 010 -> 1
-    1 0 1 1;  # 011 -> 0
-    1 1 0 0;  # 100 -> 1
-    1 1 0 1;  # 101 -> 0
-    1 1 1 0;  # 110 -> 0
-    1 1 1 1;  # 111 -> 1
+# Define truth table constraints
+constraints = [
+    TruthTableConstraint(BitMatrix([0 0 0; 1 0 1; 0 1 1; 1 1 1])),  # OR gate
+    TruthTableConstraint(BitMatrix([0 0 0; 1 0 0; 0 1 0; 1 1 1]))   # AND gate
 ]
 
-# Search for gadgets implementing this function
-results, failed = search_by_truth_tables(
-    loader,
-    [xor3_table];
-    optimizer = () -> HiGHS.Optimizer(),
-    max_result_num = 5,
-    save_path = "xor3_results.json"
+# Search using Rydberg model
+results, failed = search_gadgets(
+    RydbergModel,
+    loader, 
+    constraints;
+    optimizer=HiGHS.Optimizer,
+    objective=h -> sum(h),  # Only vertex weights
+    max_result_num=5
+)
+```
+
+### QUBO Model (Full State Space)
+
+```julia
+using GadgetSearch, HiGHS
+
+# Generate complete graph dataset (all pairs connected)
+generate_full_grid_graph(Triangular(), 2, 3; path="qubo_graphs.g6")
+loader = GraphLoader("qubo_graphs.g6")
+
+# Define state constraints (explicit ground states)
+constraints = [
+    StateConstraint(["001", "011", "101", "111"]),  # OR-like
+    StateConstraint(["000", "010", "100", "111"])   # AND-like
+]
+
+# Search using QUBO model
+results, failed = search_gadgets(
+    QUBOModel,
+    loader, 
+    constraints;
+    optimizer=HiGHS.Optimizer,
+    objective=(h, J) -> sum(h) + sum(J),  # Vertex + edge weights
+    max_result_num=5
 )
 
-println("Found $(length(results)) XOR3 gadgets")
-```
-
-### Generating Custom UDG Datasets
-
-```julia
-# Generate 3x3 square lattice UDGs
-generate_full_grid_udg(Square(), 3, 3; path="square_3x3.g6")
-
-# Generate triangular lattice UDGs  
-generate_full_grid_udg(Triangular(), 2, 4; path="triangular_2x4.g6")
-
-# Load the generated graphs
-loader = GraphLoader("square_3x3.g6")
-println("Generated $(length(loader)) unique graphs")
-```
-
-### Custom Search with Filter Functions
-
-```julia
-# Create custom filter for specific constraints
-function my_filter(graph, positions, pin_set)
-    # Only accept graphs with exactly 5 vertices
-    if nv(graph) != 5
-        return (nothing, BitMatrix(undef, 0, 0), nothing)
-    end
-    
-    # Use standard truth table matching
-    truth_table = [1 0; 0 1]  # NOT gate
-    filter_fn = make_filter(truth_table, () -> HiGHS.Optimizer(), nothing)
-    return filter_fn(graph, positions, pin_set)
-end
-
-# Search with custom filter
-results = find_matching_gadget(loader; filter=my_filter, limit=100)
-```
-
-### Working with Results
-
-```julia
-# Analyze a found gadget
-if !isempty(results)
-    gadget = results[1]
-    
-    # Check the energy landscape
-    check_gadget(gadget)
-    
-    # Create visualizations
-    plot_single_gadget_new(gadget, "gadget_detailed.pdf"; 
-                          show_weights=true, 
-                          background_grid=true)
-    
-    # Access gadget properties
-    println("Pins: ", gadget.pins)
-    println("Truth table size: ", size(gadget.ground_states))
-    println("Graph has $(nv(gadget.graph)) vertices and $(ne(gadget.graph)) edges")
+# Access QUBO-specific weights
+if !isempty(results[1])
+    gadget = results[1][1]
+    println("Vertex weights: ", gadget.vertex_weights)
+    println("Edge weights: ", gadget.edge_weights)
 end
 ```
 
-## Datasets
+## Core Types
 
-The package includes several pre-computed datasets in the `datasets/` directory:
+### Energy Models
+- `RydbergModel`: MIS state space, vertex weights only
+- `QUBOModel`: Full 2ⁿ state space, vertex + edge weights
 
-### Logic Gates (`datasets/logic_gates/`)
-- `2in2out.json`: Two input, two output logic functions
-- `3in1out.json`: Three input, one output logic functions (cellular automaton rules)
+### Constraint Types
+- `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table
+- `StateConstraint(::Vector{String})`: Define ground states explicitly (e.g., `["00", "11"]`)
 
-### UDGs (`datasets/udgs/`)  
-- `2in2out.json`: UDG candidates for 2-input, 2-output functions
-- `3in1out.json`: UDG candidates for 3-input, 1-output functions
+### Gadget
+```julia
+struct Gadget{M<:EnergyModel, T<:Real}
+    constraint::GadgetConstraint
+    graph::SimpleGraph{Int}
+    pins::Vector{Int}
+    vertex_weights::Vector{T}   # hᵢ
+    edge_weights::Vector{T}     # Jᵢⱼ (QUBO only)
+    edge_list::Vector{Tuple{Int,Int}}
+    pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}
+end
+```
 
-### State Constraints (`datasets/state_constraint/`)
-- Various constraint configurations for different bit sizes
+## Core Functions
+
+### Search Functions
+```julia
+# Unified search interface
+search_gadgets(ModelType, loader, constraints; kwargs...)
+
+# Convenience wrappers
+search_by_truth_tables(loader, truth_tables; ...)      # Rydberg
+search_by_state_constraints(loader, constraints; ...)  # QUBO
+```
+
+### Graph Generation
+```julia
+# Unit Disk Graphs (for Rydberg)
+generate_full_grid_udg(Triangular(), nx, ny; path="udg.g6")
+generate_full_grid_udg(Square(), nx, ny; path="udg.g6")
+
+# Complete Graphs (for QUBO)
+generate_full_grid_graph(Triangular(), nx, ny; path="complete.g6")
+generate_full_grid_graph(Square(), nx, ny; path="complete.g6")
+```
+
+### Visualization
+```julia
+# Plot gadget with weights
+plot_gadget(gadget, "output.png"; show_weights=true, round_weights=true)
+
+# Verify gadget correctness
+check_gadget_rydberg(gadget)  # Using MIS state space
+check_gadget_qubo(gadget)     # Using full state space
+```
+
+## Examples
+
+See the `examples/` directory for complete working examples:
+
+- `trangular_Rydberg_example.jl`: Logic gates using Rydberg model on UDG
+- `triangular_QUBO_example.jl`: State constraints using QUBO model on complete graphs
+
+## Search Parameters
+
+```julia
+results, failed = search_gadgets(
+    ModelType,
+    loader, 
+    constraints;
+    optimizer=HiGHS.Optimizer,     # Required: optimization solver
+    objective=...,                  # Objective function (model-specific)
+    allow_defect=true,              # Allow zero-weight vertices
+    max_result_num=10,              # Max results per constraint
+    max_samples=10000,              # Max weight combinations to try
+    pin_candidates=[[1,2,3], ...],  # Specific pin combinations
+    check_connectivity=true         # Ensure gadget remains connected
+)
+```
 
 ## Requirements
 
 - Julia 1.10+
-- An optimization solver (HiGHS.jl recommended)
-- Optional: `shortg` tool from Nauty/Traces for canonical graph generation
+- Optimization solver (HiGHS.jl recommended)
+- Optional: `shortg` from Nauty/Traces for graph canonicalization
 
-## Advanced Usage
-
-### Optimization Settings
+## Memory Management
 
 ```julia
-# Use different optimization settings
-results, failed = search_by_truth_tables(
-    loader, truth_tables;
-    optimizer = () -> HiGHS.Optimizer(),
-    max_samples = 50,        # Limit weight enumeration samples
-    allow_defect = false,    # Require exact truth table match
-    connected = true         # Only search connected graphs
+# Check MIS cache statistics
+get_cache_stats()
+
+# Clear cache to free memory
+clear_cache!()
+
+# GraphLoader with caching
+loader = GraphLoader("dataset.g6"; 
+    enable_cache=true, 
+    max_cached=5000
 )
 ```
 
-### Memory Management
+## Citation
 
-```julia
-# Enable caching for large datasets
-loader = GraphLoader("large_dataset.g6"; 
-                    enable_cache=true, 
-                    max_cached=5000,
-                    cachepath="graphs.cache")
+If you use this package in your research, please cite:
 
-# Save cache for future runs
-save_cache(loader)
+```bibtex
+@article{pan2025encoding,
+  title={Encoding computationally hard problems in triangular Rydberg atom arrays},
+  author={Pan, Xi-Wei and Zhou, Huan-Hai and Lu, Yi-Ming and Liu, Jin-Guo},
+  journal={arXiv preprint arXiv:2510.25249},
+  year={2025}
+}
 ```
 
+## License
+
+MIT License

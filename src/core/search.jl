@@ -26,180 +26,658 @@ function get_cache_stats()
     return (size=length(MIS_CACHE), memory_mb=Base.summarysize(MIS_CACHE) / 1024^2)
 end
 
+# ============================================================================
+# Abstract Types for Energy Models
+# ============================================================================
+
 """
-    search_by_truth_tables(loader, truth_tables; kwargs...)
+    EnergyModel
 
-Search for multiple truth tables by reusing the graph search functionality.
-
-# Arguments
-- `loader::GraphLoader`: The graph loader containing candidate graphs
-- `truth_tables::Vector{BitMatrix}`: Truth tables to search for
-
-# Keywords
-- `bit_num`: Number of bits for the gadget
-- `optimizer`: Optimization solver to use for weight finding
-- `env=nothing`: Environment for the optimizer
-- `connected::Bool=false`: Whether to require connected graphs only
-- `objective=nothing`: Objective function for optimization
-- `allow_defect::Bool=false`: Whether to allow defective gadgets
-- `limit=nothing`: Maximum number of graphs to search
-- `max_samples::Int=100`: Maximum samples for weight enumeration
-- `save_path::String="results.json"`: Path to save intermediate results
-- `pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing`: Candidate pin combinations
-- `check_connectivity::Bool=true`: Whether to check graph connectivity after removing zero-weight vertices
- - `max_result_num::Int=1`: Maximum number of results per truth table (per-TT limit)
-
-# Returns
-- `Tuple{Vector{Vector{Gadget}}, Vector{BitMatrix}}`: Found gadgets grouped by truth table and failed truth tables
+Abstract type for energy models. Subtypes define how energy is computed from vertex states.
 """
-function search_by_truth_tables(
-    loader::GraphLoader,
-    truth_tables::Vector{BitMatrix};
-    optimizer,
-    env=nothing,
-    connected::Bool=false,
-    objective=nothing,
-    allow_defect::Bool=false,
-    limit=nothing,
-    max_samples::Int=DEFAULT_MAX_SAMPLES,
-    max_result_num::Int=1,
-    save_path::String="results.json",
-    pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing,
-    check_connectivity::Bool=true
-)
-    # Initialize results as vector of vectors, one for each truth table
-    results = Vector{Vector{Gadget}}(undef, length(truth_tables))
-    for i in 1:length(truth_tables)
-        results[i] = Gadget[]
+abstract type EnergyModel end
+
+"""
+    RydbergModel <: EnergyModel
+
+Energy model for Rydberg atom systems.
+- State space: Maximal Independent Sets (MIS)
+- Energy: E(σ) = Σᵢ hᵢσᵢ (vertex weights only)
+"""
+struct RydbergModel <: EnergyModel end
+
+"""
+    QUBOModel <: EnergyModel
+
+Energy model for general QUBO (Quadratic Unconstrained Binary Optimization).
+- State space: All 2^n binary configurations
+- Energy: E(σ) = Σᵢ hᵢσᵢ + Σ₍ᵢ,ⱼ₎ Jᵢⱼσᵢσⱼ (vertex + edge weights)
+"""
+struct QUBOModel <: EnergyModel end
+
+# ============================================================================
+# Abstract Types for Constraints
+# ============================================================================
+
+"""
+    GadgetConstraint
+
+Abstract type for gadget constraints. Subtypes define what ground states are required.
+"""
+abstract type GadgetConstraint end
+
+"""
+    TruthTableConstraint <: GadgetConstraint
+
+Constraint defined by a truth table (for Rydberg/MIS-based gadgets).
+
+# Fields
+- `truth_table::BitMatrix`: Truth table where each row is a ground state configuration on pins
+"""
+struct TruthTableConstraint <: GadgetConstraint
+    truth_table::BitMatrix
+    
+    function TruthTableConstraint(tt::BitMatrix)
+        new(tt)
     end
-    failed_tt = BitMatrix[]
-    # Track total only for logging if needed (not for limiting)
-    total_found = 0
-
-    # Performance monitoring
-    start_time = time()
-    initial_cache_size = length(MIS_CACHE)
-
-    for (i, tt) in enumerate(truth_tables)
-        tt_start = time()
-        @info "searching for truth table: index $(i-1) [limit per TT=$max_result_num]"
-        
-        filter_fn = make_filter(tt, optimizer, env;
-                                connected=connected,
-                                objective=objective,
-                                allow_defect=allow_defect,
-                                max_samples=max_samples,
-                                pin_candidates=pin_candidates,
-                                check_connectivity=check_connectivity)
-        # Limit results per truth table
-        gadgets = find_matching_gadget(loader; filter=filter_fn, limit=limit, max_results=max_result_num)
-        
-        tt_time = time() - tt_start
-        @info "Truth table $(i-1) processed in $(round(tt_time, digits=2))s, found $(length(gadgets)) gadgets"
-        
-        if !isempty(gadgets)
-            # Store gadgets for this specific truth table
-            results[i] = gadgets
-            total_found += length(gadgets)
-            
-            # Save all results in flattened format for backward compatibility
-            all_gadgets = vcat(results...)
-            save_results_to_json(all_gadgets, save_path)
-        else
-            push!(failed_tt, tt)
-        end
-        
-        # Memory management: clear cache periodically for long searches
-        if length(MIS_CACHE) > initial_cache_size + 1000
-            @info "Cache growing large ($(length(MIS_CACHE)) entries), consider clearing if memory is an issue"
-        end
-    end
-
-    total_time = time() - start_time
-    cache_hits = length(MIS_CACHE) - initial_cache_size
-    @info "Search completed in $(round(total_time, digits=2))s. Cache gained $cache_hits entries. Final cache stats: $(get_cache_stats())"
-
-    return results, failed_tt
 end
 
+# Convenience constructor from BitMatrix
+TruthTableConstraint(tt::Matrix{Bool}) = TruthTableConstraint(BitMatrix(tt))
 
 """
-    find_matching_gadget(loader; filter=nothing, limit=nothing, keys_range=nothing, max_results=nothing)
+    StateConstraint <: GadgetConstraint
 
-Find gadgets matching a given filter function from the graph loader.
+Constraint defined by explicit ground state strings (for general QUBO).
 
-# Arguments
-- `loader::GraphLoader`: The graph loader containing candidate graphs
+# Fields
+- `ground_states::Vector{String}`: States that should have equal minimum energy (e.g., ["00", "01", "11"])
+- `pin_num::Int`: Number of pin bits
+"""
+struct StateConstraint <: GadgetConstraint
+    ground_states::Vector{String}
+    pin_num::Int
+    
+    function StateConstraint(ground_states::Vector{String})
+        isempty(ground_states) && error("ground_states cannot be empty")
+        pin_num = length(ground_states[1])
+        all(s -> length(s) == pin_num, ground_states) || error("All ground states must have same length")
+        new(ground_states, pin_num)
+    end
+end
 
-# Keywords
-- `filter=nothing`: Filter function to apply to each graph
-- `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to check
-- `keys_range::Union{Nothing, Vector{Int}}=nothing`: Specific range of keys to search
-- `max_results::Union{Int,Nothing}=nothing`: Maximum number of results to return (early termination)
+# Get pin number from constraint
+get_pin_num(c::TruthTableConstraint) = size(c.truth_table, 2)
+get_pin_num(c::StateConstraint) = c.pin_num
+
+# Convert TruthTableConstraint to StateConstraint for unified processing
+function to_state_constraint(c::TruthTableConstraint)::StateConstraint
+    tt = c.truth_table
+    ground_states = String[]
+    for row in 1:size(tt, 1)
+        push!(ground_states, join(string.(Int.(tt[row, :]))))
+    end
+    return StateConstraint(ground_states)
+end
+
+to_state_constraint(c::StateConstraint) = c
+
+# ============================================================================
+# Unified Gadget Types
+# ============================================================================
+
+"""
+    Gadget{M<:EnergyModel, T<:Real}
+
+A gadget found by the search algorithm.
+
+# Type Parameters
+- `M`: Energy model type (RydbergModel or QUBOModel)
+- `T`: Numeric type for weights
+
+# Fields
+- `constraint::GadgetConstraint`: The constraint this gadget satisfies
+- `graph::SimpleGraph{Int}`: The graph structure
+- `pins::Vector{Int}`: Pin vertex indices
+- `vertex_weights::Vector{T}`: Vertex weights (hᵢ)
+- `edge_weights::Vector{T}`: Edge weights (Jᵢⱼ), empty for RydbergModel
+- `edge_list::Vector{Tuple{Int,Int}}`: Edge list corresponding to edge_weights
+- `pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}`: Vertex positions
+"""
+struct Gadget{M<:EnergyModel, T<:Real}
+    constraint::GadgetConstraint
+    graph::SimpleGraph{Int}
+    pins::Vector{Int}
+    vertex_weights::Vector{T}
+    edge_weights::Vector{T}
+    edge_list::Vector{Tuple{Int,Int}}
+    pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}
+end
+
+# Convenience constructors
+function Gadget(::Type{RydbergModel}, constraint::GadgetConstraint, graph::SimpleGraph{Int}, 
+                pins::Vector{Int}, vertex_weights::Vector{T}, 
+                pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing) where T<:Real
+    Gadget{RydbergModel, T}(constraint, graph, pins, vertex_weights, T[], Tuple{Int,Int}[], pos)
+end
+
+function Gadget(::Type{QUBOModel}, constraint::GadgetConstraint, graph::SimpleGraph{Int}, 
+                pins::Vector{Int}, vertex_weights::Vector{T}, edge_weights::Vector{T},
+                edge_list::Vector{Tuple{Int,Int}},
+                pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing) where T<:Real
+    Gadget{QUBOModel, T}(constraint, graph, pins, vertex_weights, edge_weights, edge_list, pos)
+end
+
+# Legacy compatibility: Gadget with truth table and weights only
+function Gadget(ground_states::BitMatrix, graph::SimpleGraph{Int}, pins::Vector{Int}, 
+                weights::Vector{T}, pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing) where T<:Real
+    Gadget{RydbergModel, T}(TruthTableConstraint(ground_states), graph, pins, weights, T[], Tuple{Int,Int}[], pos)
+end
+
+# Accessor for legacy compatibility
+function Base.getproperty(g::Gadget, s::Symbol)
+    if s == :weights
+        return getfield(g, :vertex_weights)
+    elseif s == :ground_states
+        c = getfield(g, :constraint)
+        if c isa TruthTableConstraint
+            return c.truth_table
+        else
+            # Convert StateConstraint to BitMatrix
+            gs = c.ground_states
+            n = length(gs)
+            m = length(gs[1])
+            tt = BitMatrix(undef, n, m)
+            for (i, s) in enumerate(gs)
+                for (j, c) in enumerate(s)
+                    tt[i, j] = c == '1'
+                end
+            end
+            return tt
+        end
+    else
+        return getfield(g, s)
+    end
+end
+
+# ============================================================================
+# State Space Functions
+# ============================================================================
+
+"""
+    get_state_space(::Type{RydbergModel}, graph::SimpleGraph{Int}) -> Tuple{Vector{UInt32}, Int}
+
+Get the state space for Rydberg model (Maximal Independent Sets).
+"""
+function get_state_space(::Type{RydbergModel}, graph::SimpleGraph{Int})
+    return find_maximal_independent_sets(graph)
+end
+
+"""
+    get_state_space(::Type{QUBOModel}, graph::SimpleGraph{Int}) -> Tuple{Vector{UInt32}, Int}
+
+Get the state space for QUBO model (all 2^n states).
+"""
+function get_state_space(::Type{QUBOModel}, graph::SimpleGraph{Int})
+    n = Graphs.nv(graph)
+    n > MAX_SUPPORTED_VERTICES && error("Too many vertices: $n > $MAX_SUPPORTED_VERTICES")
+    states = collect(UInt32(0):UInt32(2^n - 1))
+    return (states, length(states))
+end
+
+"""
+    _graph_hash(g::SimpleGraph{Int}) -> UInt64
+
+Create a hash for graph structure for caching purposes.
+"""
+function _graph_hash(g::SimpleGraph{Int})::UInt64
+    edges = sort!([(min(src(e), dst(e)), max(src(e), dst(e))) for e in Graphs.edges(g)])
+    return hash((Graphs.nv(g), edges))
+end
+
+"""
+    find_maximal_independent_sets(g)
+
+Find all maximal independent sets of a graph using bit masks with caching.
+"""
+function find_maximal_independent_sets(g::SimpleGraph{Int})
+    vertex_count = Graphs.nv(g)
+    
+    if vertex_count > MAX_SUPPORTED_VERTICES
+        error("Graph has $(vertex_count) vertices, but maximum supported is $(MAX_SUPPORTED_VERTICES).")
+    end
+    
+    graph_hash = _graph_hash(g)
+    if haskey(MIS_CACHE, graph_hash)
+        return MIS_CACHE[graph_hash]
+    end
+    
+    complement_g = Graphs.complement(g)
+    cliques = Graphs.maximal_cliques(complement_g)
+    
+    masks = Vector{UInt32}(undef, length(cliques))
+    
+    @inbounds for (i, clique) in enumerate(cliques)
+        mask::UInt32 = 0
+        for v in clique
+            mask |= UInt32(1) << (v - 1)
+        end
+        masks[i] = mask
+    end
+    
+    result = (masks, length(masks))
+    MIS_CACHE[graph_hash] = result
+    
+    return result
+end
+
+# ============================================================================
+# Constraint Matching Functions
+# ============================================================================
+
+"""
+    parse_state_string(s::String) -> UInt32
+
+Parse a state string like "01" or "110" to a bit mask.
+The leftmost character is bit 0 (LSB).
+"""
+function parse_state_string(s::String)::UInt32
+    mask::UInt32 = 0
+    for (i, c) in enumerate(s)
+        if c == '1'
+            mask |= UInt32(1) << (i - 1)
+        elseif c != '0'
+            error("Invalid character in state string: $c")
+        end
+    end
+    return mask
+end
+
+"""
+    match_constraint_to_states(states, constraint, pin_set)
+
+Match constraint ground states to full graph states based on pin configuration.
 
 # Returns
-- `Vector{Gadget}`: Vector of matching gadgets
+- `Vector{Vector{Int}}`: For each ground state pattern, indices of matching states in the state space
 """
-function find_matching_gadget(loader::GraphLoader; filter=nothing, limit::Union{Int,Nothing}=nothing, keys_range::Union{Nothing, Vector{Int}}=nothing, max_results::Union{Int,Nothing}=nothing)
-    keys_raw = keys_range === nothing ? collect(keys(loader)) : keys_range
-    keys_to_search = isa(keys_raw[1], Int) ? keys_raw : parse.(Int, keys_raw)
-    total = limit === nothing ? length(keys_to_search) : min(length(keys_to_search), limit)
+function match_constraint_to_states(
+    states::Vector{UInt32}, 
+    constraint::GadgetConstraint, 
+    pin_set::Vector{Int}
+)::Vector{Vector{Int}}
+    
+    sc = to_state_constraint(constraint)
+    length(pin_set) != sc.pin_num && 
+        error("Pin set length $(length(pin_set)) != constraint pin_num $(sc.pin_num)")
+    
+    result = Vector{Vector{Int}}(undef, length(sc.ground_states))
+    
+    for (gs_idx, gs_str) in enumerate(sc.ground_states)
+        target_mask = parse_state_string(gs_str)
+        
+        matches = Int[]
+        for (state_idx, state) in enumerate(states)
+            extracted::UInt32 = 0
+            for (bit_pos, pin) in enumerate(pin_set)
+                extracted |= ((state >> (pin - 1)) & 0x1) << (bit_pos - 1)
+            end
+            
+            if extracted == target_mask
+                push!(matches, state_idx)
+            end
+        end
+        result[gs_idx] = matches
+    end
+    
+    return result
+end
 
-    results = Gadget[]
+# Legacy compatibility alias
+match_rows_by_pinset(masks::Vector{UInt32}, truth_table::BitMatrix, pin_set::Vector{Int}) = 
+    match_constraint_to_states(masks, TruthTableConstraint(truth_table), pin_set)
 
-    @showprogress for key in Iterators.take(keys_to_search, total)
-        g = loader[key]
-        if filter !== nothing
-            weights, truth_table, pin = filter(g, loader.layout[key], loader.pinset)
-            if !isnothing(weights)
-                push!(results, Gadget(truth_table, g, pin, weights, loader.layout[key]))
-                # Early termination when max_results is reached
-                if max_results !== nothing && length(results) >= max_results
-                    @info "Early termination: found $(length(results)) results (max_results=$max_results)"
-                    break
+# ============================================================================
+# Weight Finding Functions
+# ============================================================================
+
+"""
+    solve_weights(model_type, states, target_indices_all, graph, pin_set, optimizer; kwargs...)
+
+Unified weight solver that works for both Rydberg and QUBO models.
+"""
+function solve_weights(
+    ::Type{M},
+    states::Vector{UInt32},
+    target_indices_all::Vector{Vector{Int}},
+    graph::SimpleGraph{Int},
+    pin_set::Vector{Int},
+    optimizer,
+    env=nothing,
+    objective=nothing,
+    allow_defect::Bool=false,
+    max_samples::Int=1000,
+    check_connectivity::Bool=true
+) where M <: EnergyModel
+    if optimizer === nothing
+        error("Optimizer must be provided.")
+    end
+
+    any(isempty, target_indices_all) && return nothing
+    
+    vertex_num = Graphs.nv(graph)
+    edge_list = [(src(e), dst(e)) for e in Graphs.edges(graph)]
+    all_state_indices = collect(1:length(states))
+    
+    total_combinations = prod(length, target_indices_all)
+    if total_combinations > max_samples
+        @warn "Too many combinations ($total_combinations), sampling first $max_samples"
+        return _solve_weights_sampled(M, states, target_indices_all, graph, vertex_num, edge_list,
+                                      pin_set, optimizer, env, objective, allow_defect, 
+                                      max_samples, all_state_indices, check_connectivity)
+    end
+    
+    target_indices_set = Vector{Int}(undef, length(target_indices_all))
+    
+    sample_count = 0
+    for target_indices in Iterators.product(target_indices_all...)
+        sample_count += 1
+        if sample_count > max_samples
+            break
+        end
+        
+        copyto!(target_indices_set, target_indices)
+        wrong_indices = setdiff(all_state_indices, target_indices_set)
+        
+        target_states = [states[i] for i in target_indices_set]
+        wrong_states = [states[i] for i in wrong_indices]
+
+        result = _find_weights(M, vertex_num, edge_list, pin_set, target_states, wrong_states, 
+                               optimizer, env, objective, allow_defect, graph, check_connectivity)
+        if result !== nothing
+            return result
+        end
+    end
+
+    return nothing
+end
+
+"""
+    _solve_weights_sampled(...)
+
+Optimized version for large combination spaces using random sampling.
+"""
+function _solve_weights_sampled(
+    ::Type{M},
+    states::Vector{UInt32},
+    target_indices_all::Vector{Vector{Int}},
+    graph::SimpleGraph{Int},
+    vertex_num::Int,
+    edge_list::Vector{Tuple{Int,Int}},
+    pin_set::Vector{Int},
+    optimizer,
+    env,
+    objective,
+    allow_defect::Bool,
+    max_samples::Int,
+    all_state_indices::Vector{Int},
+    check_connectivity::Bool=true
+) where M <: EnergyModel
+    target_indices_set = Vector{Int}(undef, length(target_indices_all))
+    
+    for _ in 1:max_samples
+        for (i, indices) in enumerate(target_indices_all)
+            target_indices_set[i] = rand(indices)
+        end
+        
+        wrong_indices = setdiff(all_state_indices, target_indices_set)
+        
+        target_states = [states[i] for i in target_indices_set]
+        wrong_states = [states[i] for i in wrong_indices]
+
+        result = _find_weights(M, vertex_num, edge_list, pin_set, target_states, wrong_states, 
+                               optimizer, env, objective, allow_defect, graph, check_connectivity)
+        if result !== nothing
+            return result
+        end
+    end
+    
+    return nothing
+end
+
+"""
+    check_connectivity_after_removal(graph, vertices_to_remove)
+
+Check if a graph remains connected after removing specified vertices.
+"""
+function check_connectivity_after_removal(graph::SimpleGraph{Int}, vertices_to_remove::Vector{Int})
+    if isempty(vertices_to_remove)
+        return Graphs.is_connected(graph)
+    end
+    
+    vertices_to_remove_1based = vertices_to_remove .+ 1
+    all_vertices = collect(1:Graphs.nv(graph))
+    remaining_vertices = setdiff(all_vertices, vertices_to_remove_1based)
+    
+    if isempty(remaining_vertices)
+        return false
+    end
+    
+    subgraph, _ = Graphs.induced_subgraph(graph, remaining_vertices)
+    return Graphs.is_connected(subgraph)
+end
+
+"""
+    _find_weights(::Type{RydbergModel}, ...) -> Union{Nothing, Vector{Float64}}
+
+Find vertex weights for Rydberg model.
+"""
+function _find_weights(
+    ::Type{RydbergModel},
+    vertex_num::Int, 
+    edge_list::Vector{Tuple{Int,Int}}, 
+    pin_set::Vector{Int}, 
+    target_states::Vector{UInt32}, 
+    wrong_states::Vector{UInt32}, 
+    optimizer, 
+    env, 
+    objective, 
+    allow_defect::Bool, 
+    graph::SimpleGraph{Int},
+    check_connectivity::Bool=true
+)
+    opt = isnothing(env) ? optimizer() : optimizer(env)
+    model = direct_model(opt)
+    set_silent(model)
+    set_string_names_on_creation(model, false)
+
+    if allow_defect
+        x = @variable(model, [i=1:vertex_num], lower_bound = i in pin_set ? 1 : 0, Int)
+    else
+        @variable(model, x[1:vertex_num] >= 1, Int)
+    end
+
+    @variable(model, C)
+
+    # Target states must have equal energy
+    for m in target_states
+        @constraint(model, sum(((m >> (v - 1)) & 0x1) * x[v] for v in 1:vertex_num) == C)
+    end
+
+    # Wrong states must have higher energy (for MIS, we want lower energy for ground states)
+    for m in wrong_states
+        @constraint(model, sum(((m >> (v - 1)) & 0x1) * x[v] for v in 1:vertex_num) <= C - DEFAULT_EPSILON)
+    end
+
+    if objective !== nothing
+        @objective(model, Min, objective(x))
+    end
+
+    optimize!(model)
+    if is_solved_and_feasible(model)
+        weights = [value(x[v]) for v in 1:vertex_num]
+        
+        if check_connectivity
+            zero_weight_vertices = findall(w -> abs(w) < 1e-6, weights)
+            
+            if !isempty(zero_weight_vertices)
+                zero_vertices_0based = zero_weight_vertices .- 1
+                
+                if !check_connectivity_after_removal(graph, zero_vertices_0based)
+                    @info "Solution found but graph becomes disconnected after removing zero-weight vertices, rejecting"
+                    return nothing
                 end
             end
         end
+        
+        @info "found a valid Rydberg solution"
+        @show weights
+        return weights
     end
-    return results
+    return nothing
 end
 
 """
-    make_filter(truth_table, optimizer, env; kwargs...)
+    _find_weights(::Type{QUBOModel}, ...) -> Union{Nothing, Tuple{Vector{Float64}, Vector{Float64}}}
 
-Create a filter closure for graph search that checks if a graph can implement the given truth table.
+Find vertex and edge weights for QUBO model.
+"""
+function _find_weights(
+    ::Type{QUBOModel},
+    vertex_num::Int, 
+    edge_list::Vector{Tuple{Int,Int}}, 
+    pin_set::Vector{Int}, 
+    target_states::Vector{UInt32}, 
+    wrong_states::Vector{UInt32}, 
+    optimizer, 
+    env, 
+    objective, 
+    allow_defect::Bool, 
+    graph::SimpleGraph{Int},
+    check_connectivity::Bool=true
+)
+    opt = isnothing(env) ? optimizer() : optimizer(env)
+    model = direct_model(opt)
+    set_silent(model)
+    set_string_names_on_creation(model, false)
+
+    # Vertex weights (h_i)
+    if allow_defect
+        h = @variable(model, [i=1:vertex_num], lower_bound = i in pin_set ? 1 : 0, Int)
+    else
+        @variable(model, h[1:vertex_num] >= 1, Int)
+    end
+    
+    # Edge weights (J_ij)
+    edge_num = length(edge_list)
+    @variable(model, J[1:edge_num], Int)
+
+    @variable(model, C)
+
+    # Helper function to compute energy of a state
+    function state_energy(state::UInt32)
+        vertex_energy = sum(((state >> (v - 1)) & 0x1) * h[v] for v in 1:vertex_num)
+        edge_energy = sum(
+            ((state >> (edge_list[e][1] - 1)) & 0x1) * 
+            ((state >> (edge_list[e][2] - 1)) & 0x1) * J[e] 
+            for e in 1:edge_num;
+            init=0
+        )
+        return vertex_energy + edge_energy
+    end
+
+    # Target states must have equal energy C
+    for state in target_states
+        @constraint(model, state_energy(state) == C)
+    end
+
+    # Wrong states must have higher energy
+    for state in wrong_states
+        @constraint(model, state_energy(state) <= C - DEFAULT_EPSILON)
+    end
+
+    if objective !== nothing
+        @objective(model, Min, objective(h, J))
+    end
+
+    optimize!(model)
+    if is_solved_and_feasible(model)
+        vertex_weights = [value(h[v]) for v in 1:vertex_num]
+        edge_weights = edge_num > 0 ? [value(J[e]) for e in 1:edge_num] : Float64[]
+        
+        if check_connectivity
+            zero_weight_vertices = findall(w -> abs(w) < 1e-6, vertex_weights)
+            
+            if !isempty(zero_weight_vertices)
+                zero_vertices_0based = zero_weight_vertices .- 1
+                
+                if !check_connectivity_after_removal(graph, zero_vertices_0based)
+                    @info "QUBO solution found but graph becomes disconnected, rejecting"
+                    return nothing
+                end
+            end
+        end
+        
+        @info "found a valid QUBO solution"
+        @show vertex_weights, edge_weights
+        return (vertex_weights, edge_weights)
+    end
+    return nothing
+end
+
+# ============================================================================
+# Unified Search Interface
+# ============================================================================
+
+"""
+    make_filter(model_type, constraint, optimizer, env; kwargs...)
+
+Create a filter closure for graph search that checks if a graph can implement the given constraint.
 
 # Arguments
-- `truth_table::BitMatrix`: The target truth table to implement
+- `model_type::Type{<:EnergyModel}`: RydbergModel or QUBOModel
+- `constraint::GadgetConstraint`: The target constraint to implement
 - `optimizer`: Optimization solver for weight finding
 - `env`: Environment for the optimizer
 
 # Keywords
 - `connected::Bool=false`: Whether to require connected graphs only
 - `objective=nothing`: Objective function for optimization
-- `allow_defect::Bool=false`: Whether to allow defective gadgets
-- `max_samples::Int=1000`: Maximum samples for weight enumeration
+- `allow_defect::Bool=false`: Whether to allow zero vertex weights
+- `max_samples::Int=1000`: Maximum samples for enumeration
 - `pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing`: Candidate pin combinations
-- `check_connectivity::Bool=true`: Whether to check graph connectivity after removing zero-weight vertices
+- `check_connectivity::Bool=true`: Whether to check graph connectivity
 
 # Returns
-- `Function`: Filter function that takes (graph, pos, pin_set) and returns (weights, truth_table, pin)
+- `Function`: Filter function that takes (graph, pos, pin_set) and returns Gadget or nothing
 """
-function make_filter(truth_table::BitMatrix, optimizer, env; connected::Bool=false, objective=nothing, allow_defect::Bool=false, max_samples::Int=1000, pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing, check_connectivity::Bool=true)
+function make_filter(
+    ::Type{M},
+    constraint::GadgetConstraint, 
+    optimizer, 
+    env; 
+    connected::Bool=false, 
+    objective=nothing, 
+    allow_defect::Bool=false, 
+    max_samples::Int=1000, 
+    pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing, 
+    check_connectivity::Bool=true
+) where M <: EnergyModel
   
     return function(graph::SimpleGraph{Int}, pos::Vector{Tuple{Float64, Float64}}, pin_set::Union{Nothing, Vector{Int}}=nothing)
         if !connected
-            Graphs.is_connected(graph) || return nothing, truth_table, nothing
+            Graphs.is_connected(graph) || return nothing
         end
 
         vertex_num = Graphs.nv(graph)
-
-        maximal_independent_sets, set_count = find_maximal_independent_sets(graph)
+        states, _ = get_state_space(M, graph)
+        edge_list = [(src(e), dst(e)) for e in Graphs.edges(graph)]
 
         if pin_set === nothing
             pin_set = collect(1:vertex_num)
         end
         
+        pin_num = get_pin_num(constraint)
         if pin_candidates !== nothing
             all_candidates = Vector{Vector{Int}}()
             for candidate in pin_candidates
@@ -211,149 +689,184 @@ function make_filter(truth_table::BitMatrix, optimizer, env; connected::Bool=fal
             end
         else
             @warn "pin_candidates is not provided, using all possible pin combinations"
-            all_candidates = collect(Combinatorics.combinations(pin_set, size(truth_table, 2)))
+            all_candidates = collect(Combinatorics.combinations(pin_set, pin_num))
         end
         
         for candidate in all_candidates
-            target_mis_indices_all = match_rows_by_pinset(maximal_independent_sets, truth_table, candidate)
-            weights = solve_weight_enumerate(maximal_independent_sets, target_mis_indices_all, vertex_num, candidate, optimizer, env, objective, allow_defect, max_samples, graph, check_connectivity)
-            if !isempty(weights)
-                return weights, truth_table, candidate
+            target_indices_all = match_constraint_to_states(states, constraint, candidate)
+            result = solve_weights(M, states, target_indices_all, graph, candidate, 
+                                   optimizer, env, objective, allow_defect, max_samples, check_connectivity)
+            if result !== nothing
+                if M === RydbergModel
+                    return Gadget(RydbergModel, constraint, graph, candidate, result, pos)
+                else
+                    vertex_weights, edge_weights = result
+                    return Gadget(QUBOModel, constraint, graph, candidate, vertex_weights, edge_weights, edge_list, pos)
+                end
             end
         end
-        return nothing, truth_table, nothing
+        return nothing
     end
 end
 
-
-"""
-    _graph_hash(g::SimpleGraph{Int}) -> UInt64
-
-Create a hash for graph structure for caching purposes.
-"""
-function _graph_hash(g::SimpleGraph{Int})::UInt64
-    # Create hash based on edges - more robust than adjacency matrix
-    edges = sort!([(min(src(e), dst(e)), max(src(e), dst(e))) for e in Graphs.edges(g)])
-    return hash((Graphs.nv(g), edges))
+# Legacy compatibility: make_filter with truth_table
+function make_filter(truth_table::BitMatrix, optimizer, env; kwargs...)
+    make_filter(RydbergModel, TruthTableConstraint(truth_table), optimizer, env; kwargs...)
 end
 
 """
-    find_maximal_independent_sets(g)
+    search_gadgets(model_type, loader, constraints; kwargs...)
 
-Find all maximal independent sets of a graph using bit masks with caching.
+Unified search function for both Rydberg and QUBO gadgets.
 
 # Arguments
-- `g::SimpleGraph{Int}`: The input graph
-
-# Returns
-- `Tuple{Vector{UInt32}, Int}`: Bit masks representing maximal independent sets and their count
-
-# Note
-This function supports graphs with at most $(MAX_SUPPORTED_VERTICES) vertices due to UInt32 limitations.
-Uses caching to avoid recomputing MIS for identical graphs.
-"""
-function find_maximal_independent_sets(g::SimpleGraph{Int})
-    vertex_count = Graphs.nv(g)
-    
-    # Check vertex count limitation (UInt32 supports 32 vertices)
-    if vertex_count > MAX_SUPPORTED_VERTICES
-        error("Graph has $(vertex_count) vertices, but maximum supported is $(MAX_SUPPORTED_VERTICES). Consider reducing graph size or using matrix-based algorithms.")
-    end
-    
-    # Check cache first
-    graph_hash = _graph_hash(g)
-    if haskey(MIS_CACHE, graph_hash)
-        return MIS_CACHE[graph_hash]
-    end
-    
-    # Compute complement once and reuse
-    complement_g = Graphs.complement(g)
-    cliques = Graphs.maximal_cliques(complement_g)
-    
-    # Pre-allocate with exact size
-    masks = Vector{UInt32}(undef, length(cliques))
-    
-    # Vectorized bit operations for better performance
-    @inbounds for (i, clique) in enumerate(cliques)
-        mask::UInt32 = 0
-        for v in clique
-            mask |= UInt32(1) << (v - 1)
-        end
-        masks[i] = mask
-    end
-    
-    result = (masks, length(masks))
-    # Cache the result
-    MIS_CACHE[graph_hash] = result
-    
-    return result
-end
-
-"""
-    match_rows_by_pinset(masks, truth_table, pin_set)
-
-Match truth table rows to maximal independent sets based on pin configurations.
-
-# Arguments
-- `masks::Vector{UInt32}`: Bit masks representing maximal independent sets
-- `truth_table::BitMatrix`: The target truth table
-- `pin_set::Vector{Int}`: Pin positions to consider
-
-# Returns
-- `Vector{Vector{Int}}`: For each truth table row, indices of matching maximal independent sets
-"""
-function match_rows_by_pinset(masks::Vector{UInt32}, truth_table::BitMatrix, pin_set::Vector{Int})::Vector{Vector{Int}}
-    num_rows = size(truth_table, 1)
-    result = Vector{Vector{Int}}(undef, num_rows)
-
-    for i in 1:num_rows
-        # Build query mask
-        query_mask::UInt32 = 0
-        for (bit_pos, pin) in enumerate(pin_set)
-            query_mask |= UInt32(truth_table[i, bit_pos]) << (bit_pos - 1)
-        end
-        
-        # Find matching MIS
-        matches = Int[]
-        for (j, m) in enumerate(masks)
-            # Extract values at pin positions from MIS
-            extracted::UInt32 = 0
-            for (bit_pos, pin) in enumerate(pin_set)
-                extracted |= ((m >> (pin - 1)) & 0x1) << (bit_pos - 1)
-            end
-            
-            if extracted == query_mask
-                push!(matches, j)
-            end
-        end
-        result[i] = matches
-    end
-
-    return result
-end
-
-"""
-    solve_weight_enumerate(mis_result, target_mis_indices_all, vertex_num, optimizer; kwargs...)
-
-Solve for vertex weights by enumerating all combinations of target MIS indices.
-
-# Arguments
-- `mis_result::Vector{UInt32}`: Maximal independent sets as bit masks
-- `target_mis_indices_all::Vector{Vector{Int}}`: Target MIS indices for each truth table row
-- `vertex_num::Int`: Number of vertices in the graph
-- `optimizer`: Optimization solver to use
+- `model_type::Type{<:EnergyModel}`: RydbergModel or QUBOModel
+- `loader::GraphLoader`: The graph loader containing candidate graphs
+- `constraints::Vector{<:GadgetConstraint}`: Constraints to search for
 
 # Keywords
+- `optimizer`: Optimization solver to use for weight finding
 - `env=nothing`: Environment for the optimizer
+- `connected::Bool=false`: Whether to require connected graphs only
 - `objective=nothing`: Objective function for optimization
-- `allow_defect::Bool=false`: Whether to allow defective gadgets
-- `max_samples::Int=1000`: Maximum samples for enumeration
-- `graph::Union{SimpleGraph{Int}, Nothing}=nothing`: Original graph for connectivity checking
-- `check_connectivity::Bool=true`: Whether to check graph connectivity after removing zero-weight vertices
+- `allow_defect::Bool=false`: Whether to allow zero vertex weights
+- `limit=nothing`: Maximum number of graphs to search
+- `max_samples::Int=100`: Maximum samples for weight enumeration
+- `save_path::String="results.json"`: Path to save intermediate results
+- `pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing`: Candidate pin combinations
+- `check_connectivity::Bool=true`: Whether to check graph connectivity
+- `max_result_num::Int=1`: Maximum number of results per constraint
 
 # Returns
-- `Vector{Float64}`: Vertex weights if solution found, empty vector otherwise
+- `Tuple{Vector{Vector{Gadget}}, Vector{<:GadgetConstraint}}`: Found gadgets grouped by constraint and failed constraints
 """
+function search_gadgets(
+    ::Type{M},
+    loader::GraphLoader,
+    constraints::Vector{C};
+    optimizer,
+    env=nothing,
+    connected::Bool=false,
+    objective=nothing,
+    allow_defect::Bool=false,
+    limit=nothing,
+    max_samples::Int=DEFAULT_MAX_SAMPLES,
+    max_result_num::Int=1,
+    save_path::String="results.json",
+    pin_candidates::Union{Nothing, Vector{Vector{Int}}}=nothing,
+    check_connectivity::Bool=true
+) where {M <: EnergyModel, C <: GadgetConstraint}
+    
+    results = Vector{Vector{Gadget}}(undef, length(constraints))
+    for i in 1:length(constraints)
+        results[i] = Gadget[]
+    end
+    failed_constraints = C[]
+    total_found = 0
+
+    start_time = time()
+    initial_cache_size = length(MIS_CACHE)
+
+    for (i, constraint) in enumerate(constraints)
+        constraint_start = time()
+        model_name = M === RydbergModel ? "Rydberg" : "QUBO"
+        @info "[$model_name] Searching for constraint $(i-1) [limit=$max_result_num]"
+        
+        filter_fn = make_filter(M, constraint, optimizer, env;
+                                connected=connected,
+                                objective=objective,
+                                allow_defect=allow_defect,
+                                max_samples=max_samples,
+                                pin_candidates=pin_candidates,
+                                check_connectivity=check_connectivity)
+        
+        gadgets = find_matching_gadget(loader; filter=filter_fn, limit=limit, max_results=max_result_num)
+        
+        constraint_time = time() - constraint_start
+        @info "Constraint $(i-1) processed in $(round(constraint_time, digits=2))s, found $(length(gadgets)) gadgets"
+        
+        if !isempty(gadgets)
+            results[i] = gadgets
+            total_found += length(gadgets)
+            
+            all_gadgets = vcat(results...)
+            save_results_to_json(all_gadgets, save_path)
+        else
+            push!(failed_constraints, constraint)
+        end
+        
+        if length(MIS_CACHE) > initial_cache_size + 1000
+            @info "Cache growing large ($(length(MIS_CACHE)) entries)"
+        end
+    end
+
+    total_time = time() - start_time
+    cache_hits = length(MIS_CACHE) - initial_cache_size
+    @info "Search completed in $(round(total_time, digits=2))s. Cache gained $cache_hits entries."
+
+    return results, failed_constraints
+end
+
+# ============================================================================
+# Legacy Compatibility Functions
+# ============================================================================
+
+"""
+    search_by_truth_tables(loader, truth_tables; kwargs...)
+
+Search for Rydberg gadgets by truth tables (legacy interface).
+"""
+function search_by_truth_tables(
+    loader::GraphLoader,
+    truth_tables::Vector{BitMatrix};
+    kwargs...
+)
+    constraints = [TruthTableConstraint(tt) for tt in truth_tables]
+    results, failed = search_gadgets(RydbergModel, loader, constraints; kwargs...)
+    failed_tt = [f.truth_table for f in failed]
+    return results, failed_tt
+end
+
+"""
+    search_by_state_constraints(loader, constraints; kwargs...)
+
+Search for QUBO gadgets by state constraints (convenience function).
+"""
+function search_by_state_constraints(
+    loader::GraphLoader,
+    constraints::Vector{StateConstraint};
+    kwargs...
+)
+    return search_gadgets(QUBOModel, loader, constraints; kwargs...)
+end
+
+"""
+    find_matching_gadget(loader; filter=nothing, limit=nothing, keys_range=nothing, max_results=nothing)
+
+Find gadgets matching a given filter function from the graph loader.
+"""
+function find_matching_gadget(loader::GraphLoader; filter=nothing, limit::Union{Int,Nothing}=nothing, keys_range::Union{Nothing, Vector{Int}}=nothing, max_results::Union{Int,Nothing}=nothing)
+    keys_raw = keys_range === nothing ? collect(keys(loader)) : keys_range
+    keys_to_search = isa(keys_raw[1], Int) ? keys_raw : parse.(Int, keys_raw)
+    total = limit === nothing ? length(keys_to_search) : min(length(keys_to_search), limit)
+
+    results = Gadget[]
+
+    @showprogress for key in Iterators.take(keys_to_search, total)
+        g = loader[key]
+        result = filter(g, loader.layout[key], loader.pinset)
+        if result !== nothing
+            push!(results, result)
+            if max_results !== nothing && length(results) >= max_results
+                @info "Early termination: found $(length(results)) results (max_results=$max_results)"
+                break
+            end
+        end
+    end
+    return results
+end
+
+# Legacy solve_weight_enumerate for compatibility
 function solve_weight_enumerate(
     mis_result::Vector{UInt32},
     target_mis_indices_all::Vector{Vector{Int}},
@@ -367,220 +880,10 @@ function solve_weight_enumerate(
     graph::Union{SimpleGraph{Int}, Nothing}=nothing,
     check_connectivity::Bool=true
 )
-    if optimizer === nothing
-        error("Optimizer must be provided.")
+    if graph === nothing
+        error("Graph must be provided for solve_weight_enumerate")
     end
-
-    any(isempty, target_mis_indices_all) && return Float64[]
-    
-    # Pre-compute constants to avoid repeated calculations
-    all_mis_indices = collect(1:length(mis_result))
-    
-    # Early termination: estimate combination count and apply limit
-    total_combinations = prod(length, target_mis_indices_all)
-    if total_combinations > max_samples
-        @warn "Too many combinations ($total_combinations), sampling first $max_samples"
-        # Use iterative sampling instead of full enumeration
-        return _solve_weight_sampled(mis_result, target_mis_indices_all, vertex_num, pin_set, 
-                                   optimizer, env, objective, allow_defect, max_samples, all_mis_indices, graph, check_connectivity)
-    end
-    
-    # Pre-allocate reusable containers
-    target_indices_set = Vector{Int}(undef, length(target_mis_indices_all))
-    target_set = Vector{UInt32}()
-    wrong_set = Vector{UInt32}()
-    
-    # Enumerate all combinations to find weights
-    sample_count = 0
-    for target_indices in Iterators.product(target_mis_indices_all...)
-        sample_count += 1
-        if sample_count > max_samples
-            break
-        end
-        
-        # Reuse pre-allocated containers
-        copyto!(target_indices_set, target_indices)
-        wrong_indices = setdiff(all_mis_indices, target_indices_set)
-        
-        # Efficient array access
-        resize!(target_set, length(target_indices_set))
-        resize!(wrong_set, length(wrong_indices))
-        
-        @inbounds for (i, idx) in enumerate(target_indices_set)
-            target_set[i] = mis_result[idx]
-        end
-        
-        @inbounds for (i, idx) in enumerate(wrong_indices)
-            wrong_set[i] = mis_result[idx]
-        end
-
-        weights = _find_weight(vertex_num, pin_set, target_set, wrong_set, optimizer, env, objective, allow_defect, graph, check_connectivity)
-        if !isempty(weights)
-            return weights
-        end
-    end
-
-    return Float64[]
-end
-
-"""
-    _solve_weight_sampled(...)
-
-Optimized version for large combination spaces using random sampling.
-"""
-function _solve_weight_sampled(
-    mis_result::Vector{UInt32},
-    target_mis_indices_all::Vector{Vector{Int}},
-    vertex_num::Int,
-    pin_set::Vector{Int},
-    optimizer,
-    env,
-    objective,
-    allow_defect::Bool,
-    max_samples::Int,
-    all_mis_indices::Vector{Int},
-    graph::Union{SimpleGraph{Int}, Nothing}=nothing,
-    check_connectivity::Bool=true
-)
-    # Pre-allocate containers
-    target_indices_set = Vector{Int}(undef, length(target_mis_indices_all))
-    target_set = Vector{UInt32}()
-    wrong_set = Vector{UInt32}()
-    
-    for _ in 1:max_samples
-        # Random sampling from each dimension
-        for (i, indices) in enumerate(target_mis_indices_all)
-            target_indices_set[i] = rand(indices)
-        end
-        
-        wrong_indices = setdiff(all_mis_indices, target_indices_set)
-        
-        # Efficient array construction
-        resize!(target_set, length(target_indices_set))
-        resize!(wrong_set, length(wrong_indices))
-        
-        @inbounds for (i, idx) in enumerate(target_indices_set)
-            target_set[i] = mis_result[idx]
-        end
-        
-        @inbounds for (i, idx) in enumerate(wrong_indices)
-            wrong_set[i] = mis_result[idx]
-        end
-
-        weights = _find_weight(vertex_num, pin_set, target_set, wrong_set, optimizer, env, objective, allow_defect, graph, check_connectivity)
-        if !isempty(weights)
-            return weights
-        end
-    end
-    
-    return Float64[]
-end
-
-"""
-    check_connectivity_after_removal(graph, vertices_to_remove)
-
-Check if a graph remains connected after removing specified vertices.
-
-# Arguments
-- `graph::SimpleGraph{Int}`: The original graph
-- `vertices_to_remove::Vector{Int}`: Vertices to remove (0-based indexing for weight array)
-
-# Returns
-- `Bool`: true if the graph remains connected after removal, false otherwise
-"""
-function check_connectivity_after_removal(graph::SimpleGraph{Int}, vertices_to_remove::Vector{Int})
-    if isempty(vertices_to_remove)
-        return Graphs.is_connected(graph)
-    end
-    
-    # Convert to 1-based indexing for graph vertices
-    vertices_to_remove_1based = vertices_to_remove .+ 1
-    
-    # Get remaining vertices
-    all_vertices = collect(1:Graphs.nv(graph))
-    remaining_vertices = setdiff(all_vertices, vertices_to_remove_1based)
-    
-    # If no vertices remain, it's not connected
-    if isempty(remaining_vertices)
-        return false
-    end
-    
-    # Create subgraph with remaining vertices
-    subgraph, _ = Graphs.induced_subgraph(graph, remaining_vertices)
-    
-    # Check if subgraph is connected
-    return Graphs.is_connected(subgraph)
-end
-
-"""
-    _find_weight(vertex_num, target_masks, wrong_masks, optimizer, env, objective, allow_defect)
-
-Find vertex weights using optimization to distinguish target and wrong maximal independent sets.
-
-# Arguments
-- `vertex_num::Int`: Number of vertices
-- `target_masks::Vector{UInt32}`: Bit masks for target MIS (should have equal energy)
-- `wrong_masks::Vector{UInt32}`: Bit masks for wrong MIS (should have higher energy)
-- `optimizer`: Optimization solver
-- `env`: Environment for the optimizer
-- `objective`: Objective function
-- `allow_defect::Bool`: Whether to allow defective gadgets
-
-# Returns
-- `Vector{Float64}`: Vertex weights if solution found, empty vector otherwise
-"""
-function _find_weight(vertex_num::Int, pin_set::Vector{Int}, target_masks::Vector{UInt32}, wrong_masks::Vector{UInt32}, optimizer, env, objective, allow_defect::Bool, graph::Union{SimpleGraph{Int}, Nothing}=nothing, check_connectivity::Bool=true)
-    opt = isnothing(env) ? optimizer() : optimizer(env)
-    model = direct_model(opt)
-    set_silent(model)
-    set_string_names_on_creation(model, false)
-
-    if allow_defect
-        x = @variable(model, [i=1:vertex_num], lower_bound = i in pin_set ? 1 : 0, Int)
-    else
-        @variable(model, x[1:vertex_num] >= 1, Int)
-    end
-    # @variable(model, x[1:vertex_num] >= 0)
-
-    @variable(model, C)
-
-    # Target MIS must have equal energy
-    for m in target_masks
-        @constraint(model, sum(((m >> (v - 1)) & 0x1) * x[v] for v in 1:vertex_num) == C)
-    end
-
-    # Wrong MIS must have higher energy
-    for m in wrong_masks
-        @constraint(model, sum(((m >> (v - 1)) & 0x1) * x[v] for v in 1:vertex_num) <= C - DEFAULT_EPSILON)
-    end
-
-    if objective !== nothing
-        @objective(model, Min, objective(x))
-    end
-
-    optimize!(model)
-    if is_solved_and_feasible(model)
-        weights = [value(x[v]) for v in 1:vertex_num]
-        
-        # Check connectivity after removing zero-weight vertices (if enabled)
-        if check_connectivity && graph !== nothing
-            # Find vertices with zero (or near-zero) weights
-            zero_weight_vertices = findall(w -> abs(w) < 1e-6, weights)
-            
-            if !isempty(zero_weight_vertices)
-                # Convert to 0-based indexing for connectivity check
-                zero_vertices_0based = zero_weight_vertices .- 1
-                
-                if !check_connectivity_after_removal(graph, zero_vertices_0based)
-                    @info "Solution found but graph becomes disconnected after removing zero-weight vertices, rejecting"
-                    return Float64[]
-                end
-            end
-        end
-        
-        @info "found a valid solution with connectivity preserved"
-        @show weights
-        return weights
-    end
-    return Float64[]
+    result = solve_weights(RydbergModel, mis_result, target_mis_indices_all, graph, pin_set,
+                           optimizer, env, objective, allow_defect, max_samples, check_connectivity)
+    return result === nothing ? Float64[] : result
 end
