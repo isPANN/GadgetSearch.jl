@@ -24,8 +24,8 @@ GadgetSearch supports two energy models for gadget search:
 
 | Model | State Space | Energy Function | Use Case |
 |-------|-------------|-----------------|----------|
-| `RydbergModel` | Maximal Independent Sets (MIS) | $E(\boldsymbol{\sigma})=\sum_{i=1}^{n} h_i \sigma_i$ | Rydberg atom arrays |
-| `QUBOModel` | All 2ⁿ binary states | $E(\boldsymbol{\sigma})=\sum_{i=1}^{n} h_i \sigma_i + \sum_{i,j} J_{ij} \sigma_i \sigma_j$ | General QUBO problems |
+| `RydbergModel` | Maximal Independent Sets (MIS) | $E(\boldsymbol{\sigma})=-\sum_{i=1}^{n} h_i \sigma_i$ | Rydberg atom arrays |
+| `QUBOModel` | All 2ⁿ binary states | $E(\boldsymbol{\sigma})=-\sum_{i=1}^{n} h_i \sigma_i - \sum_{i<j} J_{ij} \sigma_i \sigma_j$ | General QUBO problems |
 
 Here, $\boldsymbol{\sigma} = (\sigma_1, \sigma_2, \ldots, \sigma_n)$ is the binary state vector, $h_i$ is the vertex weight, and $J_{ij}$ is the edge weight.
 
