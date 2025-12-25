@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Rydberg Gadgets on Triangular Lattice · GadgetSearch.jl</title><meta name="title" content="Rydberg Gadgets on Triangular Lattice · GadgetSearch.jl"/><meta property="og:title" content="Rydberg Gadgets on Triangular Lattice · GadgetSearch.jl"/><meta property="twitter:title" content="Rydberg Gadgets on Triangular Lattice · GadgetSearch.jl"/><meta name="description" content="Documentation for GadgetSearch.jl."/><meta property="og:description" content="Documentation for GadgetSearch.jl."/><meta property="twitter:description" content="Documentation for GadgetSearch.jl."/><meta property="og:url" content="https://isPANN.github.io/GadgetSearch.jl/generated/trangular_Rydberg_example/"/><meta property="twitter:url" content="https://isPANN.github.io/GadgetSearch.jl/generated/trangular_Rydberg_example/"/><link rel="canonical" href="https://isPANN.github.io/GadgetSearch.jl/generated/trangular_Rydberg_example/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../../">GadgetSearch.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><span class="tocitem">Examples</span><ul><li class="is-active"><a class="tocitem" href>Rydberg Gadgets on Triangular Lattice</a><ul class="internal"><li><a class="tocitem" href="#Visualize-found-gadgets"><span>Visualize found gadgets</span></a></li><li><a class="tocitem" href="#Check-correctness-using-Rydberg-model"><span>Check correctness using Rydberg model</span></a></li></ul></li><li><a class="tocitem" href="../triangular_QUBO_example/">QUBO Gadgets on Triangular Lattice</a></li></ul></li><li><a class="tocitem" href="../../ref/">Reference</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Rydberg Gadgets on Triangular Lattice</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Rydberg Gadgets on Triangular Lattice</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/isPANN/GadgetSearch.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/isPANN/GadgetSearch.jl/blob/main/examples/trangular_Rydberg_example.jl" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Search-for-Rydberg-Gadgets-on-Triangular-Lattice"><a class="docs-heading-anchor" href="#Search-for-Rydberg-Gadgets-on-Triangular-Lattice">Search for Rydberg Gadgets on Triangular Lattice</a><a id="Search-for-Rydberg-Gadgets-on-Triangular-Lattice-1"></a><a class="docs-heading-anchor-permalink" href="#Search-for-Rydberg-Gadgets-on-Triangular-Lattice" title="Permalink"></a></h1><p>This example demonstrates how to search for <strong>Rydberg gadgets</strong> using:</p><ul><li><strong>RydbergModel</strong>: State space is restricted to Maximal Independent Sets (MIS)</li><li><strong>Unit Disk Graphs (UDG)</strong>: Edges connect vertices within unit distance</li><li><strong>Vertex weights only</strong>: Energy E(σ) = Σᵢ hᵢσᵢ</li></ul><p>Notes:</p><ul><li>The search can be expensive. Tweak <code>max_samples</code>, lattice size, and <code>pin_candidates</code></li></ul><pre><code class="language-julia hljs">using GadgetSearch
+using HiGHS
+using Combinatorics
+using FileIO, ImageShow</code></pre><p>Define truth tables for 2-input, 1-output logic gates</p><pre><code class="language-julia hljs">truth_tables = [
+    TruthTableConstraint(BitMatrix([0 0 0; 1 0 1; 0 1 1; 1 1 1])),   # OR
+    TruthTableConstraint(BitMatrix([0 0 0; 1 0 0; 0 1 0; 1 1 1])),   # AND
+    TruthTableConstraint(BitMatrix([0 0 1; 1 0 1; 0 1 1; 1 1 0])),   # NAND
+    TruthTableConstraint(BitMatrix([0 0 1; 1 0 0; 0 1 0; 1 1 0])),   # NOR
+    TruthTableConstraint(BitMatrix([0 0 0; 1 0 1; 0 1 1; 1 1 0]))    # XOR
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{TruthTableConstraint}:
+ TruthTableConstraint(Bool[0 0 0; 1 0 1; 0 1 1; 1 1 1])
+ TruthTableConstraint(Bool[0 0 0; 1 0 0; 0 1 0; 1 1 1])
+ TruthTableConstraint(Bool[0 0 1; 1 0 1; 0 1 1; 1 1 0])
+ TruthTableConstraint(Bool[0 0 1; 1 0 0; 0 1 0; 1 1 0])
+ TruthTableConstraint(Bool[0 0 0; 1 0 1; 0 1 1; 1 1 0])</code></pre><p>Generate Unit Disk Graph dataset on triangular lattice The UDG constraint means only nearby atoms can interact (Rydberg blockade)</p><pre><code class="language-julia hljs">generate_full_grid_udg(Triangular(), 2, 2; path=pkgdir(GadgetSearch, &quot;examples&quot;, &quot;rydberg_dataset.g6&quot;))
+
+dataloader = GraphLoader(pkgdir(GadgetSearch, &quot;examples&quot;, &quot;rydberg_dataset.g6&quot;))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GraphLoader with 16 graphs, no cache</code></pre><p>Search using RydbergModel explicitly</p><ul><li>RydbergModel uses MIS (Maximal Independent Sets) as the state space</li><li>Only vertex weights (h) are optimized</li><li>Objective minimizes sum of vertex weights</li></ul><pre><code class="language-julia hljs">results, failed = search_gadgets(
+    RydbergModel,           # Explicitly use Rydberg model
+    dataloader,
+    truth_tables;
+    optimizer=HiGHS.Optimizer,
+    pin_candidates=collect(Combinatorics.combinations(1:4, 3)),
+    allow_defect=true,
+    objective=h -&gt; sum(h),  # Only vertex weights for Rydberg
+    save_path=joinpath(pkgdir(GadgetSearch, &quot;examples&quot;), &quot;triangular_Rydberg_results.json&quot;),
+    max_result_num=10,
+    max_samples=10000,
+    check_connectivity=true
+)
+
+println(&quot;================================&quot;)
+println(&quot;   RYDBERG MODEL SEARCH RESULTS&quot;)
+println(&quot;================================&quot;)
+@info &quot;Results: $(length(results)) truth tables searched&quot;
+for (i, tt_results) in enumerate(results)
+    @info &quot;Truth table $(i-1): $(length(tt_results)) gadgets found&quot;
+end
+
+@info &quot;Cache statistics: $(GadgetSearch.get_cache_stats())&quot;
+GadgetSearch.clear_cache!()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr36"><span class="sgr1">[ Info: </span></span>[Rydberg] Searching for constraint 0 [limit=10]
+<span class="sgr32">Progress:  12%|█████▏                                   |  ETA: 0:00:06</span><span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 1.0, 0.0, 2.0, 1.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 1.0, 0.0, 2.0, 1.0, 2.0, 2.0]
+<span class="sgr32">Progress: 100%|█████████████████████████████████████████| Time: 0:00:01</span>
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Constraint 0 processed in 3.61s, found 2 gadgets
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>[Rydberg] Searching for constraint 1 [limit=10]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 3.0, 3.0, 1.0, 1.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 3.0, 3.0, 1.0, 1.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Constraint 1 processed in 0.01s, found 2 gadgets
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>[Rydberg] Searching for constraint 2 [limit=10]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 0.0, 1.0, 2.0, 2.0, 2.0, 1.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 0.0, 1.0, 2.0, 2.0, 2.0, 1.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Constraint 2 processed in 0.01s, found 4 gadgets
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>[Rydberg] Searching for constraint 3 [limit=10]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [0.0, 1.0, 2.0, 1.0, 1.0, 3.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Constraint 3 processed in 0.01s, found 3 gadgets
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>[Rydberg] Searching for constraint 4 [limit=10]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 1.0, 0.0, 2.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 1.0, 1.0, 0.0, 2.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>found a valid Rydberg solution
+weights = [1.0, 0.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0]
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Constraint 4 processed in 0.01s, found 4 gadgets
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Search completed in 6.23s. Cache gained 16 entries.
+================================
+   RYDBERG MODEL SEARCH RESULTS
+================================
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Results: 5 truth tables searched
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Truth table 0: 2 gadgets found
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Truth table 1: 2 gadgets found
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Truth table 2: 4 gadgets found
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Truth table 3: 3 gadgets found
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Truth table 4: 4 gadgets found
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Cache statistics: (size = 16, memory_mb = 0.0026702880859375)
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>MIS cache cleared, 0 entries remaining</code></pre><h2 id="Visualize-found-gadgets"><a class="docs-heading-anchor" href="#Visualize-found-gadgets">Visualize found gadgets</a><a id="Visualize-found-gadgets-1"></a><a class="docs-heading-anchor-permalink" href="#Visualize-found-gadgets" title="Permalink"></a></h2><pre><code class="language-julia hljs">labels = [&quot;OR&quot;, &quot;AND&quot;, &quot;NAND&quot;, &quot;NOR&quot;, &quot;XOR&quot;]
+
+for (i, label) in enumerate(labels)
+    if !isempty(results[i])
+        outpath = pkgdir(GadgetSearch, &quot;examples&quot;, &quot;gadget_$(label).png&quot;)
+        GadgetSearch.plot_gadget(results[i][1], outpath; show_weights=true, round_weights=true)
+        @info &quot;Saved $label gate to $outpath&quot;
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Drawing saved as /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_OR.png
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Saved OR gate to /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_OR.png
+Drawing saved as /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_AND.png
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Saved AND gate to /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_AND.png
+Drawing saved as /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_NAND.png
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Saved NAND gate to /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_NAND.png
+Drawing saved as /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_NOR.png
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Saved NOR gate to /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_NOR.png
+Drawing saved as /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_XOR.png
+<span class="sgr36"><span class="sgr1">[ Info: </span></span>Saved XOR gate to /home/runner/work/GadgetSearch.jl/GadgetSearch.jl/examples/gadget_XOR.png</code></pre><h2 id="Check-correctness-using-Rydberg-model"><a class="docs-heading-anchor" href="#Check-correctness-using-Rydberg-model">Check correctness using Rydberg model</a><a id="Check-correctness-using-Rydberg-model-1"></a><a class="docs-heading-anchor-permalink" href="#Check-correctness-using-Rydberg-model" title="Permalink"></a></h2><p>The check_gadget function validates ground states using MIS</p><pre><code class="language-julia hljs">for (i, label) in enumerate(labels)
+    if !isempty(results[i])
+        gadget = results[i][1]
+        println(&quot;\n===== Checking $(label) gate (Rydberg/MIS) =====&quot;)
+        println(&quot;Pins: $(gadget.pins)&quot;)
+        println(&quot;Vertex weights: $(gadget.vertex_weights)&quot;)
+        println(check_gadget_rydberg(gadget; _return_info=true))
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
+===== Checking OR gate (Rydberg/MIS) =====
+Pins: [1, 2, 3]
+Vertex weights: [1.0, 1.0, 1.0, 0.0, 2.0, 1.0, 2.0, 2.0]
+Model: Rydberg (MIS)
+Max energy value: 4.0
+Ground states (max energy):
+  State index=1, pins=[0, 1, 1]
+  State index=2, pins=[0, 0, 0]
+  State index=4, pins=[1, 0, 1]
+  State index=6, pins=[1, 1, 1]
+
+===== Checking AND gate (Rydberg/MIS) =====
+Pins: [1, 3, 4]
+Vertex weights: [1.0, 0.0, 1.0, 1.0, 3.0, 3.0, 1.0, 1.0]
+Model: Rydberg (MIS)
+Max energy value: 4.0
+Ground states (max energy):
+  State index=1, pins=[0, 0, 0]
+  State index=2, pins=[0, 1, 0]
+  State index=3, pins=[1, 1, 1]
+  State index=6, pins=[1, 0, 0]
+
+===== Checking NAND gate (Rydberg/MIS) =====
+Pins: [1, 2, 4]
+Vertex weights: [1.0, 1.0, 0.0, 1.0, 2.0, 2.0, 2.0, 1.0]
+Model: Rydberg (MIS)
+Max energy value: 4.0
+Ground states (max energy):
+  State index=1, pins=[0, 1, 1]
+  State index=2, pins=[0, 0, 1]
+  State index=4, pins=[1, 0, 1]
+  State index=7, pins=[1, 1, 0]
+
+===== Checking NOR gate (Rydberg/MIS) =====
+Pins: [1, 3, 4]
+Vertex weights: [1.0, 0.0, 2.0, 1.0, 2.0, 3.0, 1.0, 1.0]
+Model: Rydberg (MIS)
+Max energy value: 4.0
+Ground states (max energy):
+  State index=1, pins=[0, 0, 1]
+  State index=2, pins=[0, 1, 0]
+  State index=4, pins=[1, 1, 0]
+  State index=6, pins=[1, 0, 0]
+
+===== Checking XOR gate (Rydberg/MIS) =====
+Pins: [1, 2, 3]
+Vertex weights: [1.0, 1.0, 1.0, 0.0, 2.0, 2.0, 2.0, 2.0]
+Model: Rydberg (MIS)
+Max energy value: 4.0
+Ground states (max energy):
+  State index=1, pins=[0, 1, 1]
+  State index=2, pins=[0, 0, 0]
+  State index=4, pins=[1, 0, 1]
+  State index=6, pins=[1, 1, 0]</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../triangular_QUBO_example/">QUBO Gadgets on Triangular Lattice »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 25 December 2025 09:40">Thursday 25 December 2025</span>. Using Julia version 1.12.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
