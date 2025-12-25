@@ -49,14 +49,67 @@ function get_inner_points(lattice::LatticeType, nx::Int, ny::Int)
 end
 
 """
+    complete_graph(n::Int) -> SimpleGraph
+
+Create a complete graph with n vertices where every pair of vertices is connected.
+
+# Arguments
+- `n`: Number of vertices
+
+# Returns
+- `SimpleGraph`: The complete graph K_n
+"""
+function complete_graph(n::Int)
+    g = SimpleGraph(n)
+    for i = 1:n, j = i+1:n
+        add_edge!(g, i, j)
+    end
+    return g
+end
+
+"""
+    generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.g6") -> String
+
+Generate complete graphs on a grid lattice (without boundary expansion) and save to file.
+All vertices are connected to each other, regardless of distance.
+
+# Arguments  
+- `lattice`: Type of lattice (Square or Triangular) - determines physical positions
+- `nx`: Number of grid points in x direction
+- `ny`: Number of grid points in y direction
+- `path`: Output file path for saving graphs (default: "grid.g6")
+
+# Returns
+- `String`: Path to the saved graph file
+
+# Details
+Generates a single complete graph on the nx×ny grid. The physical positions
+follow the lattice geometry, but edges connect all pairs of vertices.
+"""
+function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.g6")
+    # grid points (no boundary expansion)
+    grid_points = get_physical_positions(lattice, 
+        vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny]))
+
+    n = length(grid_points)
+    g = complete_graph(n)
+
+    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[(g, grid_points)]
+    
+    save_graph(results, path)
+    @info "Generated complete graph with $n vertices on $(nx)×$(ny) grid"
+    return path
+end
+
+"""
     generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.g6") -> String
 
 Generate unit disk graphs on a grid lattice with four boundary pins and save to file.
 
 # Arguments  
 - `lattice`: Type of lattice (Square or Triangular)
-- `nx`: Number of inner points in x direction
-- `ny`: Number of inner points in y direction
+- `nx`: Number of inner positions in x direction
+- `ny`: Number of inner positions in y direction
 - `path`: Output file path for saving graphs (default: "udg.g6")
 
 # Returns
@@ -75,7 +128,7 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
 
     radius = get_radius(lattice)
 
-    results = Tuple{SimpleGraph, Vector{Tuple{Float64, Float64}}}[]
+    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[]
 
     for top in top_candidates, bottom in bottom_candidates,
         left in left_candidates, right in right_candidates
@@ -102,7 +155,7 @@ function _call_shortg(temp_path::String, mapping_file::String)
     return true
 end
 
-function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph, Vector{Tuple{Float64, Float64}}}}, path::String)
+function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
     # If shortg is unavailable, save directly without dedup/canonicalization.
     if Sys.which("shortg") === nothing
         @warn "`shortg` not found in PATH; saving graphs without deduplication."

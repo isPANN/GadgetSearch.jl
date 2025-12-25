@@ -199,23 +199,17 @@ end
         # Create a temporary file for testing
         temp_file = tempname() * ".g6"
         
-        # Test if the function runs without error when shortg is not available
-        # We expect this to fail due to missing shortg, but we can test the structure
-        try
-            result = generate_full_grid_udg(square, nx, ny; path=temp_file)
-            
-            # If it succeeds (shortg is available), check the result
-            @test typeof(result) == String
-            @test result == temp_file
-            
-            # Clean up
-            if isfile(temp_file)
-                rm(temp_file)
-            end
-            
-        catch e
-            # Expected error when shortg is not available
-            @test occursin("shortg", string(e)) || occursin("external tool", string(e))
+        # The function should now handle missing shortg gracefully (with a warning)
+        # It will either succeed with shortg or save raw graphs without deduplication
+        result = generate_full_grid_udg(square, nx, ny; path=temp_file)
+        
+        # Check the result
+        @test typeof(result) == String
+        @test result == temp_file
+        
+        # Clean up
+        if isfile(temp_file)
+            rm(temp_file)
         end
     end
     

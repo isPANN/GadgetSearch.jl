@@ -7,7 +7,7 @@ function save_graph(g::Vector{SimpleGraph{T}}, path::String) where T
     return path
 end
 
-function save_graph(g::Vector{Tuple{SimpleGraph, Vector{Tuple{Float64, Float64}}}}, path::String; g6_only::Bool=false)
+function save_graph(g::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String; g6_only::Bool=false) where T
     open(path, "w") do io
         for (graph, coords) in g
             g6 = GraphIO.Graph6._graphToG6String(graph)[11:end]

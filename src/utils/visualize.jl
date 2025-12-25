@@ -22,7 +22,7 @@ function _scale_values_with_margin(xvals, yvals, xmax_abs_val, ymax_abs_val, mar
     return scale_factor_x, scale_factor_y
 end
 
-function _map_and_scale(gadget::Gadget{T}, x_plot_size, y_plot_size, margin, preserve_aspect_ratio) where T
+function _map_and_scale(gadget::Gadget, x_plot_size, y_plot_size, margin, preserve_aspect_ratio)
     #Note: In Luxor, the X-axis represents the horizontal direction, and the Y-axis represents the vertical direction, so we need to adjust the coordinate order accordingly.
     y_vals = [pos[1] for pos in gadget.pos]
     x_vals = [pos[2] for pos in gadget.pos]
@@ -113,7 +113,7 @@ function _layout_from_positions(pos::Vector{Tuple{Float64, Float64}}, plot_size:
     return [Point(x*x_scale_factor, y*y_scale_factor) for (x,y) in zip(x_new_vals, y_new_vals)]
 end
 
-function plot_single_gadget(gadget::Gadget{T}, save_path::String; plot_size=400, margin=20, preserve_aspect_ratio=true, discrete_color_scheme=ColorSchemes.seaborn_bright, continuous_color_scheme=ColorSchemes.viridis) where T
+function plot_single_gadget(gadget::Gadget, save_path::String; plot_size=400, margin=20, preserve_aspect_ratio=true, discrete_color_scheme=ColorSchemes.seaborn_bright, continuous_color_scheme=ColorSchemes.viridis)
     x_new_vals, y_new_vals, x_scale_factor, y_scale_factor = _map_and_scale(gadget, plot_size, plot_size, margin, preserve_aspect_ratio)
     pts = [Point(x*x_scale_factor, y*y_scale_factor) for (x,y) in zip(x_new_vals, y_new_vals)]
     node_colors = _generate_vertex_color(gadget.weights, discrete_color_scheme, continuous_color_scheme)
@@ -134,7 +134,7 @@ end
 
 
 function plot_gadget(
-                            gadget::Gadget{T}, save_path::String; 
+                            gadget::Gadget, save_path::String; 
                             plot_size=400, margin=30, 
                             preserve_aspect_ratio=true, 
                             background_grid=false,
@@ -142,7 +142,7 @@ function plot_gadget(
                             round_weights=false,
                             discrete_color_scheme=ColorSchemes.seaborn_bright, 
                             continuous_color_scheme=ColorSchemes.viridis
-                            ) where T
+                            )
 
     # Create a new graph with only non-zero weight vertices
     valid_vertices = findall(w -> w != 0, gadget.weights)

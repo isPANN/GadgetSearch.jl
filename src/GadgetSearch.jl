@@ -33,15 +33,30 @@ export save_graph
 
 export Square, Triangular
 export generate_full_grid_udg
+export generate_full_grid_graph
 
+# Core types
 export Gadget
 export save_results_to_json
 
+# Energy models
+export EnergyModel, RydbergModel, QUBOModel
+
+# Constraint types
+export GadgetConstraint, TruthTableConstraint, StateConstraint
+
+# Search functions
+export search_gadgets
+export search_by_truth_tables
+export search_by_state_constraints
+
+# Visualization
 export get_radius
 export plot_gadget
 
 # Utilities
 export clear_cache!
 export get_cache_stats
+export check_gadget, check_gadget_rydberg, check_gadget_qubo
 
 end # module
