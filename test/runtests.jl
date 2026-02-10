@@ -13,6 +13,10 @@ end
     include("core/search.jl")
 end
 
+@testset "RydbergUnweightedModel" begin
+    include("core/search_unweighted.jl")
+end
+
 @testset "Visualization" begin
     include("utils/visualize.jl")
 end

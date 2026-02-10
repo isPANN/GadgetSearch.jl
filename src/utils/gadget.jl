@@ -102,7 +102,7 @@ function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:En
     max_indices = findall(e -> abs(e - max_energy) < 1e-6, energy_values)
 
     # Format report
-    model_name = model === RydbergModel ? "Rydberg (MIS)" : "QUBO (Full)"
+    model_name = model === RydbergModel ? "Rydberg (MIS)" : model === RydbergUnweightedModel ? "Rydberg Unweighted (MIS)" : "QUBO (Full)"
     lines = ["Model: $model_name", "Max energy value: $(max_energy)", "Ground states (max energy):"]
     for idx in max_indices
         config = states[idx]
@@ -127,3 +127,11 @@ check_gadget_rydberg(gadget::Gadget; kwargs...) = check_gadget(gadget; model=Ryd
 Check gadget using QUBO (full state space) model.
 """
 check_gadget_qubo(gadget::Gadget; kwargs...) = check_gadget(gadget; model=QUBOModel, kwargs...)
+
+"""
+    check_gadget_unweighted(gadget::Gadget; _return_info::Bool=false)
+
+Check gadget using unweighted Rydberg (MIS) model with uniform weights.
+Ground states are the Maximum Independent Sets (largest cardinality).
+"""
+check_gadget_unweighted(gadget::Gadget; kwargs...) = check_gadget(gadget; model=RydbergUnweightedModel, kwargs...)
