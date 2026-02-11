@@ -13,8 +13,8 @@ end
     include("core/search.jl")
 end
 
-@testset "RydbergUnweightedModel" begin
-    include("core/search_unweighted.jl")
+@testset "AlphaTensorMode" begin
+    include("core/alpha_tensor_test.jl")
 end
 
 @testset "Visualization" begin

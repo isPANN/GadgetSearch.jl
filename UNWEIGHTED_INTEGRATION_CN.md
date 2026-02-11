@@ -260,3 +260,4 @@ julia> check_gadget_unweighted(gadget)
 **文档状态**: ✅ 完整  
 **可用版本**: GadgetSearch.jl v1.0.0-DEV
 
+

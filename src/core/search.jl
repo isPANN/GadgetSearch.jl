@@ -69,6 +69,24 @@ of unweighted maximum independent set"
 """
 struct RydbergUnweightedModel <: EnergyModel end
 
+"""
+    AlphaTensorMode <: EnergyModel
+
+Energy model that uses reduced α-tensor for gadget verification.
+- State space: Maximal Independent Sets (MIS)
+- Verification: Check if reduced α-tensors differ by a constant
+- No optimizer needed: pure combinatorial verification
+- Most rigorous mathematical framework
+
+This mode implements the α-tensor equivalence check from UnitDiskMapping.jl:
+Two gadgets are equivalent if their reduced α-tensors differ by a constant
+across all boundary configurations.
+
+Reference: Liu et al., "Computer-assisted gadget design and problem reduction
+of unweighted maximum independent set", PRX Quantum 4, 010316 (2023)
+"""
+struct AlphaTensorMode <: EnergyModel end
+
 # ============================================================================
 # Abstract Types for Constraints
 # ============================================================================
@@ -148,12 +166,6 @@ function Gadget(::Type{QUBOModel}, constraint::GadgetConstraint, graph::SimpleGr
     Gadget{QUBOModel, T}(constraint, graph, pins, vertex_weights, edge_weights, edge_list, pos)
 end
 
-function Gadget(::Type{RydbergUnweightedModel}, constraint::GadgetConstraint, graph::SimpleGraph{Int}, 
-                pins::Vector{Int}, vertex_weights::Vector{T}, 
-                pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing) where T<:Real
-    Gadget{RydbergUnweightedModel, T}(constraint, graph, pins, vertex_weights, T[], Tuple{Int,Int}[], pos)
-end
-
 # Legacy compatibility: Gadget with truth table and weights only
 function Gadget(ground_states::BitMatrix, graph::SimpleGraph{Int}, pins::Vector{Int}, 
                 weights::Vector{T}, pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing) where T<:Real
@@ -198,12 +210,22 @@ function get_state_space(::Type{QUBOModel}, graph::SimpleGraph{Int})
 end
 
 """
-    get_state_space(::Type{RydbergUnweightedModel}, graph::SimpleGraph{Int}) -> Tuple{Vector{UInt32}, Int}
+    get_state_space(::Type{RydbergUnweightedModel}, graph::SimpleGraph{Int})
 
 Get the state space for unweighted Rydberg model (Maximal Independent Sets).
 Same state space as RydbergModel.
 """
 function get_state_space(::Type{RydbergUnweightedModel}, graph::SimpleGraph{Int})
+    return find_maximal_independent_sets(graph)
+end
+
+"""
+    get_state_space(::Type{AlphaTensorMode}, graph::SimpleGraph{Int})
+
+Get the state space for α-tensor mode (Maximal Independent Sets).
+Same state space as RydbergModel.
+"""
+function get_state_space(::Type{AlphaTensorMode}, graph::SimpleGraph{Int})
     return find_maximal_independent_sets(graph)
 end
 
@@ -331,8 +353,8 @@ function solve_weights(
     max_samples::Int=1000,
     check_connectivity::Bool=true
 ) where M <: EnergyModel
-    if optimizer === nothing && M !== RydbergUnweightedModel
-        error("Optimizer must be provided for $(M).")
+    if optimizer === nothing && !(M <: Union{RydbergUnweightedModel, AlphaTensorMode})
+        error("Optimizer must be provided for $(M). Only RydbergUnweightedModel and AlphaTensorMode can run without an optimizer.")
     end
 
     any(isempty, target_indices_all) && return nothing
@@ -510,50 +532,6 @@ function _find_weights(
 end
 
 """
-    _find_weights(::Type{RydbergUnweightedModel}, ...) -> Union{Nothing, Vector{Float64}}
-
-Check if uniform weights (all ones) satisfy the constraint for unweighted Rydberg model.
-No optimization is performed — this is a pure feasibility check.
-
-With all weights equal to 1, the energy of a MIS state equals the number of selected vertices.
-Ground states are the Maximum Independent Sets (MIS with largest cardinality).
-"""
-function _find_weights(
-    ::Type{RydbergUnweightedModel},
-    vertex_num::Int, 
-    edge_list::Vector{Tuple{Int,Int}}, 
-    pin_set::Vector{Int}, 
-    target_states::Vector{UInt32}, 
-    wrong_states::Vector{UInt32}, 
-    optimizer, 
-    env, 
-    objective, 
-    allow_defect::Bool, 
-    graph::SimpleGraph{Int},
-    check_connectivity::Bool=true
-)
-    # With uniform weights (all = 1), energy = number of selected vertices (popcount)
-    target_energy = count_ones(target_states[1])
-    
-    # All target states must have the same energy (same cardinality)
-    for s in target_states
-        if count_ones(s) != target_energy
-            return nothing
-        end
-    end
-    
-    # All wrong states must have strictly lower energy
-    for s in wrong_states
-        if count_ones(s) >= target_energy
-            return nothing
-        end
-    end
-    
-    @info "found a valid RydbergUnweighted solution"
-    return ones(Float64, vertex_num)
-end
-
-"""
     _find_weights(::Type{QUBOModel}, ...) -> Union{Nothing, Tuple{Vector{Float64}, Vector{Float64}}}
 
 Find vertex and edge weights for QUBO model.
@@ -642,6 +620,84 @@ function _find_weights(
     return nothing
 end
 
+"""
+    _find_weights(::Type{RydbergUnweightedModel}, ...) -> Union{Nothing, Vector{Float64}}
+
+Check if uniform weights (all ones) satisfy the constraint for unweighted Rydberg model.
+No optimization is performed — this is a pure feasibility check.
+
+With all weights equal to 1, the energy of a MIS state equals the number of selected vertices.
+Ground states are the Maximum Independent Sets (MIS with largest cardinality).
+"""
+function _find_weights(
+    ::Type{RydbergUnweightedModel},
+    vertex_num::Int, 
+    edge_list::Vector{Tuple{Int,Int}}, 
+    pin_set::Vector{Int}, 
+    target_states::Vector{UInt32}, 
+    wrong_states::Vector{UInt32}, 
+    optimizer, 
+    env, 
+    objective, 
+    allow_defect::Bool, 
+    graph::SimpleGraph{Int},
+    check_connectivity::Bool=true
+)
+    # With uniform weights (all = 1), energy = number of selected vertices (popcount)
+    target_energy = count_ones(target_states[1])
+    
+    # All target states must have the same energy (same cardinality)
+    for s in target_states
+        if count_ones(s) != target_energy
+            return nothing
+        end
+    end
+    
+    # All wrong states must have strictly lower energy
+    for s in wrong_states
+        if count_ones(s) >= target_energy
+            return nothing
+        end
+    end
+    
+    @info "found a valid RydbergUnweighted solution"
+    return ones(Float64, vertex_num)
+end
+
+"""
+    _find_weights(::Type{AlphaTensorMode}, ...) -> Union{Nothing, Vector{Float64}}
+
+Verify gadget using reduced α-tensor equivalence.
+
+This uses the α-tensor framework from UnitDiskMapping.jl to check if the gadget
+is equivalent to the pattern defined by target_states.
+"""
+function _find_weights(
+    ::Type{AlphaTensorMode},
+    vertex_num::Int, 
+    edge_list::Vector{Tuple{Int,Int}}, 
+    pin_set::Vector{Int}, 
+    target_states::Vector{UInt32}, 
+    wrong_states::Vector{UInt32}, 
+    optimizer,  # Not used
+    env, 
+    objective, 
+    allow_defect::Bool, 
+    graph::SimpleGraph{Int},
+    check_connectivity::Bool=true
+)
+    # Use α-tensor verification from alpha_tensor.jl
+    result = verify_gadget_via_alpha_tensor(graph, pin_set, target_states)
+    
+    if result === nothing
+        return nothing
+    end
+    
+    weights, overhead = result
+    @info "found a valid AlphaTensor solution (overhead = $overhead)"
+    return weights
+end
+
 # ============================================================================
 # Unified Search Interface
 # ============================================================================
@@ -714,11 +770,11 @@ function make_filter(
             result = solve_weights(M, states, target_indices_all, graph, candidate, 
                                    optimizer, env, objective, allow_defect, max_samples, check_connectivity)
             if result !== nothing
-                if M === QUBOModel
+                if M === RydbergModel
+                    return Gadget(RydbergModel, constraint, graph, candidate, result, pos)
+                else
                     vertex_weights, edge_weights = result
                     return Gadget(QUBOModel, constraint, graph, candidate, vertex_weights, edge_weights, edge_list, pos)
-                else  # RydbergModel or RydbergUnweightedModel
-                    return Gadget(M, constraint, graph, candidate, result, pos)
                 end
             end
         end
@@ -774,10 +830,6 @@ function search_gadgets(
     check_connectivity::Bool=true
 ) where {M <: EnergyModel, C <: GadgetConstraint}
     
-    if optimizer === nothing && M !== RydbergUnweightedModel
-        error("Optimizer must be provided for $(M). Only RydbergUnweightedModel can run without an optimizer.")
-    end
-
     results = Vector{Vector{Gadget}}(undef, length(constraints))
     for i in 1:length(constraints)
         results[i] = Gadget[]
@@ -790,7 +842,7 @@ function search_gadgets(
 
     for (i, constraint) in enumerate(constraints)
         constraint_start = time()
-        model_name = M === RydbergModel ? "Rydberg" : M === RydbergUnweightedModel ? "RydbergUnweighted" : "QUBO"
+        model_name = M === RydbergModel ? "Rydberg" : "QUBO"
         @info "[$model_name] Searching for constraint $(i-1) [limit=$max_result_num]"
         
         filter_fn = make_filter(M, constraint, optimizer, env;
