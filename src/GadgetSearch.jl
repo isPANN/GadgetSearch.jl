@@ -20,6 +20,7 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
+include("core/alpha_tensor.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
 include("utils/visualize.jl")
@@ -40,7 +41,7 @@ export Gadget
 export save_results_to_json
 
 # Energy models
-export EnergyModel, RydbergModel, QUBOModel
+export EnergyModel, RydbergModel, QUBOModel, RydbergUnweightedModel
 
 # Constraint types
 export GadgetConstraint, TruthTableConstraint
@@ -56,6 +57,13 @@ export plot_gadget
 # Utilities
 export clear_cache!
 export get_cache_stats
-export check_gadget, check_gadget_rydberg, check_gadget_qubo
+export check_gadget, check_gadget_rydberg, check_gadget_qubo, check_gadget_unweighted
+
+# α-Tensor functions
+export compute_reduced_alpha_tensor
+export check_alpha_equivalence
+export verify_gadget_via_alpha_tensor
+export find_ground_configs
+export extract_pin_config
 
 end # module

@@ -102,7 +102,7 @@ function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:En
     max_indices = findall(e -> abs(e - max_energy) < 1e-6, energy_values)
 
     # Format report
-    model_name = model === RydbergModel ? "Rydberg (MIS)" : "QUBO (Full)"
+    model_name = model === RydbergModel ? "Rydberg (MIS)" : model === RydbergUnweightedModel ? "RydbergUnweighted (α-tensor MIS)" : "QUBO (Full)"
     lines = ["Model: $model_name", "Max energy value: $(max_energy)", "Ground states (max energy):"]
     for idx in max_indices
         config = states[idx]
@@ -127,3 +127,39 @@ check_gadget_rydberg(gadget::Gadget; kwargs...) = check_gadget(gadget; model=Ryd
 Check gadget using QUBO (full state space) model.
 """
 check_gadget_qubo(gadget::Gadget; kwargs...) = check_gadget(gadget; model=QUBOModel, kwargs...)
+
+"""
+    check_gadget_unweighted(gadget::Gadget; _return_info::Bool=false)
+
+Check gadget using unweighted Rydberg (α-tensor MIS) model with uniform weights.
+Ground states are the Maximum Independent Sets (largest cardinality MIS).
+Also computes and displays the reduced α-tensor for the gadget.
+"""
+function check_gadget_unweighted(gadget::Gadget; _return_info::Bool=false)
+    # Standard check with unweighted model  
+    result = check_gadget(gadget; model=RydbergUnweightedModel, _return_info=true)
+    
+    # Additionally compute α-tensor info
+    g = gadget.graph
+    pins = gadget.pins
+    α = compute_reduced_alpha_tensor(g, pins)
+    n_pins = length(pins)
+    ground_configs, max_total = find_ground_configs(α, n_pins)
+    
+    alpha_lines = ["\n--- α-Tensor Analysis ---", "Max total IS size: $max_total"]
+    push!(alpha_lines, "Ground configs (boundary configs with max total):")
+    for config in sort(collect(ground_configs))
+        pin_vals = Int[((config >> (i-1)) & 0x1) for i in 1:n_pins]
+        push!(alpha_lines, "  config=$(pin_vals), α=$(α[config]), total=$(α[config] + count_ones(config))")
+    end
+    push!(alpha_lines, "All α-tensor entries:")
+    for config in UInt32(0):UInt32(2^n_pins - 1)
+        α_val = α[config]
+        pin_vals = Int[((config >> (i-1)) & 0x1) for i in 1:n_pins]
+        status = α_val == INFEASIBLE_ALPHA ? "INFEASIBLE" : "α=$(α_val), total=$(α_val + count_ones(config))"
+        push!(alpha_lines, "  config=$(pin_vals): $status")
+    end
+    
+    msg = result * "\n" * join(alpha_lines, "\n")
+    return _return_info ? msg : (@info msg; nothing)
+end

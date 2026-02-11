@@ -1,7 +1,7 @@
 name = "GadgetSearch"
 uuid = "f32ba870-f0fb-4590-997c-33f4129cc18c"
-authors = ["Xiwei Pan"]
 version = "1.0.0-DEV"
+authors = ["Xiwei Pan"]
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
@@ -10,6 +10,7 @@ Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
 GraphIO = "aa1b3936-2fda-51b9-ab35-c553d3a640a2"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
@@ -26,6 +27,7 @@ Combinatorics = "1"
 DocumenterTools = "0.1.20"
 GraphIO = "0.7.1"
 Graphs = "1.9.0"
+HiGHS = "1.21.0"
 IterTools = "1.10.0"
 JSON3 = "1.14.1"
 JuMP = "1"
