@@ -191,3 +191,42 @@ end
     valid4, _ = is_diff_by_constant(t7, t8)
     @test valid4 == true
 end
+
+# BATOIDEA: 11-vertex unit disk replacement for CROSS (Figure 6 in the paper)
+# Pins: {1, 2, 3, 4}, internal: {5, 6, 7, 8, 9, 10, 11}
+function make_batoidea_graph()
+    g = SimpleGraph(11)
+    add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
+    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 8)
+    add_edge!(g, 3, 8)
+    add_edge!(g, 4, 9);  add_edge!(g, 4, 10); add_edge!(g, 4, 11)
+    add_edge!(g, 5, 6);  add_edge!(g, 5, 9);  add_edge!(g, 5, 10)
+    add_edge!(g, 6, 7);  add_edge!(g, 6, 9);  add_edge!(g, 6, 10); add_edge!(g, 6, 11)
+    add_edge!(g, 7, 8);  add_edge!(g, 7, 10); add_edge!(g, 7, 11)
+    add_edge!(g, 8, 11)
+    add_edge!(g, 9, 10)
+    add_edge!(g, 10, 11)
+    return g
+end
+
+# Print reduced alpha tensors for CROSS and BATOIDEA for manual verification
+let
+    pins = [1, 2, 3, 4]
+
+    cross = make_cross_graph()
+    r_cross = content.(calculate_reduced_alpha_tensor(cross, pins))
+    println("\nCROSS reduced alpha tensor (boundary=[1,2,3,4]):")
+    for s1 in 0:1, s2 in 0:1, s3 in 0:1, s4 in 0:1
+        println("  $s1$s2$s3$s4 => ", r_cross[s1+1, s2+1, s3+1, s4+1])
+    end
+
+    batoidea = make_batoidea_graph()
+    r_bat = content.(calculate_reduced_alpha_tensor(batoidea, pins))
+    println("\nBATOIDEA reduced alpha tensor (boundary=[1,2,3,4]):")
+    for s1 in 0:1, s2 in 0:1, s3 in 0:1, s4 in 0:1
+        println("  $s1$s2$s3$s4 => ", r_bat[s1+1, s2+1, s3+1, s4+1])
+    end
+
+    valid, c = is_diff_by_constant(r_bat, r_cross)
+    println("\nis_diff_by_constant(BATOIDEA, CROSS) = $valid, offset = $c")
+end
