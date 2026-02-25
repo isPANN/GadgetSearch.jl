@@ -136,3 +136,14 @@ let
         println("  $s1$s2$s3$s4 => ", vals[s1+1, s2+1, s3+1, s4+1])
     end
 end
+
+# Print reduced alpha tensor values for manual verification against Table 1 (α̃(R) column)
+let
+    g = make_figure1_left_graph()
+    reduced = calculate_reduced_alpha_tensor(g, [1, 2, 3, 4])
+    vals = content.(reduced)
+    println("\nFigure 1 left graph REDUCED alpha tensor (boundary=[1,2,3,4]):")
+    for s1 in 0:1, s2 in 0:1, s3 in 0:1, s4 in 0:1
+        println("  $s1$s2$s3$s4 => ", vals[s1+1, s2+1, s3+1, s4+1])
+    end
+end
