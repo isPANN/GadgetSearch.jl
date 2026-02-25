@@ -211,10 +211,46 @@ end
 
 @testset "CROSS and BATOIDEA: reduced alpha tensors differ by constant (Theorem 3.7)" begin
     pins = [1, 2, 3, 4]
-    r_cross   = content.(calculate_reduced_alpha_tensor(make_cross_graph(),   pins))
+    r_cross    = content.(calculate_reduced_alpha_tensor(make_cross_graph(),   pins))
     r_batoidea = content.(calculate_reduced_alpha_tensor(make_batoidea_graph(), pins))
 
     valid, c = is_diff_by_constant(r_batoidea, r_cross)
     @test valid == true
     @test c == 2.0  # BATOIDEA has 7 internal vertices contributing offset +2
+end
+
+# Equation (3.2): CROSS + EDGE → PIRAMID, constant difference = -1
+# Left graph (CROSS + EDGE): pins {1,2,3,4}, internal {5,6}
+function make_cross_edge_graph()
+    g = SimpleGraph(6)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 1, 5)
+    add_edge!(g, 2, 6)
+    add_edge!(g, 3, 5)
+    add_edge!(g, 6, 4)
+    return g
+end
+
+# Right graph (PIRAMID): pins {1,2,3,4}, internal {5}
+function make_piramid_graph()
+    g = SimpleGraph(5)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    add_edge!(g, 3, 4)
+    add_edge!(g, 4, 1)
+    add_edge!(g, 1, 5)
+    add_edge!(g, 2, 5)
+    add_edge!(g, 3, 5)
+    add_edge!(g, 4, 5)
+    return g
+end
+
+@testset "CROSS+EDGE and PIRAMID: reduced alpha tensors differ by constant (Eq. 3.2)" begin
+    pins = [1, 2, 3, 4]
+    r_left  = content.(calculate_reduced_alpha_tensor(make_cross_edge_graph(), pins))
+    r_right = content.(calculate_reduced_alpha_tensor(make_piramid_graph(),    pins))
+
+    valid, c = is_diff_by_constant(r_right, r_left)
+    @test valid == true
+    @test c == -1.0  # PIRAMID has fewer internal vertices, offset = -1
 end
