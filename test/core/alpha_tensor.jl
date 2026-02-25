@@ -85,12 +85,9 @@ end
 # Pins are unchanged: [1, 2, 3, 4]
 function make_figure1_left_graph()
     g = SimpleGraph(8)
-    # Edges from the right graph (shared boundary structure)
+    # Only boundary-to-boundary edge: 1-3
     add_edge!(g, 1, 3)
-    add_edge!(g, 1, 4)
-    add_edge!(g, 3, 4)
-    add_edge!(g, 2, 4)
-    # Internal red vertices 5, 6, 7, 8
+    # Internal red vertices 5, 6, 7, 8 connected to boundary and each other
     add_edge!(g, 5, 1)
     add_edge!(g, 5, 2)
     add_edge!(g, 5, 6)
