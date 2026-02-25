@@ -197,7 +197,7 @@ end
 function make_batoidea_graph()
     g = SimpleGraph(11)
     add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
-    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 8)
+    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 7)  # 2-7, not 2-8
     add_edge!(g, 3, 8)
     add_edge!(g, 4, 9);  add_edge!(g, 4, 10); add_edge!(g, 4, 11)
     add_edge!(g, 5, 6);  add_edge!(g, 5, 9);  add_edge!(g, 5, 10)
