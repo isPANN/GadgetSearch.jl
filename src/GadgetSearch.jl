@@ -11,7 +11,7 @@ using Random
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve
-using GenericTensorNetworks: Tropical
+using GenericTensorNetworks: Tropical, mis_compactify!
 
 # Visualization and data handling
 using Colors, ColorSchemes
@@ -65,5 +65,6 @@ export check_gadget, check_gadget_rydberg, check_gadget_qubo
 
 # Alpha tensor
 export calculate_alpha_tensor
+export calculate_reduced_alpha_tensor
 
 end # module
