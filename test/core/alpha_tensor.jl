@@ -100,6 +100,32 @@ function make_figure1_left_graph()
     return g
 end
 
+@testset "Figure 1 left graph: alpha tensor against Table 1" begin
+    g = make_figure1_left_graph()
+    boundary = [1, 2, 3, 4]
+    alpha = calculate_alpha_tensor(g, boundary)
+    vals = content.(alpha)
+
+    # Verify against Table 1 from the paper (Figure 1 left graph R)
+    # Indexing: (s1+1, s2+1, s3+1, s4+1) for boundary config s1s2s3s4
+    @test vals[1,1,1,1] == 2.0   # 0000
+    @test vals[1,1,1,2] == 3.0   # 0001
+    @test vals[1,1,2,1] == 3.0   # 0010
+    @test vals[1,2,1,1] == 3.0   # 0100
+    @test vals[2,1,1,1] == 3.0   # 1000
+    @test vals[1,1,2,2] == 3.0   # 0011
+    @test vals[1,2,1,2] == 3.0   # 0101
+    @test vals[1,2,2,1] == 4.0   # 0110
+    @test vals[2,1,1,2] == 3.0   # 1001
+    @test vals[2,1,2,1] == -Inf  # 1010 (vertices 1,3 adjacent)
+    @test vals[2,2,1,1] == 4.0   # 1100
+    @test vals[1,2,2,2] == 4.0   # 0111
+    @test vals[2,1,2,2] == -Inf  # 1011
+    @test vals[2,2,1,2] == 4.0   # 1101
+    @test vals[2,2,2,1] == -Inf  # 1110
+    @test vals[2,2,2,2] == -Inf  # 1111
+end
+
 # Print alpha tensor values for manual verification against Table 1
 let
     g = make_figure1_left_graph()
