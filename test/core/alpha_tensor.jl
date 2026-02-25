@@ -209,24 +209,12 @@ function make_batoidea_graph()
     return g
 end
 
-# Print reduced alpha tensors for CROSS and BATOIDEA for manual verification
-let
+@testset "CROSS and BATOIDEA: reduced alpha tensors differ by constant (Theorem 3.7)" begin
     pins = [1, 2, 3, 4]
+    r_cross   = content.(calculate_reduced_alpha_tensor(make_cross_graph(),   pins))
+    r_batoidea = content.(calculate_reduced_alpha_tensor(make_batoidea_graph(), pins))
 
-    cross = make_cross_graph()
-    r_cross = content.(calculate_reduced_alpha_tensor(cross, pins))
-    println("\nCROSS reduced alpha tensor (boundary=[1,2,3,4]):")
-    for s1 in 0:1, s2 in 0:1, s3 in 0:1, s4 in 0:1
-        println("  $s1$s2$s3$s4 => ", r_cross[s1+1, s2+1, s3+1, s4+1])
-    end
-
-    batoidea = make_batoidea_graph()
-    r_bat = content.(calculate_reduced_alpha_tensor(batoidea, pins))
-    println("\nBATOIDEA reduced alpha tensor (boundary=[1,2,3,4]):")
-    for s1 in 0:1, s2 in 0:1, s3 in 0:1, s4 in 0:1
-        println("  $s1$s2$s3$s4 => ", r_bat[s1+1, s2+1, s3+1, s4+1])
-    end
-
-    valid, c = is_diff_by_constant(r_bat, r_cross)
-    println("\nis_diff_by_constant(BATOIDEA, CROSS) = $valid, offset = $c")
+    valid, c = is_diff_by_constant(r_batoidea, r_cross)
+    @test valid == true
+    @test c == 2.0  # BATOIDEA has 7 internal vertices contributing offset +2
 end
