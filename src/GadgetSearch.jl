@@ -9,6 +9,10 @@ using IterTools
 using Combinatorics
 using Random
 
+# Tensor network dependencies for alpha tensor computation
+using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve
+using GenericTensorNetworks: Tropical
+
 # Visualization and data handling
 using Colors, ColorSchemes
 using JSON3
@@ -20,6 +24,7 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
+include("core/alpha_tensor.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
 include("utils/visualize.jl")
@@ -57,5 +62,8 @@ export plot_gadget
 export clear_cache!
 export get_cache_stats
 export check_gadget, check_gadget_rydberg, check_gadget_qubo
+
+# Alpha tensor
+export calculate_alpha_tensor
 
 end # module

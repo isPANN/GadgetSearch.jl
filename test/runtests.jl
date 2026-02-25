@@ -16,3 +16,7 @@ end
 @testset "Visualization" begin
     include("utils/visualize.jl")
 end
+
+@testset "Alpha Tensor" begin
+    include("core/alpha_tensor.jl")
+end
