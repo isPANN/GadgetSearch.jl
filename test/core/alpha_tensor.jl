@@ -1,6 +1,7 @@
 using GadgetSearch
 using Graphs
 using GenericTensorNetworks: content, Tropical
+using Test
 
 # Helper to build the CROSS graph: 4 vertices with two crossing edges {1-3, 2-4}
 function make_cross_graph()
@@ -34,4 +35,36 @@ end
     @test vals[2,2,1,2] == -Inf  # 1101
     @test vals[1,2,2,2] == -Inf  # 0111
     @test vals[2,2,2,2] == -Inf  # 1111
+end
+
+function make_test_graph()
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 1, 4)
+    add_edge!(g, 3, 4)
+    add_edge!(g, 2, 4)
+    return g
+end
+
+@testset "make_test_graph" begin
+    g = make_test_graph()
+    boundary = [1, 2, 3, 4]
+    alpha = calculate_alpha_tensor(g, boundary)
+    vals = content.(alpha)
+    @test vals[1,1,1,1] == 0.0
+    @test vals[1,1,1,2] == 1.0
+    @test vals[1,1,2,1] == 1.0
+    @test vals[1,2,1,1] == 1.0
+    @test vals[2,1,1,1] == 1.0
+    @test vals[1,1,2,2] == -Inf
+    @test vals[1,2,1,2] == -Inf
+    @test vals[1,2,2,1] == 2.0
+    @test vals[2,1,1,2] == -Inf
+    @test vals[2,1,2,1] == -Inf
+    @test vals[2,2,1,1] == 2.0
+    @test vals[1,2,2,2] == -Inf
+    @test vals[2,1,2,2] == -Inf
+    @test vals[2,2,1,2] == -Inf
+    @test vals[2,2,2,1] == -Inf
+    @test vals[2,2,2,2] == -Inf
 end
