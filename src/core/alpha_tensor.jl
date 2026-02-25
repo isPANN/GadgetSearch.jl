@@ -39,9 +39,5 @@ This removes dominated configurations, leaving only the "essential" boundary beh
 - `Array{<:Tropical}`: Reduced tropical tensor of shape `(2, 2, ..., 2)`
 """
 function calculate_reduced_alpha_tensor(graph::SimpleGraph{Int}, boundary_vertices::Vector{Int})
-    alpha = calculate_alpha_tensor(graph, boundary_vertices)
-    result = collect(alpha)
-    mis_compactify!(result)
-    return result
+    return mis_compactify!(calculate_alpha_tensor(graph, boundary_vertices))
 end
-
