@@ -164,3 +164,30 @@ end
     @test vals[2,2,2,1] == -Inf  # 1110
     @test vals[2,2,2,2] == -Inf  # 1111
 end
+
+@testset "is_diff_by_constant" begin
+    # Tensors that differ by a constant (+2)
+    t1 = [3.0, 4.0, -Inf, 5.0]
+    t2 = [1.0, 2.0, -Inf, 3.0]
+    valid, c = is_diff_by_constant(t1, t2)
+    @test valid == true
+    @test c == 2.0
+
+    # Tensors with mismatched -Inf positions → not valid
+    t3 = [3.0, -Inf, -Inf, 5.0]
+    t4 = [1.0,  2.0, -Inf, 3.0]
+    valid2, _ = is_diff_by_constant(t3, t4)
+    @test valid2 == false
+
+    # Tensors with inconsistent differences → not valid
+    t5 = [3.0, 4.0, -Inf, 6.0]
+    t6 = [1.0, 2.0, -Inf, 3.0]
+    valid3, _ = is_diff_by_constant(t5, t6)
+    @test valid3 == false
+
+    # All -Inf → valid (trivially, constant is NaN)
+    t7 = [-Inf, -Inf]
+    t8 = [-Inf, -Inf]
+    valid4, _ = is_diff_by_constant(t7, t8)
+    @test valid4 == true
+end
