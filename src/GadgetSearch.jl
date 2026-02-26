@@ -67,5 +67,6 @@ export check_gadget, check_gadget_rydberg, check_gadget_qubo
 export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor
 export is_diff_by_constant
+export is_valid
 
 end # module

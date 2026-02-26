@@ -77,3 +77,20 @@ function is_diff_by_constant(t1::AbstractArray{T}, t2::AbstractArray{T}) where T
     end
     return true, x
 end
+
+"""
+    is_valid(g1, g2, open_vertices1, open_vertices2)
+
+Check whether gadget `g2` (with boundary `open_vertices2`) is a valid MIS replacement
+for gadget `g1` (with boundary `open_vertices1`), i.e., their reduced alpha tensors
+differ only by a constant (Theorem 3.7 in the paper).
+
+# Returns
+- `Tuple{Bool, Real}`: `(is_valid, constant_offset)` where `constant_offset = α̃(g2) - α̃(g1)`
+"""
+function is_valid(g1::SimpleGraph{Int}, g2::SimpleGraph{Int},
+                  open_vertices1::Vector{Int}, open_vertices2::Vector{Int})
+    t1 = content.(calculate_reduced_alpha_tensor(g1, open_vertices1))
+    t2 = content.(calculate_reduced_alpha_tensor(g2, open_vertices2))
+    return is_diff_by_constant(t2, t1)
+end
