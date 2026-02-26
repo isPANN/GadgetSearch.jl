@@ -61,6 +61,7 @@ Returns `(true, c)` if `t1[i] - t2[i] == c` for all finite entries, and both ten
 - `Tuple{Bool, Real}`: `(is_valid, constant_offset)`
 """
 function is_diff_by_constant(t1::AbstractArray{T}, t2::AbstractArray{T}) where T <: Real
+    size(t1) == size(t2) || throw(DimensionMismatch("input tensors must have the same size, got $(size(t1)) and $(size(t2))"))
     x = NaN
     for (a, b) in zip(t1, t2)
         if isinf(a) && isinf(b)
