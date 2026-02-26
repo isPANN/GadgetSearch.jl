@@ -164,3 +164,87 @@ end
     @test vals[2,2,2,1] == -Inf  # 1110
     @test vals[2,2,2,2] == -Inf  # 1111
 end
+
+@testset "is_diff_by_constant" begin
+    # Tensors that differ by a constant (+2)
+    t1 = [3.0, 4.0, -Inf, 5.0]
+    t2 = [1.0, 2.0, -Inf, 3.0]
+    valid, c = is_diff_by_constant(t1, t2)
+    @test valid == true
+    @test c == 2.0
+
+    # Tensors with mismatched -Inf positions → not valid
+    t3 = [3.0, -Inf, -Inf, 5.0]
+    t4 = [1.0,  2.0, -Inf, 3.0]
+    valid2, _ = is_diff_by_constant(t3, t4)
+    @test valid2 == false
+
+    # Tensors with inconsistent differences → not valid
+    t5 = [3.0, 4.0, -Inf, 6.0]
+    t6 = [1.0, 2.0, -Inf, 3.0]
+    valid3, _ = is_diff_by_constant(t5, t6)
+    @test valid3 == false
+
+    # All -Inf → valid (trivially, constant is NaN)
+    t7 = [-Inf, -Inf]
+    t8 = [-Inf, -Inf]
+    valid4, _ = is_diff_by_constant(t7, t8)
+    @test valid4 == true
+end
+
+# BATOIDEA: 11-vertex unit disk replacement for CROSS (Figure 6 in the paper)
+# Pins: {1, 2, 3, 4}, internal: {5, 6, 7, 8, 9, 10, 11}
+function make_batoidea_graph()
+    g = SimpleGraph(11)
+    add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
+    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 7)  # 2-7, not 2-8
+    add_edge!(g, 3, 8)
+    add_edge!(g, 4, 9);  add_edge!(g, 4, 10); add_edge!(g, 4, 11)
+    add_edge!(g, 5, 6);  add_edge!(g, 5, 9);  add_edge!(g, 5, 10)
+    add_edge!(g, 6, 7);  add_edge!(g, 6, 9);  add_edge!(g, 6, 10); add_edge!(g, 6, 11)
+    add_edge!(g, 7, 8);  add_edge!(g, 7, 10); add_edge!(g, 7, 11)
+    add_edge!(g, 8, 11)
+    add_edge!(g, 9, 10)
+    add_edge!(g, 10, 11)
+    return g
+end
+
+@testset "CROSS and BATOIDEA: reduced alpha tensors differ by constant (Theorem 3.7)" begin
+    pins = [1, 2, 3, 4]
+    valid, c = is_gadget_replacement(make_cross_graph(), make_batoidea_graph(), pins, pins)
+    @test valid == true
+    @test c == 2.0  # BATOIDEA has 7 internal vertices contributing offset +2
+end
+
+# Equation (3.2): CROSS + EDGE → PIRAMID, constant difference = -1
+# Left graph (CROSS + EDGE): pins {1,2,3,4}, internal {5,6}
+function make_cross_edge_graph()
+    g = SimpleGraph(6)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 1, 5)
+    add_edge!(g, 2, 6)
+    add_edge!(g, 3, 5)
+    add_edge!(g, 6, 4)
+    return g
+end
+
+# Right graph (PIRAMID): pins {1,2,3,4}, internal {5}
+function make_piramid_graph()
+    g = SimpleGraph(5)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    add_edge!(g, 3, 4)
+    add_edge!(g, 4, 1)
+    add_edge!(g, 1, 5)
+    add_edge!(g, 2, 5)
+    add_edge!(g, 3, 5)
+    add_edge!(g, 4, 5)
+    return g
+end
+
+@testset "CROSS+EDGE and PIRAMID: reduced alpha tensors differ by constant (Eq. 3.2)" begin
+    pins = [1, 2, 3, 4]
+    valid, c = is_gadget_replacement(make_cross_edge_graph(), make_piramid_graph(), pins, pins)
+    @test valid == true
+    @test c == -1.0  # PIRAMID has fewer internal vertices, offset = -1
+end
