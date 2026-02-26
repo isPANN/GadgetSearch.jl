@@ -211,7 +211,7 @@ end
 
 @testset "CROSS and BATOIDEA: reduced alpha tensors differ by constant (Theorem 3.7)" begin
     pins = [1, 2, 3, 4]
-    valid, c = is_valid(make_cross_graph(), make_batoidea_graph(), pins, pins)
+    valid, c = is_gadget_replacement(make_cross_graph(), make_batoidea_graph(), pins, pins)
     @test valid == true
     @test c == 2.0  # BATOIDEA has 7 internal vertices contributing offset +2
 end
@@ -244,7 +244,7 @@ end
 
 @testset "CROSS+EDGE and PIRAMID: reduced alpha tensors differ by constant (Eq. 3.2)" begin
     pins = [1, 2, 3, 4]
-    valid, c = is_valid(make_cross_edge_graph(), make_piramid_graph(), pins, pins)
+    valid, c = is_gadget_replacement(make_cross_edge_graph(), make_piramid_graph(), pins, pins)
     @test valid == true
     @test c == -1.0  # PIRAMID has fewer internal vertices, offset = -1
 end
