@@ -11,7 +11,7 @@ using Random
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve
-using GenericTensorNetworks: Tropical, mis_compactify!
+using GenericTensorNetworks: Tropical, mis_compactify!, content
 
 # Visualization and data handling
 using Colors, ColorSchemes
