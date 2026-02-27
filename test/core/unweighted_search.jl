@@ -44,7 +44,7 @@ end
     @test result !== nothing
     @test result isa UnweightedGadget
     @test result.boundary_vertices == [1, 2, 3, 4]
-    @test result.constant_c == 2.0
+    @test result.constant_offset == 2.0
 end
 
 @testset "search_unweighted_gadgets: finds BATOIDEA as replacement for CROSS" begin
@@ -59,6 +59,6 @@ end
 
     @test length(results) >= 1
     # BATOIDEA should appear with constant_c == 2.0
-    @test any(r -> r.constant_c == 2.0, results)
+    @test any(r -> r.constant_offset == 2.0, results)
 end
 

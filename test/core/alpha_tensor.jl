@@ -185,11 +185,15 @@ end
     valid3, _ = is_diff_by_constant(t5, t6)
     @test valid3 == false
 
-    # All -Inf → valid (trivially, constant is NaN)
+    # All -Inf → throw
     t7 = [-Inf, -Inf]
     t8 = [-Inf, -Inf]
-    valid4, _ = is_diff_by_constant(t7, t8)
-    @test valid4 == true
+    @test_throws ArgumentError is_diff_by_constant(t7, t8)
+
+    # Tensors with different sizes → throw
+    t9 = [3.0, 4.0, -Inf, 5.0]
+    t10 = [1.0, 2.0, -Inf, 3.0, 4.0]
+    @test_throws DimensionMismatch is_diff_by_constant(t9, t10)
 end
 
 # BATOIDEA: 11-vertex unit disk replacement for CROSS (Figure 6 in the paper)
