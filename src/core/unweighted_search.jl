@@ -35,6 +35,7 @@ candidate graph by trying all boundary vertex combinations of the same size.
 """
 function make_unweighted_filter(target_graph::SimpleGraph{Int}, target_boundary::Vector{Int})
     target_reduced = content.(calculate_reduced_alpha_tensor(target_graph, target_boundary))
+    all(isinf.(target_reduced)) && throw(ArgumentError("target graph has an entirely -Inf reduced alpha tensor"))
     k = length(target_boundary)
 
     return function(candidate::SimpleGraph{Int}, pos, pin_set)
@@ -43,6 +44,7 @@ function make_unweighted_filter(target_graph::SimpleGraph{Int}, target_boundary:
                                           collect(Combinatorics.combinations(1:nv(candidate), k))
         for boundary in candidates
             candidate_reduced = content.(calculate_reduced_alpha_tensor(candidate, boundary))
+            all(isinf.(candidate_reduced)) && continue
             valid, constant_offset = is_diff_by_constant(candidate_reduced, target_reduced)
             if valid
                 return UnweightedGadget(target_graph, candidate, boundary, float(constant_offset), pos)
@@ -150,6 +152,8 @@ differ only by a constant offset. This function tests that condition.
 Returns `(true, c)` if `t1[i] - t2[i] == c` for all finite entries, and both tensors have
 `-Inf` at exactly the same positions. Returns `(false, 0)` otherwise.
 
+Callers must ensure that at least one tensor has a finite entry (i.e., not all-Inf).
+
 # Arguments
 - `t1::AbstractArray{T}`: First reduced alpha tensor (finite values or `-Inf`)
 - `t2::AbstractArray{T}`: Second reduced alpha tensor (finite values or `-Inf`)
@@ -159,9 +163,9 @@ Returns `(true, c)` if `t1[i] - t2[i] == c` for all finite entries, and both ten
 """
 function is_diff_by_constant(t1::AbstractArray{T}, t2::AbstractArray{T}) where T <: Real
     size(t1) == size(t2) || throw(DimensionMismatch("input tensors must have the same size, got $(size(t1)) and $(size(t2))"))
-    (all(isinf.(t1)) || all(isinf.(t2))) && throw(ArgumentError("cannot compare tensors that are entirely -Inf"))
     any(isinf.(t1) .⊻ isinf.(t2)) && return false, zero(T)
     d = filter(isfinite, t1 .- t2)
+    @assert !isempty(d)
     return all(==(first(d)), d), first(d)
 end
 

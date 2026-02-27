@@ -58,7 +58,7 @@ end
     results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
 
     @test length(results) >= 1
-    # BATOIDEA should appear with constant_c == 2.0
+    # BATOIDEA should appear with constant_offset == 2.0
     @test any(r -> r.constant_offset == 2.0, results)
 end
 

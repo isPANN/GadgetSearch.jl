@@ -185,10 +185,10 @@ end
     valid3, _ = is_diff_by_constant(t5, t6)
     @test valid3 == false
 
-    # All -Inf → throw
+    # All -Inf → assertion error (callers should guard against this)
     t7 = [-Inf, -Inf]
     t8 = [-Inf, -Inf]
-    @test_throws ArgumentError is_diff_by_constant(t7, t8)
+    @test_throws AssertionError is_diff_by_constant(t7, t8)
 
     # Tensors with different sizes → throw
     t9 = [3.0, 4.0, -Inf, 5.0]
