@@ -40,15 +40,12 @@ function make_unweighted_filter(target_graph::SimpleGraph{Int}, target_boundary:
 
     return function(candidate::SimpleGraph{Int}, pos, pin_set)
         nv(candidate) < k && return nothing
-        candidates = pin_set !== nothing ? collect(Combinatorics.combinations(pin_set, k)) :
-                                          collect(Combinatorics.combinations(1:nv(candidate), k))
-        for boundary in candidates
+        vertex_pool = something(pin_set, 1:nv(candidate))
+        for boundary in Combinatorics.combinations(vertex_pool, k)
             candidate_reduced = content.(calculate_reduced_alpha_tensor(candidate, boundary))
             all(isinf.(candidate_reduced)) && continue
             valid, constant_offset = is_diff_by_constant(candidate_reduced, target_reduced)
-            if valid
-                return UnweightedGadget(target_graph, candidate, boundary, float(constant_offset), pos)
-            end
+            valid && return UnweightedGadget(target_graph, candidate, boundary, float(constant_offset), pos)
         end
         return nothing
     end
@@ -88,12 +85,9 @@ function search_unweighted_gadgets(
 
     @showprogress for key in Iterators.take(keys(loader), total)
         result = filter_fn(loader[key], loader.layout[key], loader.pinset)
-        if result !== nothing
-            push!(results, result)
-            if max_results !== nothing && length(results) >= max_results
-                break
-            end
-        end
+        result === nothing && continue
+        push!(results, result)
+        max_results !== nothing && length(results) >= max_results && break
     end
     return results
 end
