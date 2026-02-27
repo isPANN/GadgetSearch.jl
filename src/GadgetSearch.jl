@@ -24,7 +24,7 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
-include("core/alpha_tensor.jl")
+include("core/unweighted_search.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
 include("utils/visualize.jl")
@@ -68,5 +68,10 @@ export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor
 export is_diff_by_constant
 export is_gadget_replacement
+
+# Unweighted search
+export UnweightedGadget
+export make_unweighted_filter
+export search_unweighted_gadgets
 
 end # module
