@@ -20,3 +20,7 @@ end
 @testset "Alpha Tensor" begin
     include("core/alpha_tensor.jl")
 end
+
+@testset "Unweighted Search" begin
+    include("core/unweighted_search.jl")
+end
