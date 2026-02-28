@@ -39,6 +39,7 @@ export save_graph
 export Square, Triangular
 export generate_full_grid_udg
 export generate_full_grid_graph
+export generate_triangular_udg_subsets
 
 # Core types
 export Gadget

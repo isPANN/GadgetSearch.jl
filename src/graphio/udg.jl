@@ -143,6 +143,79 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
     return _process_and_save_graphs(results, path)
 end
 
+"""
+    generate_triangular_udg_subsets(nx::Int, ny::Int; min_inner::Int=3, max_inner::Int=nx*ny, path::String="tri_subsets.g6") -> String
+
+Generate triangular-lattice Unit Disk Graphs by enumerating **all subsets** of
+inner grid positions, analogous to the pre-generated KSG (`grid_udgs`) datasets.
+
+# Arguments
+- `nx`: Number of inner columns
+- `ny`: Number of inner rows
+- `min_inner`: Minimum number of inner vertices to include (default 3)
+- `max_inner`: Maximum number of inner vertices to include (default `nx*ny`)
+- `path`: Output file path (default `"tri_subsets.g6"`)
+
+# Details
+The full padded grid has size `(nx+2) × (ny+2)`.  
+Four **fixed** boundary pins are placed at the midpoints of the four sides,
+following the same convention as `generate_full_grid_udg`:
+- pin 1 (top):    `(⌈(nx+2)/2⌉, 1)`
+- pin 2 (right):  `(nx+2, ⌈(ny+2)/2⌉)`
+- pin 3 (bottom): `(⌈(nx+2)/2⌉, ny+2)`
+- pin 4 (left):   `(1, ⌈(ny+2)/2⌉)`
+
+All subsets of the `nx×ny` inner positions of size `min_inner` to `max_inner`
+are enumerated.  For each subset the triangular UDG is built with radius 1.1
+and saved (with deduplication via `shortg` if available).
+
+Vertex indices `[1,2,3,4]` in every generated graph correspond to the four
+boundary pins, matching the `pinset=[1,2,3,4]` convention of `GraphLoader`.
+
+# Returns
+- `String`: Path to the saved graph file
+"""
+function generate_triangular_udg_subsets(nx::Int, ny::Int;
+                                          min_inner::Int = 3,
+                                          max_inner::Int = nx * ny,
+                                          path::String = "tri_subsets.g6")
+    Mx = nx + 2
+    Ny_ = ny + 2
+
+    # Fixed boundary pins at midpoints of the four sides (same ordering as generate_full_grid_udg)
+    cx = (Mx + 1) ÷ 2
+    cy = (Ny_ + 1) ÷ 2
+
+    pin_top    = get_physical_positions(Triangular(), Tuple{Int,Int}[(cx,  1)])[1]
+    pin_right  = get_physical_positions(Triangular(), Tuple{Int,Int}[(Mx,  cy)])[1]
+    pin_bottom = get_physical_positions(Triangular(), Tuple{Int,Int}[(cx,  Ny_)])[1]
+    pin_left   = get_physical_positions(Triangular(), Tuple{Int,Int}[(1,   cy)])[1]
+
+    pin_phys = [pin_top, pin_right, pin_bottom, pin_left]
+
+    # All inner grid positions
+    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:Ny_-1]
+    inner_phys = get_physical_positions(Triangular(), inner_grid)
+
+    radius   = get_radius(Triangular())
+    n_inner  = length(inner_phys)
+    max_k    = min(max_inner, n_inner)
+
+    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64,Float64}}}[]
+
+    for k in min_inner:max_k
+        for subset in combinations(1:n_inner, k)
+            all_pos = vcat(pin_phys, inner_phys[subset])
+            g = unit_disk_graph(all_pos, radius)
+            push!(results, (g, all_pos))
+        end
+    end
+
+    @info "Generated $(length(results)) triangular subset UDGs ($(nx)×$(ny) inner grid, inner vertices $(min_inner)–$(max_k))"
+    @info "pinset in generated graphs: [1,2,3,4]"
+    return _process_and_save_graphs(results, path)
+end
+
 function _call_shortg(temp_path::String, mapping_file::String)
     if Sys.which("shortg") === nothing
         # Make shortg optional: log and signal caller to fallback
