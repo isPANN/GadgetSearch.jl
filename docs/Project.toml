@@ -2,7 +2,7 @@
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-Graphs = "86223c79-6a7a-4d30-ba0d-867bd8ef9e02"
+Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GadgetSearch = "f32ba870-f0fb-4590-997c-33f4129cc18c"
 HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
