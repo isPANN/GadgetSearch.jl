@@ -18,6 +18,12 @@ main.synctex.gz
 _*.tex
 _*.bib
 _*.pdf
+_tmp*.jl
+
+# Generated dataset files (re-generatable from code)
+/data/triangular_udgs/
+/data/triangular_direct4_udgs/
+/data/triangular_udg_subsets/
 *.pdf_tex
 mainNotes.bib
 /Manifest.toml
