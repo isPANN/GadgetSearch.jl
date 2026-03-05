@@ -304,3 +304,82 @@ end
     end
 end
 
+@testset "triangular_adjacency Function" begin
+    @testset "Six nearest neighbours of (2,2)" begin
+        # The triangular lattice has 6 nearest neighbours:
+        # horizontal, vertical, and the (i+1,j-1)/(i-1,j+1) diagonal
+        neighbours = [(3,2),(1,2),(2,3),(2,1),(3,1),(1,3)]
+        for (i2,j2) in neighbours
+            @test GadgetSearch.triangular_adjacency(2,2,i2,j2)
+        end
+    end
+
+    @testset "Non-neighbours of (2,2)" begin
+        non_neighbours = [(3,3),(1,1),(4,2),(2,4),(3,4),(1,0)]
+        for (i2,j2) in non_neighbours
+            @test !GadgetSearch.triangular_adjacency(2,2,i2,j2)
+        end
+    end
+
+    @testset "Symmetry" begin
+        # adjacency must be symmetric
+        @test GadgetSearch.triangular_adjacency(1,1,2,1) == GadgetSearch.triangular_adjacency(2,1,1,1)
+        @test GadgetSearch.triangular_adjacency(1,1,2,0) == GadgetSearch.triangular_adjacency(2,0,1,1)
+    end
+
+    @testset "Self is not adjacent" begin
+        @test !GadgetSearch.triangular_adjacency(3,3,3,3)
+    end
+end
+
+@testset "triangular_lattice_graph Function" begin
+    @testset "1×1 grid (single vertex, no edges)" begin
+        g, pos = triangular_lattice_graph(1, 1)
+        @test nv(g) == 1
+        @test ne(g) == 0
+        @test length(pos) == 1
+    end
+
+    @testset "2×1 grid (two vertices, one horizontal edge)" begin
+        g, pos = triangular_lattice_graph(2, 1)
+        @test nv(g) == 2
+        @test ne(g) == 1
+        @test has_edge(g, 1, 2)
+    end
+
+    @testset "2×2 grid (4 vertices, 5 edges)" begin
+        # Edges: (1,1)-(2,1), (1,2)-(2,2) [horizontal]
+        #        (1,1)-(1,2), (2,1)-(2,2) [vertical]
+        #        (1,2)-(2,1)               [diagonal ↘]
+        g, pos = triangular_lattice_graph(2, 2)
+        @test nv(g) == 4
+        @test ne(g) == 5
+        @test typeof(g) == SimpleGraph{Int}
+        @test typeof(pos) == Vector{Tuple{Float64, Float64}}
+    end
+
+    @testset "3×3 grid – interior vertex has 6 neighbours" begin
+        g, pos = triangular_lattice_graph(3, 3)
+        @test nv(g) == 9
+        # Centre vertex (2,2) maps to index: coords are column-major (i in 1:3, j in 1:3)
+        # index of (i,j) = (i-1)*3 + j
+        centre = (2-1)*3 + 2   # = 5
+        @test degree(g, centre) == 6
+    end
+
+    @testset "Positions follow parallelogram layout" begin
+        g, pos = triangular_lattice_graph(2, 2)
+        h = sqrt(3) / 2
+        # coords order: (1,1),(1,2),(2,1),(2,2)  (column-major: i varies first)
+        # (i,j) -> (i + (j-1)*0.5, j*h)
+        @test pos[1][1] ≈ 1.0 atol=1e-10   # (1,1): x = 1 + 0
+        @test pos[1][2] ≈ 1 * h atol=1e-10
+        @test pos[2][1] ≈ 1.5 atol=1e-10   # (1,2): x = 1 + 0.5
+        @test pos[2][2] ≈ 2 * h atol=1e-10
+        @test pos[3][1] ≈ 2.0 atol=1e-10   # (2,1): x = 2 + 0
+        @test pos[3][2] ≈ 1 * h atol=1e-10
+        @test pos[4][1] ≈ 2.5 atol=1e-10   # (2,2): x = 2 + 0.5
+        @test pos[4][2] ≈ 2 * h atol=1e-10
+    end
+end
+

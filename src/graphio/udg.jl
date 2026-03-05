@@ -49,6 +49,79 @@ function get_inner_points(lattice::LatticeType, nx::Int, ny::Int)
 end
 
 """
+    triangular_adjacency(i1, j1, i2, j2) -> Bool
+
+Return `true` if integer grid positions `(i1, j1)` and `(i2, j2)` are
+nearest neighbours on the triangular lattice.
+
+The triangular lattice is a rectangular grid with **one diagonal** added per
+cell (the `(+1,−1)` / `(−1,+1)` direction). Under the parallelogram physical
+mapping `(x, y) → (x + (y−1)·0.5,  y·√3/2)` all six resulting neighbours lie
+at Euclidean distance exactly 1.0.
+
+```
+neighbours of (i,j):
+  (i±1, j)   – horizontal
+  (i, j±1)   – vertical
+  (i+1, j−1) – diagonal ↘
+  (i−1, j+1) – diagonal ↖
+```
+
+No floating-point computation is required.
+"""
+function triangular_adjacency(i1::Int, j1::Int, i2::Int, j2::Int)
+    di, dj = i2 - i1, j2 - j1
+    return (abs(di) == 1 && dj == 0)  ||  # horizontal
+           (di == 0 && abs(dj) == 1)  ||  # vertical
+           (di ==  1 && dj == -1)     ||  # diagonal ↘
+           (di == -1 && dj ==  1)         # diagonal ↖
+end
+
+"""
+    triangular_lattice_graph(nx, ny) -> (SimpleGraph{Int}, Vector{Tuple{Float64,Float64}})
+
+Build the full `nx × ny` triangular-lattice graph directly from integer `(i, j)`
+indices, **without** floating-point distance computation.
+
+The connectivity rule is `triangular_adjacency`: each vertex connects to its
+horizontal, vertical, and one diagonal neighbour (six neighbours in the interior).
+Physical positions follow the parallelogram layout used by
+`get_physical_positions(Triangular(), ...)` and are returned as the second
+element of the tuple for use in visualisation or UDG construction.
+
+# Arguments
+- `nx`: Number of columns (x direction)
+- `ny`: Number of rows    (y direction)
+
+# Returns
+- `(SimpleGraph{Int}, Vector{Tuple{Float64,Float64}})`: graph and vertex positions
+
+# Example
+```julia
+g, pos = triangular_lattice_graph(3, 3)   # 9-vertex triangular lattice
+```
+"""
+function triangular_lattice_graph(nx::Int, ny::Int)
+    coords = Tuple{Int,Int}[(i, j) for i in 1:nx for j in 1:ny]
+    n      = length(coords)
+    g      = SimpleGraph(n)
+    idx    = Dict{Tuple{Int,Int}, Int}(coords[k] => k for k in 1:n)
+
+    for k in 1:n
+        i, j = coords[k]
+        for (di, dj) in ((1, 0), (0, 1), (1, -1))   # 3 undirected half-edges
+            nb = (i + di, j + dj)
+            if haskey(idx, nb)
+                add_edge!(g, k, idx[nb])
+            end
+        end
+    end
+
+    pos = get_physical_positions(Triangular(), coords)
+    return g, pos
+end
+
+"""
     complete_graph(n::Int) -> SimpleGraph
 
 Create a complete graph with n vertices where every pair of vertices is connected.
@@ -158,16 +231,15 @@ inner grid positions, analogous to the pre-generated KSG (`grid_udgs`) datasets.
 
 # Details
 The full padded grid has size `(nx+2) × (ny+2)`.  
-Four **fixed** boundary pins are placed at the midpoints of the four sides,
-following the same convention as `generate_full_grid_udg`:
+Four **fixed** boundary pins are placed at the midpoints of the four sides:
 - pin 1 (top):    `(⌈(nx+2)/2⌉, 1)`
 - pin 2 (right):  `(nx+2, ⌈(ny+2)/2⌉)`
 - pin 3 (bottom): `(⌈(nx+2)/2⌉, ny+2)`
 - pin 4 (left):   `(1, ⌈(ny+2)/2⌉)`
 
-All subsets of the `nx×ny` inner positions of size `min_inner` to `max_inner`
-are enumerated.  For each subset the triangular UDG is built with radius 1.1
-and saved (with deduplication via `shortg` if available).
+Edges are determined by `triangular_adjacency` on integer `(i,j)` grid
+coordinates (no floating-point distance computation). Physical positions use
+the parallelogram layout `(x + (y−1)·0.5, y·√3/2)` for visualization only.
 
 Vertex indices `[1,2,3,4]` in every generated graph correspond to the four
 boundary pins, matching the `pinset=[1,2,3,4]` convention of `GraphLoader`.
@@ -182,32 +254,37 @@ function generate_triangular_udg_subsets(nx::Int, ny::Int;
     Mx = nx + 2
     Ny_ = ny + 2
 
-    # Fixed boundary pins at midpoints of the four sides (same ordering as generate_full_grid_udg)
+    # Fixed boundary pins at midpoints of the four sides
     cx = (Mx + 1) ÷ 2
     cy = (Ny_ + 1) ÷ 2
 
-    pin_top    = get_physical_positions(Triangular(), Tuple{Int,Int}[(cx,  1)])[1]
-    pin_right  = get_physical_positions(Triangular(), Tuple{Int,Int}[(Mx,  cy)])[1]
-    pin_bottom = get_physical_positions(Triangular(), Tuple{Int,Int}[(cx,  Ny_)])[1]
-    pin_left   = get_physical_positions(Triangular(), Tuple{Int,Int}[(1,   cy)])[1]
-
-    pin_phys = [pin_top, pin_right, pin_bottom, pin_left]
+    pin_grid = Tuple{Int,Int}[(cx, 1), (Mx, cy), (cx, Ny_), (1, cy)]
+    pin_phys = get_physical_positions(Triangular(), pin_grid)
 
     # All inner grid positions
     inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:Ny_-1]
     inner_phys = get_physical_positions(Triangular(), inner_grid)
 
-    radius   = get_radius(Triangular())
-    n_inner  = length(inner_phys)
-    max_k    = min(max_inner, n_inner)
+    n_inner = length(inner_grid)
+    max_k   = min(max_inner, n_inner)
 
     results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64,Float64}}}[]
 
     for k in min_inner:max_k
         for subset in combinations(1:n_inner, k)
-            all_pos = vcat(pin_phys, inner_phys[subset])
-            g = unit_disk_graph(all_pos, radius)
-            push!(results, (g, all_pos))
+            # Integer grid coords for all vertices: [pins..., selected inner...]
+            all_grid = vcat(pin_grid, inner_grid[subset])
+            all_phys = vcat(pin_phys, inner_phys[subset])
+            n = length(all_grid)
+
+            g = SimpleGraph(n)
+            for a in 1:n, b in a+1:n
+                ia, ja = all_grid[a]
+                ib, jb = all_grid[b]
+                triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
+            end
+
+            push!(results, (g, all_phys))
         end
     end
 
