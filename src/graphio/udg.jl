@@ -32,7 +32,7 @@ get_radius(::Triangular) = 1.1
 get_physical_positions(::Square, pos::Vector{Tuple{Int, Int}}) = Vector{Tuple{Float64, Float64}}(pos)
 function get_physical_positions(::Triangular, pos::Vector{Tuple{Int, Int}})
     h = sqrt(3) / 2
-    return Vector{Tuple{Float64, Float64}}([(x + (isodd(y) ? 0.5 : 0.0), y * h) for (x, y) in pos])
+    return Vector{Tuple{Float64, Float64}}([(x + (y - 1) * 0.5, y * h) for (x, y) in pos])
 end
 
 function get_pin_positions(lattice::LatticeType, nx::Int, ny::Int)

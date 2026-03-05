@@ -90,12 +90,12 @@ end
         
         h = sqrt(3) / 2  # triangular lattice height factor
         
-        # Check expected transformations
+        # Check expected transformations (parallelogram: offset = (y-1)*0.5)
         expected = [
-            (1.0 + 0.5, 1 * h),  # (1,1) -> odd y, add 0.5 to x
-            (2.0 + 0.5, 1 * h),        # (2,1) -> odd y, add 0.5 to x  
-            (1.0, 2 * h),        # (1,2) -> even y, no x offset
-            (2.0, 2 * h)   # (2,2) -> even y, no x offset
+            (1.0 + 0.0, 1 * h),  # (1,1) -> y=1, offset = 0.0
+            (2.0 + 0.0, 1 * h),  # (2,1) -> y=1, offset = 0.0
+            (1.0 + 0.5, 2 * h),  # (1,2) -> y=2, offset = 0.5
+            (2.0 + 0.5, 2 * h)   # (2,2) -> y=2, offset = 0.5
         ]
         
         @test length(physical_pos) == 4
@@ -184,8 +184,8 @@ end
         h = sqrt(3) / 2
         
         @test length(inner_points) == 1
-        # Point (2,2) in triangular lattice: x=2, y=2 (even) -> (2.0, 2*h)
-        @test inner_points[1][1] ≈ 2.0
+        # Point (2,2) in triangular lattice: x=2, y=2 -> (2 + (2-1)*0.5, 2*h) = (2.5, 2*h)
+        @test inner_points[1][1] ≈ 2.5
         @test inner_points[1][2] ≈ 2 * h
     end
 end
