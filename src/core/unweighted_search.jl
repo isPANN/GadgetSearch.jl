@@ -180,4 +180,161 @@ function is_gadget_replacement(g1::SimpleGraph{Int}, g2::SimpleGraph{Int},
     return is_diff_by_constant(t2, t1)
 end
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Multi-target search with pre-filters
+# ──────────────────────────────────────────────────────────────────────────────
+
+"""
+    inf_mask(tensor::AbstractArray{<:Real}) -> UInt
+
+Compute a bitmask indicating which entries of `tensor` are `-Inf`.
+Bit `i-1` (0-indexed) is set if `tensor[i]` is `-Inf`.
+
+This provides an O(1) fingerprint comparison: two reduced alpha tensors
+can only differ by a constant if they have identical `-Inf` patterns.
+"""
+function inf_mask(tensor::AbstractArray{T}) where T <: Real
+    mask = UInt(0)
+    for (i, v) in enumerate(tensor)
+        if isinf(v)
+            mask |= UInt(1) << (i - 1)
+        end
+    end
+    return mask
+end
+
+"""
+    pins_prefilter(g::SimpleGraph, pins::Vector{Int}) -> Bool
+
+Fast structural pre-filter (O(V+E)) that rejects candidate graphs
+which cannot possibly match any crossing-type target.
+
+Checks:
+1. All boundary pins have degree ≥ 1
+2. All boundary pins are in the same connected component
+"""
+function pins_prefilter(g::SimpleGraph, pins::Vector{Int})
+    # All pins must have at least one neighbor
+    for p in pins
+        degree(g, p) == 0 && return false
+    end
+    # All pins must be in the same connected component
+    for i in 2:length(pins)
+        has_path(g, pins[1], pins[i]) || return false
+    end
+    return true
+end
+
+"""
+    MultiTargetResult
+
+Result of a multi-target unweighted gadget search.
+
+# Fields
+- `target_index::Int`: Which target graph matched (1-indexed into the targets list)
+- `gadget::UnweightedGadget`: The matching gadget
+"""
+struct MultiTargetResult
+    target_index::Int
+    gadget::UnweightedGadget
+end
+
+"""
+    make_multi_target_filter(targets; prefilter=true)
+
+Create a filter closure that checks a candidate graph against **multiple**
+target graphs in a single pass. The candidate's reduced alpha tensor is
+computed only once, then compared against all targets via:
+
+1. **Connectivity pre-filter** (O(V+E)): reject if pins are disconnected
+2. **Inf-mask fingerprint** (O(1)): reject targets with non-matching -Inf patterns
+3. **Full constant-offset check** (O(2^k)): only for fingerprint-matched targets
+
+# Arguments
+- `targets::Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}`:
+  List of `(pattern_graph, boundary_vertices)` pairs
+
+# Keywords
+- `prefilter::Bool=true`: Whether to apply the connectivity pre-filter
+
+# Returns
+- `Function`: Closure `(candidate, pos, pin_set) -> MultiTargetResult | nothing`
+"""
+function make_multi_target_filter(targets::Vector{Tuple{SimpleGraph{Int}, Vector{Int}}};
+                                   prefilter::Bool=true)
+    # Pre-compute reduced alpha tensors and inf-masks for all targets
+    target_data = map(targets) do (g, b)
+        reduced = content.(calculate_reduced_alpha_tensor(g, b))
+        all(isinf.(reduced)) && throw(ArgumentError("target graph has an entirely -Inf reduced alpha tensor"))
+        (graph=g, boundary=b, reduced=reduced, mask=inf_mask(reduced))
+    end
+    k = length(first(targets)[2])
+
+    return function(candidate::SimpleGraph{Int}, pos, pin_set)
+        nv(candidate) < k && return nothing
+        pins = something(pin_set, collect(1:nv(candidate)))
+
+        # ── Stage 1: Connectivity pre-filter (O(V+E)) ──────────────────
+        if prefilter
+            pins_prefilter(candidate, pins) || return nothing
+        end
+
+        # ── Stage 2: Compute candidate α̃ ONCE ──────────────────────────
+        candidate_reduced = content.(calculate_reduced_alpha_tensor(candidate, pins))
+        all(isinf.(candidate_reduced)) && return nothing
+        candidate_mask = inf_mask(candidate_reduced)
+
+        # ── Stage 3: Compare against all targets ────────────────────────
+        for (i, td) in enumerate(target_data)
+            # Fast inf-mask fingerprint check (O(1))
+            candidate_mask != td.mask && continue
+            # Full constant-offset check
+            valid, constant_offset = is_diff_by_constant(candidate_reduced, td.reduced)
+            valid && return MultiTargetResult(i,
+                UnweightedGadget(td.graph, candidate, pins, float(constant_offset), pos))
+        end
+        return nothing
+    end
+end
+
+"""
+    search_multi_target_gadgets(targets, loader; prefilter, limit, max_results)
+
+Search for unweighted gadget replacements against **multiple** target graphs
+simultaneously. Each candidate graph's α̃ tensor is computed once and compared
+against all targets.
+
+# Arguments
+- `targets::Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}`:
+  List of `(pattern_graph, boundary_vertices)` pairs
+- `loader::GraphLoader`: Graph dataset to search over
+
+# Keywords
+- `prefilter::Bool=true`: Apply connectivity pre-filter before tensor computation
+- `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to examine
+- `max_results::Union{Int,Nothing}=nothing`: Stop after finding this many results
+
+# Returns
+- `Vector{MultiTargetResult}`
+"""
+function search_multi_target_gadgets(
+    targets::Vector{Tuple{SimpleGraph{Int}, Vector{Int}}},
+    loader::GraphLoader;
+    prefilter::Bool=true,
+    limit::Union{Int,Nothing}=nothing,
+    max_results::Union{Int,Nothing}=nothing
+)
+    filter_fn = make_multi_target_filter(targets; prefilter=prefilter)
+    results = MultiTargetResult[]
+    total = limit === nothing ? length(loader) : min(length(loader), limit)
+
+    @showprogress for key in Iterators.take(keys(loader), total)
+        result = filter_fn(loader[key], loader.layout[key], loader.pinset)
+        result === nothing && continue
+        push!(results, result)
+        max_results !== nothing && length(results) >= max_results && break
+    end
+    return results
+end
+
 
