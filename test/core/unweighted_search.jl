@@ -141,6 +141,10 @@ end
 
     # Use the pre-generated 3×3 triangular UDG dataset (boundary pins at [1,2,3,4])
     data_path = pkgdir(GadgetSearch, "data", "grid_udgs", "m3n3pad1_min3max9_direct4.g6")
+    if !isfile(data_path)
+        @warn "Dataset not found, skipping integration test: $data_path"
+        return
+    end
     loader = GraphLoader(data_path; pinset=[1, 2, 3, 4])
 
     results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)

@@ -252,17 +252,17 @@ function generate_triangular_udg_subsets(nx::Int, ny::Int;
                                           max_inner::Int = nx * ny,
                                           path::String = "tri_subsets.g6")
     Mx = nx + 2
-    Ny_ = ny + 2
+    My = ny + 2
 
     # Fixed boundary pins at midpoints of the four sides
     cx = (Mx + 1) ÷ 2
-    cy = (Ny_ + 1) ÷ 2
+    cy = (My + 1) ÷ 2
 
-    pin_grid = Tuple{Int,Int}[(cx, 1), (Mx, cy), (cx, Ny_), (1, cy)]
+    pin_grid = Tuple{Int,Int}[(cx, 1), (Mx, cy), (cx, My), (1, cy)]
     pin_phys = get_physical_positions(Triangular(), pin_grid)
 
     # All inner grid positions
-    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:Ny_-1]
+    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:My-1]
     inner_phys = get_physical_positions(Triangular(), inner_grid)
 
     n_inner = length(inner_grid)
