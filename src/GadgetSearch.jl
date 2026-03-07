@@ -24,6 +24,7 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
+include("utils/flip_variants.jl")
 include("core/unweighted_search.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
@@ -83,5 +84,11 @@ export inf_mask
 export pins_prefilter
 export make_multi_target_filter
 export search_multi_target_gadgets
+
+# Flip variants
+export generate_flip_patterns
+export generate_extended_cross
+export make_flip_aware_multi_target_filter
+export apply_flip_to_tensor
 
 end # module
