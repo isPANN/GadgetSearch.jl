@@ -90,8 +90,6 @@ export make_multi_target_filter
 export search_multi_target_gadgets
 
 # Flip variants
-export generate_flip_patterns
-export generate_extended_cross
 export make_flip_aware_multi_target_filter
 export apply_flip_to_tensor
 

@@ -1,64 +1,4 @@
 """
-Utilities for generating flip variants of target graphs for crossing gadget search.
-"""
-
-using GenericTensorNetworks: content
-
-"""
-    generate_flip_patterns()
-
-Generate non-equivalent flip patterns for 4-pin CROSS graph (considering symmetry).
-
-Returns vector of (flip_mask, description) tuples.
-"""
-function generate_flip_patterns()
-    return [
-        (Int[], "no-flip"),
-        ([1], "flip-pin1"),
-        ([1,2], "flip-pin1-2"),
-        ([1,3], "flip-pin1-3"),
-        ([1,2,3,4], "flip-all")
-    ]
-end
-
-"""
-    generate_extended_cross()
-
-Generate CROSS variants with inserted nodes on edges.
-
-Returns vector of (graph, boundary, description) tuples.
-"""
-function generate_extended_cross()
-    variants = Tuple{SimpleGraph{Int}, Vector{Int}, String}[]
-
-    # Base CROSS
-    cross = SimpleGraph(4)
-    add_edge!(cross, 1, 3)
-    add_edge!(cross, 2, 4)
-    push!(variants, (cross, [1,2,3,4], "base"))
-
-    # Variant 1: Insert node 5 on edge 1-3
-    g1 = SimpleGraph(5)
-    add_edge!(g1, 1, 5); add_edge!(g1, 5, 3)
-    add_edge!(g1, 2, 4)
-    push!(variants, (g1, [1,2,3,4], "ext5v-13"))
-
-    # Variant 2: Insert node 5 on edge 2-4
-    g2 = SimpleGraph(5)
-    add_edge!(g2, 1, 3)
-    add_edge!(g2, 2, 5); add_edge!(g2, 5, 4)
-    push!(variants, (g2, [1,2,3,4], "ext5v-24"))
-
-    # Variant 3: Insert nodes on both edges
-    g3 = SimpleGraph(6)
-    add_edge!(g3, 1, 5); add_edge!(g3, 5, 3)
-    add_edge!(g3, 2, 6); add_edge!(g3, 6, 4)
-    push!(variants, (g3, [1,2,3,4], "ext6v-both"))
-
-    return variants
-end
-
-"""
     make_flip_aware_multi_target_filter(base_targets, flip_patterns; prefilter=true, permute_pins=true)
 
 Create a filter that checks candidates against base targets AND their flip variants.
@@ -78,7 +18,7 @@ function make_flip_aware_multi_target_filter(base_targets, flip_patterns;
                                              prefilter=true,
                                              permute_pins=true)
     # Pre-compute all target tensors (base × flip combinations)
-    target_data = []
+    target_data = @NamedTuple{graph::SimpleGraph{Int}, boundary::Vector{Int}, reduced::Array{Float64}, mask::UInt}[]
     target_descs = String[]
 
     for (g, b, desc) in base_targets

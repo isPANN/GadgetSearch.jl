@@ -107,14 +107,46 @@ function maybe_resume_message(result_records::Vector{Dict{String,Any}},
     end
 end
 
-function build_triangular_graph(points::Vector{Tuple{Int,Int}})
-    g = SimpleGraph(length(points))
-    for a in 1:length(points), b in a+1:length(points)
-        ia, ja = points[a]
-        ib, jb = points[b]
-        GadgetSearch.triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
-    end
-    return g
+"""Non-equivalent flip patterns for 4-pin CROSS graph (considering symmetry)."""
+function generate_flip_patterns()
+    return [
+        (Int[], "no-flip"),
+        ([1], "flip-pin1"),
+        ([1,2], "flip-pin1-2"),
+        ([1,3], "flip-pin1-3"),
+        ([1,2,3,4], "flip-all")
+    ]
+end
+
+"""CROSS variants with inserted nodes on edges."""
+function generate_extended_cross()
+    variants = Tuple{SimpleGraph{Int}, Vector{Int}, String}[]
+
+    # Base CROSS
+    cross = SimpleGraph(4)
+    add_edge!(cross, 1, 3)
+    add_edge!(cross, 2, 4)
+    push!(variants, (cross, [1,2,3,4], "base"))
+
+    # Variant 1: Insert node 5 on edge 1-3
+    g1 = SimpleGraph(5)
+    add_edge!(g1, 1, 5); add_edge!(g1, 5, 3)
+    add_edge!(g1, 2, 4)
+    push!(variants, (g1, [1,2,3,4], "ext5v-13"))
+
+    # Variant 2: Insert node 5 on edge 2-4
+    g2 = SimpleGraph(5)
+    add_edge!(g2, 1, 3)
+    add_edge!(g2, 2, 5); add_edge!(g2, 5, 4)
+    push!(variants, (g2, [1,2,3,4], "ext5v-24"))
+
+    # Variant 3: Insert nodes on both edges
+    g3 = SimpleGraph(6)
+    add_edge!(g3, 1, 5); add_edge!(g3, 5, 3)
+    add_edge!(g3, 2, 6); add_edge!(g3, 6, 4)
+    push!(variants, (g3, [1,2,3,4], "ext6v-both"))
+
+    return variants
 end
 
 base_targets = generate_extended_cross()
@@ -148,15 +180,15 @@ for (nx, ny, min_k, max_k) in grid_configs
     log_msg("Starting grid $(nx)x$(ny), k=$(min_k):$(max_k)")
 
     Mx = nx + 2
-    Ny_ = ny + 2
-    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:Ny_-1]
+    My = ny + 2
+    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:My-1]
     inner_phys = GadgetSearch.get_physical_positions(Triangular(), inner_grid)
     n_inner = length(inner_grid)
     actual_max = min(max_k, n_inner)
 
-    pin1_cands = Tuple{Int,Int}[(Mx, y) for y in 2:Ny_-1]   # bottom
-    pin2_cands = Tuple{Int,Int}[(x, Ny_) for x in 2:Mx-1]   # right
-    pin3_cands = Tuple{Int,Int}[(1, y) for y in 2:Ny_-1]    # top
+    pin1_cands = Tuple{Int,Int}[(Mx, y) for y in 2:My-1]   # bottom
+    pin2_cands = Tuple{Int,Int}[(x, My) for x in 2:Mx-1]   # right
+    pin3_cands = Tuple{Int,Int}[(1, y) for y in 2:My-1]    # top
     pin4_cands = Tuple{Int,Int}[(x, 1) for x in 2:Mx-1]     # left
     n_pin_combos = length(pin1_cands) * length(pin2_cands) * length(pin3_cands) * length(pin4_cands)
 
