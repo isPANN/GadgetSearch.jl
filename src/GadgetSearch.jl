@@ -22,6 +22,7 @@ using Karnak, Luxor
 include("graphio/graph6.jl")
 include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
+include("graphio/lattice.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
 include("utils/flip_variants.jl")
