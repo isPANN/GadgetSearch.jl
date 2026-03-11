@@ -214,7 +214,7 @@ function dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int)
         try
             open(temp_file, "w") do io
                 for g in graphs
-                    println(io, GraphIO.Graph6._graphToG6String(g))
+                    println(io, GraphIO.Graph6._graphToG6String(g)[11:end])
                 end
             end
 
