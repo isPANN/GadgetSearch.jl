@@ -208,7 +208,7 @@ function dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int)
 
     graphs = [build_triangular_graph(inner_grid[subset]) for subset in all_subsets]
 
-    if Sys.which("shortg") !== nothing
+    if _has_shortg()
         temp_file = tempname()
         mapping_file = tempname()
         try
@@ -218,12 +218,10 @@ function dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int)
                 end
             end
 
-            ok = _call_shortg(temp_file, mapping_file)
-            if ok
-                canon2orig, _ = _parse_shortg_mapping(mapping_file)
-                rep_indices = sort!([first(v) for v in values(canon2orig)])
-                return [all_subsets[i] for i in rep_indices]
-            end
+            _call_shortg(temp_file, mapping_file)
+            canon2orig, _ = _parse_shortg_mapping(mapping_file)
+            rep_indices = sort!([first(v) for v in values(canon2orig)])
+            return [all_subsets[i] for i in rep_indices]
         finally
             isfile(temp_file) && rm(temp_file; force=true)
             isfile(mapping_file) && rm(mapping_file; force=true)
