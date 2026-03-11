@@ -20,11 +20,11 @@ using Graphs
 # Step 1: Define the CROSS pattern graph
 # ============================================================
 #
-#   1       2
-#    \     /
-#     (cross)
-#    /     \
-#   3       4
+#         1
+#         |
+#  2 - (cross) - 4
+#         |
+#         3
 #
 # Edges: 1-3 and 2-4  (two paths that "cross" without sharing a middle vertex)
 
@@ -35,8 +35,13 @@ cross_boundary = [1, 2, 3, 4]
 
 # ============================================================
 # Step 2: Verify a known replacement using make_unweighted_filter
-# ============================================================
-#
+# ============================================================''
+# ⋅ ⋅ ⋅ ⋅ ⋅ ⋅ ⋅ ⋅
+# ⋅ ⋅ ⋅ ● ⋅ ⋅ ⋅ ⋅
+# ⋅ ● ● ● ● ● ● ⋅
+# ⋅ ⋅ ● ● ● ⋅ ⋅ ⋅
+# ⋅ ⋅ ⋅ ● ⋅ ⋅ ⋅ ⋅
+# ⋅ ⋅ ⋅ ⋅ ⋅ ⋅ ⋅ ⋅
 # The BATOIDEA graph (11 vertices, Figure 6 in the paper) is a known
 # crossing gadget replacement.  We pre-compute the filter once and
 # then check BATOIDEA – this should return a valid UnweightedGadget
