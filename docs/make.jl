@@ -3,9 +3,14 @@ using Documenter
 using Literate
 
 # Literate
-for each in readdir(pkgdir(GadgetSearch, "examples"))
+doc_examples = [
+    "trangular_Rydberg_example.jl",
+    "triangular_QUBO_example.jl",
+    "crossing_gadget_triangular.jl",
+]
+
+for each in doc_examples
     input_file = pkgdir(GadgetSearch, "examples", each)
-    endswith(input_file, ".jl") || continue
     @info "building" input_file
     output_dir = pkgdir(GadgetSearch, "docs", "src", "generated")
     Literate.markdown(input_file, output_dir; name=each[1:end-3], execute=false)
