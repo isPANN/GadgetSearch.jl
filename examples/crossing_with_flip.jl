@@ -10,6 +10,8 @@ using ProgressMeter
 const OUTPUT_DIR = joinpath(@__DIR__, "..", "output", "crossing_flip")
 const LOG_PATH = joinpath(OUTPUT_DIR, "search.log")
 const RESULTS_PATH = joinpath(OUTPUT_DIR, "results.json")
+const PROGRESS_PATH = joinpath(OUTPUT_DIR, "progress.json")
+const RESUME_SEARCH = get(ENV, "CROSSING_RESUME", "1") != "0"
 
 mkpath(OUTPUT_DIR)
 
@@ -24,29 +26,84 @@ end
 coord_json(p::Tuple{Int,Int}) = [p[1], p[2]]
 coord_json(p::Tuple{Float64,Float64}) = [p[1], p[2]]
 
-function save_results(results::Vector{MultiTargetResult},
-                      result_metadata::Vector{Dict{String,Any}},
-                      target_descs::Vector{String},
-                      total_checked::Int)
-    payload = map(enumerate(results)) do (i, r)
-        g = r.gadget.replacement_graph
-        merge(Dict(
-            "target_index" => r.target_index,
-            "target_desc" => target_descs[r.target_index],
-            "nv" => nv(g),
-            "ne" => ne(g),
-            "boundary_vertices" => r.gadget.boundary_vertices,
-            "constant_offset" => r.gadget.constant_offset,
-            "pos" => isnothing(r.gadget.pos) ? nothing : [coord_json(p) for p in r.gadget.pos],
-            "edges" => [[src(e), dst(e)] for e in edges(g)],
-        ), result_metadata[i])
+function json_to_julia(x)
+    if x isa JSON3.Object
+        return Dict{String,Any}(String(k) => json_to_julia(v) for (k, v) in pairs(x))
+    elseif x isa JSON3.Array
+        return [json_to_julia(v) for v in x]
+    else
+        return x
     end
+end
+
+function stage_key(nx::Int, ny::Int, k::Int)
+    return "$(nx)x$(ny):k=$(k)"
+end
+
+function load_results_state()
+    if RESUME_SEARCH && isfile(RESULTS_PATH)
+        parsed = JSON3.read(read(RESULTS_PATH, String))
+        total_checked = hasproperty(parsed, :total_checked) ? Int(parsed.total_checked) : 0
+        result_records = hasproperty(parsed, :results) ? [json_to_julia(r) for r in parsed.results] : Dict{String,Any}[]
+        return result_records, total_checked
+    end
+    return Dict{String,Any}[], 0
+end
+
+function save_results(result_records::Vector{Dict{String,Any}}, total_checked::Int)
     open(RESULTS_PATH, "w") do io
         write(io, JSON3.write(Dict(
             "total_checked" => total_checked,
-            "n_results" => length(results),
-            "results" => payload,
+            "n_results" => length(result_records),
+            "results" => result_records,
         ); pretty=true))
+    end
+end
+
+function load_progress_state()
+    if RESUME_SEARCH && isfile(PROGRESS_PATH)
+        parsed = JSON3.read(read(PROGRESS_PATH, String))
+        completed = hasproperty(parsed, :completed_stages) ? Set(String.(parsed.completed_stages)) : Set{String}()
+        total_checked = hasproperty(parsed, :total_checked) ? Int(parsed.total_checked) : 0
+        return completed, total_checked
+    end
+    return Set{String}(), 0
+end
+
+function save_progress(completed_stages::Set{String}, total_checked::Int)
+    open(PROGRESS_PATH, "w") do io
+        write(io, JSON3.write(Dict(
+            "resume_enabled" => RESUME_SEARCH,
+            "total_checked" => total_checked,
+            "completed_stages" => sort!(collect(completed_stages)),
+            "updated_at" => Dates.format(now(), "yyyy-mm-dd HH:MM:SS"),
+        ); pretty=true))
+    end
+end
+
+function make_result_record(result::MultiTargetResult,
+                            target_descs::Vector{String},
+                            metadata::Dict{String,Any})
+    g = result.gadget.replacement_graph
+    return merge(Dict(
+        "target_index" => result.target_index,
+        "target_desc" => target_descs[result.target_index],
+        "nv" => nv(g),
+        "ne" => ne(g),
+        "boundary_vertices" => result.gadget.boundary_vertices,
+        "constant_offset" => result.gadget.constant_offset,
+        "pos" => isnothing(result.gadget.pos) ? nothing : [coord_json(p) for p in result.gadget.pos],
+        "edges" => [[src(e), dst(e)] for e in edges(g)],
+    ), metadata)
+end
+
+function maybe_resume_message(result_records::Vector{Dict{String,Any}},
+                              completed_stages::Set{String},
+                              total_checked::Int)
+    if RESUME_SEARCH && (!isempty(result_records) || !isempty(completed_stages) || total_checked > 0)
+        log_msg("Resuming previous search state: $(length(result_records)) saved results, $(length(completed_stages)) completed stages, $total_checked checked candidates")
+    elseif !RESUME_SEARCH
+        log_msg("Resume disabled by CROSSING_RESUME=0; starting fresh run")
     end
 end
 
@@ -82,9 +139,10 @@ grid_configs = [
     (6, 6, 9, 18),
 ]
 
-results = MultiTargetResult[]
-result_metadata = Dict{String,Any}[]
-total_checked = 0
+result_records, total_checked_results = load_results_state()
+completed_stages, total_checked_progress = load_progress_state()
+total_checked = max(total_checked_results, total_checked_progress)
+maybe_resume_message(result_records, completed_stages, total_checked)
 
 for (nx, ny, min_k, max_k) in grid_configs
     log_msg("Starting grid $(nx)x$(ny), k=$(min_k):$(max_k)")
@@ -103,6 +161,12 @@ for (nx, ny, min_k, max_k) in grid_configs
     n_pin_combos = length(pin1_cands) * length(pin2_cands) * length(pin3_cands) * length(pin4_cands)
 
     for k in min_k:actual_max
+        stage = stage_key(nx, ny, k)
+        if stage in completed_stages
+            log_msg("  skipping completed stage $stage")
+            continue
+        end
+
         n_total_k = binomial(n_inner, k)
         unique_subsets = dedup_inner_subsets(inner_grid, k)
         n_unique = length(unique_subsets)
@@ -122,8 +186,7 @@ for (nx, ny, min_k, max_k) in grid_configs
                 result = filter_fn(candidate, all_phys, [1, 2, 3, 4])
                 result === nothing && continue
 
-                push!(results, result)
-                push!(result_metadata, Dict(
+                metadata = Dict{String,Any}(
                     "grid" => [nx, ny],
                     "k" => k,
                     "pin_grid" => [coord_json(p) for p in pin_grid],
@@ -131,27 +194,30 @@ for (nx, ny, min_k, max_k) in grid_configs
                     "inner_subset_indices" => collect(subset),
                     "inner_subset_grid" => [coord_json(inner_grid[i]) for i in subset],
                     "candidate_index" => total_checked,
-                ))
-                save_results(results, result_metadata, target_descs, total_checked)
-                log_msg("  Found result #$(length(results)) on $(nx)x$(ny), k=$k, target=$(target_descs[result.target_index])")
+                )
+                push!(result_records, make_result_record(result, target_descs, metadata))
+                save_results(result_records, total_checked)
+                log_msg("  Found result #$(length(result_records)) on $(nx)x$(ny), k=$k, target=$(target_descs[result.target_index])")
             end
         end
 
+        push!(completed_stages, stage)
+        save_progress(completed_stages, total_checked)
+        save_results(result_records, total_checked)
         log_msg("  finished k=$k over $n_pin_combos pin combinations")
     end
 end
 
-save_results(results, result_metadata, target_descs, total_checked)
+save_progress(completed_stages, total_checked)
+save_results(result_records, total_checked)
 
-println("\nFound $(length(results)) crossing gadget replacements after checking $total_checked candidates.")
-for (i, r) in enumerate(results)
-    target_desc = target_descs[r.target_index]
-    g = r.gadget.replacement_graph
+println("\nFound $(length(result_records)) crossing gadget replacements after checking $total_checked candidates.")
+for (i, r) in enumerate(result_records)
     println("\nResult #$i:")
-    println("  Target: $target_desc")
-    println("  Graph: $(nv(g))v / $(ne(g))e")
-    println("  Pins: $(r.gadget.boundary_vertices)")
-    println("  Offset: $(r.gadget.constant_offset)")
+    println("  Target: $(r["target_desc"])")
+    println("  Graph: $(r["nv"])v / $(r["ne"])e")
+    println("  Pins: $(r["boundary_vertices"])")
+    println("  Offset: $(r["constant_offset"])")
 end
 
 
