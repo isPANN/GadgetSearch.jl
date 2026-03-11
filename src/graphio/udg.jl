@@ -293,6 +293,70 @@ function generate_triangular_udg_subsets(nx::Int, ny::Int;
     return _process_and_save_graphs(results, path)
 end
 
+"""
+    dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int) -> Vector{Vector{Int}}
+
+Enumerate all `k`-subsets of `inner_grid`, build the corresponding inner-only
+triangular-lattice subgraphs, and keep one representative per graph-isomorphism
+class.
+
+If `shortg` is available, it is used for exact canonical deduplication.
+Otherwise, the function falls back to deduplicating by graph6 strings, which is
+still effective but may miss some isomorphic classes when vertex order differs.
+"""
+function dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int)
+    n = length(inner_grid)
+    k > n && return Vector{Int}[]
+
+    all_subsets = collect(Combinatorics.combinations(1:n, k))
+    isempty(all_subsets) && return Vector{Int}[]
+
+    graphs = Vector{SimpleGraph{Int}}(undef, length(all_subsets))
+    for (idx, subset) in enumerate(all_subsets)
+        g = SimpleGraph(k)
+        for a in 1:k, b in a+1:k
+            ia, ja = inner_grid[subset[a]]
+            ib, jb = inner_grid[subset[b]]
+            triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
+        end
+        graphs[idx] = g
+    end
+
+    if Sys.which("shortg") !== nothing
+        temp_file = tempname()
+        mapping_file = tempname()
+        try
+            open(temp_file, "w") do io
+                for g in graphs
+                    println(io, GraphIO.Graph6._graphToG6String(g))
+                end
+            end
+
+            ok = _call_shortg(temp_file, mapping_file)
+            if ok
+                canon2orig, _ = _parse_shortg_mapping(mapping_file)
+                rep_indices = sort!([first(v) for v in values(canon2orig)])
+                return [all_subsets[i] for i in rep_indices]
+            end
+        finally
+            isfile(temp_file) && rm(temp_file; force=true)
+            isfile(mapping_file) && rm(mapping_file; force=true)
+        end
+    end
+
+    @warn "shortg not available; falling back to g6-string dedup (less thorough)"
+    seen = Dict{String, Int}()
+    rep_indices = Int[]
+    for (i, g) in enumerate(graphs)
+        g6 = GraphIO.Graph6._graphToG6String(g)
+        if !haskey(seen, g6)
+            seen[g6] = i
+            push!(rep_indices, i)
+        end
+    end
+    return [all_subsets[i] for i in rep_indices]
+end
+
 function _call_shortg(temp_path::String, mapping_file::String)
     if Sys.which("shortg") === nothing
         # Make shortg optional: log and signal caller to fallback

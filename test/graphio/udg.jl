@@ -383,3 +383,32 @@ end
     end
 end
 
+@testset "dedup_inner_subsets Function" begin
+    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:3 for y in 2:3]
+
+    @testset "k larger than grid size returns empty" begin
+        @test isempty(dedup_inner_subsets(inner_grid, 5))
+    end
+
+    @testset "single-vertex subsets collapse to one class" begin
+        reps = dedup_inner_subsets(inner_grid, 1)
+        @test length(reps) == 1
+        @test length(first(reps)) == 1
+    end
+
+    @testset "two-vertex subsets reduce to edge/non-edge classes" begin
+        reps = dedup_inner_subsets(inner_grid, 2)
+        @test length(reps) == 2
+
+        edge_counts = Int[]
+        for subset in reps
+            g = SimpleGraph(2)
+            ia, ja = inner_grid[subset[1]]
+            ib, jb = inner_grid[subset[2]]
+            triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, 1, 2)
+            push!(edge_counts, ne(g))
+        end
+        @test sort(edge_counts) == [0, 1]
+    end
+end
+

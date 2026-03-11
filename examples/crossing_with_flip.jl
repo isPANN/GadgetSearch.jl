@@ -1,105 +1,132 @@
-# Search for Crossing Gadgets with Logical Flip
+# Search for crossing gadgets on the triangular lattice with
+# fixed pin roles and inner-subgraph isomorphism deduplication.
 
+using Dates
 using GadgetSearch
 using Graphs
+using JSON3
 using ProgressMeter
 
-# Generate base targets and flip patterns
-base_targets = generate_extended_cross()
-flip_patterns = generate_flip_patterns()
+const OUTPUT_DIR = joinpath(@__DIR__, "..", "output", "crossing_flip")
+const LOG_PATH = joinpath(OUTPUT_DIR, "search.log")
+const RESULTS_PATH = joinpath(OUTPUT_DIR, "results.json")
 
-println("Base targets: $(length(base_targets))")
-println("Flip patterns: $(length(flip_patterns))")
-println("Total combinations: $(length(base_targets) * length(flip_patterns))")
+mkpath(OUTPUT_DIR)
 
-# Create flip-aware filter
-filter_fn, target_descs = make_flip_aware_multi_target_filter(base_targets, flip_patterns)
-
-println("\nTarget descriptions:")
-for (i, desc) in enumerate(target_descs)
-    println("  $i: $desc")
-end
-
-# Dataset configuration: (directory, filename) pairs
-datasets = [
-    # Triangular lattice UDGs (main search target!)
-    ("triangular_udg_subsets", "tri_2x2_min3max4_direct4.g6"),
-    ("triangular_udg_subsets", "tri_2x3_min3max6_direct4.g6"),
-    ("triangular_udg_subsets", "tri_3x3_min3max9_direct4.g6"),
-    ("triangular_udg_subsets", "tri_3x4_min3max12_direct4.g6"),
-    ("triangular_udg_subsets", "tri_4x4_min4max16_direct4.g6"),
-    ("triangular_udg_subsets", "tri_3x5_min3max15_direct4.g6"),
-    ("triangular_udg_subsets", "tri_2x8_min3max16_direct4.g6"),
-]
-
-all_results = MultiTargetResult[]
-result_sources = String[]  # track which dataset each result came from
-total_candidates = 0
-
-for (subdir, dataset_name) in datasets
-    global total_candidates
-    data_path = pkgdir(GadgetSearch, "data", subdir, dataset_name)
-    !isfile(data_path) && (println("Skipping $subdir/$dataset_name (not found)"); continue)
-
-    loader = GraphLoader(data_path; pinset=[1,2,3,4])
-    total_candidates += length(loader)
-    println("\nSearching $subdir/$dataset_name: $(length(loader)) candidates...")
-
-    @showprogress for key in keys(loader)
-        result = filter_fn(loader[key], loader.layout[key], loader.pinset)
-        if result !== nothing
-            push!(all_results, result)
-            push!(result_sources, "$subdir/$dataset_name")
-        end
+function log_msg(msg::AbstractString)
+    line = "[$(Dates.format(now(), "yyyy-mm-dd HH:MM:SS"))] $msg"
+    println(line)
+    open(LOG_PATH, "a") do io
+        println(io, line)
     end
 end
 
-results = all_results
+function save_results(results::Vector{MultiTargetResult}, target_descs::Vector{String})
+    payload = map(results) do r
+        g = r.gadget.replacement_graph
+        Dict(
+            "target_index" => r.target_index,
+            "target_desc" => target_descs[r.target_index],
+            "nv" => nv(g),
+            "ne" => ne(g),
+            "boundary_vertices" => r.gadget.boundary_vertices,
+            "constant_offset" => r.gadget.constant_offset,
+            "pos" => isnothing(r.gadget.pos) ? nothing : [[p[1], p[2]] for p in r.gadget.pos],
+            "edges" => [[src(e), dst(e)] for e in edges(g)],
+        )
+    end
+    open(RESULTS_PATH, "w") do io
+        write(io, JSON3.write(payload; pretty=true))
+    end
+end
 
-println("\nFound $(length(results)) crossing gadget replacements")
+function build_triangular_graph(points::Vector{Tuple{Int,Int}})
+    g = SimpleGraph(length(points))
+    for a in 1:length(points), b in a+1:length(points)
+        ia, ja = points[a]
+        ib, jb = points[b]
+        GadgetSearch.triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
+    end
+    return g
+end
 
+base_targets = generate_extended_cross()
+flip_patterns = generate_flip_patterns()
+filter_fn, target_descs = make_flip_aware_multi_target_filter(base_targets, flip_patterns)
 
-# Display results
+log_msg("Base targets: $(length(base_targets))")
+log_msg("Flip patterns: $(length(flip_patterns))")
+log_msg("Total target tensors: $(length(target_descs))")
+
+# Only keep nx <= ny because swapping the grid axes gives an equivalent search.
+grid_configs = [
+    (4, 5, 6, 14),
+    (4, 6, 7, 14),
+    (5, 5, 7, 14),
+    (5, 6, 8, 16),
+    (6, 6, 9, 18),
+]
+
+results = MultiTargetResult[]
+total_checked = 0
+
+for (nx, ny, min_k, max_k) in grid_configs
+    log_msg("Starting grid $(nx)x$(ny), k=$(min_k):$(max_k)")
+
+    Mx = nx + 2
+    Ny_ = ny + 2
+    inner_grid = Tuple{Int,Int}[(x, y) for x in 2:Mx-1 for y in 2:Ny_-1]
+    inner_phys = GadgetSearch.get_physical_positions(Triangular(), inner_grid)
+    n_inner = length(inner_grid)
+    actual_max = min(max_k, n_inner)
+
+    pin1_cands = Tuple{Int,Int}[(Mx, y) for y in 2:Ny_-1]   # bottom
+    pin2_cands = Tuple{Int,Int}[(x, Ny_) for x in 2:Mx-1]   # right
+    pin3_cands = Tuple{Int,Int}[(1, y) for y in 2:Ny_-1]    # top
+    pin4_cands = Tuple{Int,Int}[(x, 1) for x in 2:Mx-1]     # left
+    n_pin_combos = length(pin1_cands) * length(pin2_cands) * length(pin3_cands) * length(pin4_cands)
+
+    for k in min_k:actual_max
+        n_total_k = binomial(n_inner, k)
+        unique_subsets = dedup_inner_subsets(inner_grid, k)
+        n_unique = length(unique_subsets)
+        dedup_pct = n_total_k > 0 ? round(100 * (1 - n_unique / n_total_k); digits=1) : 0.0
+        log_msg("  k=$k: $n_total_k -> $n_unique unique inner graphs ($(dedup_pct)% reduced)")
+
+        @showprogress "$(nx)x$(ny) k=$k" for p1 in pin1_cands, p2 in pin2_cands, p3 in pin3_cands, p4 in pin4_cands
+            pin_grid = Tuple{Int,Int}[p1, p2, p3, p4]
+            pin_phys = GadgetSearch.get_physical_positions(Triangular(), pin_grid)
+
+            for subset in unique_subsets
+                all_grid = vcat(pin_grid, inner_grid[subset])
+                all_phys = vcat(pin_phys, inner_phys[subset])
+                candidate = build_triangular_graph(all_grid)
+
+                total_checked += 1
+                result = filter_fn(candidate, all_phys, [1, 2, 3, 4])
+                result === nothing && continue
+
+                push!(results, result)
+                save_results(results, target_descs)
+                log_msg("  Found result #$(length(results)) on $(nx)x$(ny), k=$k, target=$(target_descs[result.target_index])")
+            end
+        end
+
+        log_msg("  finished k=$k over $n_pin_combos pin combinations")
+    end
+end
+
+save_results(results, target_descs)
+
+println("\nFound $(length(results)) crossing gadget replacements after checking $total_checked candidates.")
 for (i, r) in enumerate(results)
     target_desc = target_descs[r.target_index]
     g = r.gadget.replacement_graph
-    source = result_sources[i]
-    println("Result #$i: matched '$target_desc' | $(nv(g))v/$(ne(g))e | offset=$(r.gadget.constant_offset) | from $source")
+    println("\nResult #$i:")
+    println("  Target: $target_desc")
+    println("  Graph: $(nv(g))v / $(ne(g))e")
+    println("  Pins: $(r.gadget.boundary_vertices)")
+    println("  Offset: $(r.gadget.constant_offset)")
 end
-
-# Generate Typst visualization
-desktop = homedir() * "/Desktop"
-typst_path = joinpath(desktop, "crossing_with_flip.typ")
-pdf_path = joinpath(desktop, "crossing_with_flip.pdf")
-
-open(typst_path, "w") do io
-    println(io, "#set page(width: 210mm, height: 297mm, margin: 20mm)")
-    println(io, "#set text(font: \"Arial\", size: 11pt)")
-    println(io, "#align(center)[#text(size: 16pt, weight: \"bold\")[Crossing Gadgets with Logical Flip]]")
-    println(io, "#v(1em)")
-    println(io, "Searched $total_candidates candidates with $(length(target_descs)) target variants.\n")
-    println(io, "Found $(length(results)) crossing gadget replacements.\n")
-
-    for (i, r) in enumerate(results)
-        target_desc = target_descs[r.target_index]
-        g = r.gadget.replacement_graph
-
-        source = result_sources[i]
-        println(io, "== Result #$i")
-        println(io, "- Target: `$target_desc`")
-        println(io, "- Dataset: `$source`")
-        println(io, "- Vertices: $(nv(g)), Edges: $(ne(g))")
-        println(io, "- Constant offset: $(r.gadget.constant_offset)")
-        println(io, "- Boundary: $(r.gadget.boundary_vertices)")
-
-        svg_path = joinpath(desktop, "crossing_flip_$i.svg")
-        GadgetSearch.plot_graph(g, svg_path; pos=r.gadget.pos, plot_size=300, margin=30)
-        println(io, "\n#image(\"crossing_flip_$i.svg\", width: 60%)\n")
-    end
-end
-
-println("\nTypst document: $typst_path")
-run(`typst compile $typst_path $pdf_path`)
-println("PDF generated: $pdf_path")
 
 
