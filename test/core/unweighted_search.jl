@@ -231,10 +231,10 @@ end
 end
 
 # ---------------------------------------------------------------------------
-# make_multi_target_filter: basic match
+# make_unweighted_filter with multiple targets: basic match
 # ---------------------------------------------------------------------------
 
-@testset "make_multi_target_filter: CROSS variants → BATOIDEA" begin
+@testset "make_unweighted_filter: CROSS variants → BATOIDEA" begin
     cross = _cross_graph()
     cross_b = _cross_b()
     cross_c = _cross_c()
@@ -246,47 +246,45 @@ end
         (cross_c, [1,2,3,4]),
     ]
 
-    filter_fn = make_multi_target_filter(targets)
+    filter_fn = make_unweighted_filter(targets)
 
-    # BATOIDEA should match CROSS (target index 1) with offset 2.0
+    # BATOIDEA should match CROSS with offset 2.0
     result = filter_fn(batoidea, nothing, [1,2,3,4])
     @test result !== nothing
-    @test result isa MultiTargetResult
-    @test result.target_index == 1
-    @test result.gadget.constant_offset == 2.0
+    @test result isa UnweightedGadget
+    @test result.constant_offset == 2.0
 end
 
 # ---------------------------------------------------------------------------
-# make_multi_target_filter: self-replacement
+# make_unweighted_filter with multiple targets: self-replacement
 # ---------------------------------------------------------------------------
 
-@testset "make_multi_target_filter: self-replacement (prefilter=false)" begin
+@testset "make_unweighted_filter: multi-target self-replacement (prefilter=false)" begin
     cross = _cross_graph()
     targets = Tuple{SimpleGraph{Int}, Vector{Int}}[(cross, [1,2,3,4])]
 
     # CROSS has 2 components ({1,3},{2,4}), so prefilter rejects it.
     # Use prefilter=false to test pure tensor matching.
-    filter_fn = make_multi_target_filter(targets; prefilter=false)
+    filter_fn = make_unweighted_filter(targets; prefilter=false)
 
     result = filter_fn(cross, nothing, [1,2,3,4])
     @test result !== nothing
-    @test result.target_index == 1
-    @test result.gadget.constant_offset == 0.0
+    @test result.constant_offset == 0.0
 
     # With prefilter=true, CROSS itself is correctly rejected (disconnected pins)
-    filter_fn2 = make_multi_target_filter(targets; prefilter=true)
+    filter_fn2 = make_unweighted_filter(targets; prefilter=true)
     @test filter_fn2(cross, nothing, [1,2,3,4]) === nothing
 end
 
 # ---------------------------------------------------------------------------
-# make_multi_target_filter: prefilter rejects disconnected pins
+# make_unweighted_filter with multiple targets: prefilter rejects disconnected pins
 # ---------------------------------------------------------------------------
 
-@testset "make_multi_target_filter: prefilter rejects disconnected" begin
+@testset "make_unweighted_filter: prefilter rejects disconnected" begin
     cross = _cross_graph()
     targets = Tuple{SimpleGraph{Int}, Vector{Int}}[(cross, [1,2,3,4])]
 
-    filter_fn = make_multi_target_filter(targets; prefilter=true)
+    filter_fn = make_unweighted_filter(targets; prefilter=true)
 
     # A graph where pins are in 2 separate components → rejected
     g = SimpleGraph(6)
@@ -295,17 +293,17 @@ end
     @test filter_fn(g, nothing, [1,2,3,4]) === nothing
 
     # Same graph, but prefilter disabled → goes through to tensor check
-    filter_fn_no = make_multi_target_filter(targets; prefilter=false)
+    filter_fn_no = make_unweighted_filter(targets; prefilter=false)
     result = filter_fn_no(g, nothing, [1,2,3,4])
     # Will compute tensor but won't match CROSS → nothing
     @test result === nothing
 end
 
 # ---------------------------------------------------------------------------
-# search_multi_target_gadgets: integration
+# search_unweighted_gadgets with multiple targets: integration
 # ---------------------------------------------------------------------------
 
-@testset "search_multi_target_gadgets: finds BATOIDEA" begin
+@testset "search_unweighted_gadgets: multi-target finds BATOIDEA" begin
     cross   = _cross_graph()
     cross_b = _cross_b()
     cross_c = _cross_c()
@@ -322,21 +320,20 @@ end
         pinset=[1,2,3,4]
     )
 
-    results = search_multi_target_gadgets(targets, loader)
+    results = search_unweighted_gadgets(targets, loader)
     @test length(results) >= 1
-    @test all(r -> r isa MultiTargetResult, results)
+    @test all(r -> r isa UnweightedGadget, results)
 
-    # BATOIDEA should match target 1 (CROSS) with offset 2.0
-    bat_results = filter(r -> r.gadget.constant_offset == 2.0, results)
+    # BATOIDEA should match CROSS with offset 2.0
+    bat_results = filter(r -> r.constant_offset == 2.0, results)
     @test length(bat_results) >= 1
-    @test bat_results[1].target_index == 1
 end
 
 # ---------------------------------------------------------------------------
-# search_multi_target_gadgets: max_results
+# search_unweighted_gadgets with multiple targets: max_results
 # ---------------------------------------------------------------------------
 
-@testset "search_multi_target_gadgets: max_results" begin
+@testset "search_unweighted_gadgets: multi-target max_results" begin
     cross = _cross_graph()
     batoidea = _batoidea_graph()
     targets = Tuple{SimpleGraph{Int}, Vector{Int}}[(cross, [1,2,3,4])]
@@ -346,7 +343,7 @@ end
         GraphDataset([_to_g6(batoidea), _to_g6(batoidea), _to_g6(batoidea)]),
         pinset=[1,2,3,4]
     )
-    results = search_multi_target_gadgets(targets, loader; max_results=2)
+    results = search_unweighted_gadgets(targets, loader; max_results=2)
     @test length(results) == 2
 end
 
@@ -374,4 +371,3 @@ end
     @test length(descs_perm) == factorial(4)
     @test filter_perm(cross_b, nothing, [1, 2, 3, 4]) !== nothing
 end
-

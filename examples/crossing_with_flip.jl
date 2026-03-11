@@ -81,8 +81,7 @@ function save_progress(completed_stages::Set{String}, total_checked::Int)
     end
 end
 
-function make_result_record(result::MultiTargetResult,
-                            target_descs::Vector{String},
+function make_result_record(result, target_descs::Vector{String},
                             metadata::Dict{String,Any})
     g = result.gadget.replacement_graph
     return merge(Dict(

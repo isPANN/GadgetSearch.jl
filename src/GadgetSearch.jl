@@ -81,13 +81,8 @@ export is_gadget_replacement
 export UnweightedGadget
 export make_unweighted_filter
 export search_unweighted_gadgets
-
-# Multi-target unweighted search
-export MultiTargetResult
 export inf_mask
 export pins_prefilter
-export make_multi_target_filter
-export search_multi_target_gadgets
 
 # Flip variants
 export make_flip_aware_multi_target_filter

@@ -61,7 +61,7 @@ function make_flip_aware_multi_target_filter(base_targets, flip_patterns;
         for (i, td) in enumerate(target_data)
             candidate_mask != td.mask && continue
             valid, offset = is_diff_by_constant(candidate_reduced, td.reduced)
-            valid && return MultiTargetResult(i, UnweightedGadget(td.graph, candidate, pins, float(offset), pos))
+            valid && return (target_index=i, gadget=UnweightedGadget(td.graph, candidate, pins, float(offset), pos))
         end
         return nothing
     end
