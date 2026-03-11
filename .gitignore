@@ -19,6 +19,8 @@ _*.tex
 _*.bib
 _*.pdf
 _tmp*.jl
+compile_report.bat
+compile_typst.jl
 
 # Generated dataset files (re-generatable from code)
 /data/triangular_udgs/
