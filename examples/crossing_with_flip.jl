@@ -21,22 +21,32 @@ function log_msg(msg::AbstractString)
     end
 end
 
-function save_results(results::Vector{MultiTargetResult}, target_descs::Vector{String})
-    payload = map(results) do r
+coord_json(p::Tuple{Int,Int}) = [p[1], p[2]]
+coord_json(p::Tuple{Float64,Float64}) = [p[1], p[2]]
+
+function save_results(results::Vector{MultiTargetResult},
+                      result_metadata::Vector{Dict{String,Any}},
+                      target_descs::Vector{String},
+                      total_checked::Int)
+    payload = map(enumerate(results)) do (i, r)
         g = r.gadget.replacement_graph
-        Dict(
+        merge(Dict(
             "target_index" => r.target_index,
             "target_desc" => target_descs[r.target_index],
             "nv" => nv(g),
             "ne" => ne(g),
             "boundary_vertices" => r.gadget.boundary_vertices,
             "constant_offset" => r.gadget.constant_offset,
-            "pos" => isnothing(r.gadget.pos) ? nothing : [[p[1], p[2]] for p in r.gadget.pos],
+            "pos" => isnothing(r.gadget.pos) ? nothing : [coord_json(p) for p in r.gadget.pos],
             "edges" => [[src(e), dst(e)] for e in edges(g)],
-        )
+        ), result_metadata[i])
     end
     open(RESULTS_PATH, "w") do io
-        write(io, JSON3.write(payload; pretty=true))
+        write(io, JSON3.write(Dict(
+            "total_checked" => total_checked,
+            "n_results" => length(results),
+            "results" => payload,
+        ); pretty=true))
     end
 end
 
@@ -52,11 +62,16 @@ end
 
 base_targets = generate_extended_cross()
 flip_patterns = generate_flip_patterns()
-filter_fn, target_descs = make_flip_aware_multi_target_filter(base_targets, flip_patterns)
+filter_fn, target_descs = make_flip_aware_multi_target_filter(
+    base_targets,
+    flip_patterns;
+    permute_pins=false,
+)
 
 log_msg("Base targets: $(length(base_targets))")
 log_msg("Flip patterns: $(length(flip_patterns))")
 log_msg("Total target tensors: $(length(target_descs))")
+log_msg("Pin permutation expansion: disabled")
 
 # Only keep nx <= ny because swapping the grid axes gives an equivalent search.
 grid_configs = [
@@ -68,6 +83,7 @@ grid_configs = [
 ]
 
 results = MultiTargetResult[]
+result_metadata = Dict{String,Any}[]
 total_checked = 0
 
 for (nx, ny, min_k, max_k) in grid_configs
@@ -107,7 +123,16 @@ for (nx, ny, min_k, max_k) in grid_configs
                 result === nothing && continue
 
                 push!(results, result)
-                save_results(results, target_descs)
+                push!(result_metadata, Dict(
+                    "grid" => [nx, ny],
+                    "k" => k,
+                    "pin_grid" => [coord_json(p) for p in pin_grid],
+                    "pin_phys" => [coord_json(p) for p in pin_phys],
+                    "inner_subset_indices" => collect(subset),
+                    "inner_subset_grid" => [coord_json(inner_grid[i]) for i in subset],
+                    "candidate_index" => total_checked,
+                ))
+                save_results(results, result_metadata, target_descs, total_checked)
                 log_msg("  Found result #$(length(results)) on $(nx)x$(ny), k=$k, target=$(target_descs[result.target_index])")
             end
         end
@@ -116,7 +141,7 @@ for (nx, ny, min_k, max_k) in grid_configs
     end
 end
 
-save_results(results, target_descs)
+save_results(results, result_metadata, target_descs, total_checked)
 
 println("\nFound $(length(results)) crossing gadget replacements after checking $total_checked candidates.")
 for (i, r) in enumerate(results)

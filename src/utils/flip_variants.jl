@@ -59,7 +59,7 @@ function generate_extended_cross()
 end
 
 """
-    make_flip_aware_multi_target_filter(base_targets, flip_patterns; prefilter=true)
+    make_flip_aware_multi_target_filter(base_targets, flip_patterns; prefilter=true, permute_pins=true)
 
 Create a filter that checks candidates against base targets AND their flip variants.
 
@@ -67,10 +67,16 @@ Create a filter that checks candidates against base targets AND their flip varia
 - `base_targets`: Vector of (graph, boundary, description) tuples
 - `flip_patterns`: Vector of (flip_mask, flip_desc) tuples
 
+# Keywords
+- `prefilter`: Whether to apply the fast pin connectivity prefilter
+- `permute_pins`: Whether to also compare against all permutations of target pin order
+
 # Returns
 - Filter function and target descriptions vector
 """
-function make_flip_aware_multi_target_filter(base_targets, flip_patterns; prefilter=true)
+function make_flip_aware_multi_target_filter(base_targets, flip_patterns;
+                                             prefilter=true,
+                                             permute_pins=true)
     # Pre-compute all target tensors (base × flip combinations)
     target_data = []
     target_descs = String[]
@@ -79,11 +85,22 @@ function make_flip_aware_multi_target_filter(base_targets, flip_patterns; prefil
         base_tensor = content.(calculate_reduced_alpha_tensor(g, b))
         all(isinf.(base_tensor)) && continue
 
+        perms = permute_pins ? collect(Combinatorics.permutations(1:length(b))) : [collect(1:length(b))]
+
         for (flip_mask, flip_desc) in flip_patterns
             # Apply flip to tensor
             flipped_tensor = apply_flip_to_tensor(base_tensor, flip_mask)
-            push!(target_data, (graph=g, boundary=b, reduced=flipped_tensor, mask=inf_mask(flipped_tensor)))
-            push!(target_descs, "$desc-$flip_desc")
+
+            for perm in perms
+                reduced = perm == collect(1:length(b)) ? flipped_tensor : permutedims(flipped_tensor, Tuple(perm))
+                push!(target_data, (graph=g, boundary=b, reduced=reduced, mask=inf_mask(reduced)))
+
+                if permute_pins
+                    push!(target_descs, "$desc-$flip_desc-perm$(join(perm))")
+                else
+                    push!(target_descs, "$desc-$flip_desc")
+                end
+            end
         end
     end
 

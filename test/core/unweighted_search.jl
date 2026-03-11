@@ -350,3 +350,28 @@ end
     @test length(results) == 2
 end
 
+@testset "make_flip_aware_multi_target_filter: pin permutation control" begin
+    cross = _cross_graph()
+    cross_b = _cross_b()
+    base_targets = [(cross, [1, 2, 3, 4], "base")]
+    flip_patterns = [(Int[], "no-flip")]
+
+    filter_fixed, descs_fixed = make_flip_aware_multi_target_filter(
+        base_targets,
+        flip_patterns;
+        prefilter=false,
+        permute_pins=false,
+    )
+    @test descs_fixed == ["base-no-flip"]
+    @test filter_fixed(cross_b, nothing, [1, 2, 3, 4]) === nothing
+
+    filter_perm, descs_perm = make_flip_aware_multi_target_filter(
+        base_targets,
+        flip_patterns;
+        prefilter=false,
+        permute_pins=true,
+    )
+    @test length(descs_perm) == factorial(4)
+    @test filter_perm(cross_b, nothing, [1, 2, 3, 4]) !== nothing
+end
+
