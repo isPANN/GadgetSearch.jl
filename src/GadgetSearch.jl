@@ -44,6 +44,7 @@ export generate_full_grid_udg
 export generate_full_grid_graph
 export generate_triangular_udg_subsets
 export dedup_inner_subsets
+export build_triangular_graph
 export triangular_adjacency
 export triangular_lattice_graph
 

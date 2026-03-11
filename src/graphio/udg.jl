@@ -23,20 +23,19 @@ function unit_disk_graph(locs::AbstractVector, unit::Real)
 end
 
 """
-    complete_graph(n::Int) -> SimpleGraph
+    build_triangular_graph(grid_coords::Vector{Tuple{Int,Int}}) -> SimpleGraph{Int}
 
-Create a complete graph with n vertices where every pair of vertices is connected.
-
-# Arguments
-- `n`: Number of vertices
-
-# Returns
-- `SimpleGraph`: The complete graph K_n
+Build a `SimpleGraph` from integer grid coordinates using triangular-lattice
+adjacency.  This is the shared building block for `generate_triangular_udg_subsets`,
+`dedup_inner_subsets`, and downstream scripts.
 """
-function complete_graph(n::Int)
+function build_triangular_graph(grid_coords::Vector{Tuple{Int,Int}})
+    n = length(grid_coords)
     g = SimpleGraph(n)
-    for i = 1:n, j = i+1:n
-        add_edge!(g, i, j)
+    for a in 1:n, b in a+1:n
+        ia, ja = grid_coords[a]
+        ib, jb = grid_coords[b]
+        triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
     end
     return g
 end
@@ -66,7 +65,7 @@ function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::
         vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny]))
 
     n = length(grid_points)
-    g = complete_graph(n)
+    g = Graphs.complete_graph(n)
 
     results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[(g, grid_points)]
     
@@ -104,8 +103,8 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
 
     results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[]
 
-    for top in top_candidates, bottom in bottom_candidates,
-        left in left_candidates, right in right_candidates
+    for (top, bottom, left, right) in Iterators.product(
+            top_candidates, bottom_candidates, left_candidates, right_candidates)
 
         selected = vcat([top, right, bottom, left], inner_points)
 
@@ -178,12 +177,7 @@ function generate_triangular_udg_subsets(nx::Int, ny::Int;
             all_phys = vcat(pin_phys, inner_phys[subset])
             n = length(all_grid)
 
-            g = SimpleGraph(n)
-            for a in 1:n, b in a+1:n
-                ia, ja = all_grid[a]
-                ib, jb = all_grid[b]
-                triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
-            end
+            g = build_triangular_graph(all_grid)
 
             push!(results, (g, all_phys))
         end
@@ -212,16 +206,7 @@ function dedup_inner_subsets(inner_grid::Vector{Tuple{Int,Int}}, k::Int)
     all_subsets = collect(Combinatorics.combinations(1:n, k))
     isempty(all_subsets) && return Vector{Int}[]
 
-    graphs = Vector{SimpleGraph{Int}}(undef, length(all_subsets))
-    for (idx, subset) in enumerate(all_subsets)
-        g = SimpleGraph(k)
-        for a in 1:k, b in a+1:k
-            ia, ja = inner_grid[subset[a]]
-            ib, jb = inner_grid[subset[b]]
-            triangular_adjacency(ia, ja, ib, jb) && add_edge!(g, a, b)
-        end
-        graphs[idx] = g
-    end
+    graphs = [build_triangular_graph(inner_grid[subset]) for subset in all_subsets]
 
     if Sys.which("shortg") !== nothing
         temp_file = tempname()
