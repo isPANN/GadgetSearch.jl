@@ -1,13 +1,12 @@
 name = "GadgetSearch"
 uuid = "f32ba870-f0fb-4590-997c-33f4129cc18c"
-version = "1.0.0-DEV"
+version = "0.1.0"
 authors = ["Xiwei Pan"]
 
 [deps]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
-DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
 GenericTensorNetworks = "3521c873-ad32-4bb4-b63d-f4f178f42b49"
 GraphIO = "aa1b3936-2fda-51b9-ab35-c553d3a640a2"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
@@ -18,13 +17,11 @@ Karnak = "cd156443-31ad-4f6f-850f-a93ee5f75905"
 Luxor = "ae8d54c2-7ccd-5906-9d76-62fc9837b5bc"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
 ColorSchemes = "3.29.0"
 Colors = "0.13"
 Combinatorics = "1"
-DocumenterTools = "0.1.20"
 GenericTensorNetworks = "4.1.0"
 GraphIO = "0.7.1"
 Graphs = "1.9.0"
@@ -34,8 +31,6 @@ JuMP = "1"
 Karnak = "1.1.0"
 Luxor = "4.1.0"
 ProgressMeter = "1.10.4"
-Random = "1.11.0"
-Revise = "3.6.2"
 julia = "1"
 
 [extras]
