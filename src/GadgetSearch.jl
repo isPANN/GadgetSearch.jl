@@ -66,6 +66,8 @@ export check_gadget, check_gadget_rydberg, check_gadget_qubo
 # Alpha tensor
 export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor
+export inf_mask
+export pins_prefilter
 export is_diff_by_constant
 export is_gadget_replacement
 
