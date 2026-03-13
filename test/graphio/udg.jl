@@ -109,6 +109,101 @@ end
     end
 end
 
+@testset "Triangular Lattice Topology" begin
+    @testset "triangular_adjacency Function" begin
+        adjacency = GadgetSearch.triangular_adjacency
+
+        known_neighbors = [
+            ((1, 1), (2, 1)),
+            ((2, 2), (1, 2)),
+            ((2, 2), (2, 3)),
+            ((2, 2), (1, 3)),
+            ((2, 3), (2, 2)),
+            ((2, 3), (3, 2)),
+        ]
+        non_neighbors = [
+            ((1, 1), (1, 1)),
+            ((1, 1), (3, 1)),
+            ((2, 2), (3, 3)),
+            ((2, 2), (2, 4)),
+        ]
+
+        for ((i1, j1), (i2, j2)) in known_neighbors
+            @test adjacency(i1, j1, i2, j2)
+            @test adjacency(i2, j2, i1, j1)
+        end
+
+        for ((i1, j1), (i2, j2)) in non_neighbors
+            @test !adjacency(i1, j1, i2, j2)
+            @test !adjacency(i2, j2, i1, j1)
+        end
+    end
+
+    @testset "triangular_lattice_graph Function" begin
+        g11 = GadgetSearch.triangular_lattice_graph(1, 1)
+        @test nv(g11) == 1
+        @test ne(g11) == 0
+
+        g22 = GadgetSearch.triangular_lattice_graph(2, 2)
+        @test nv(g22) == 4
+        @test ne(g22) == 5
+        @test has_edge(g22, 1, 2)
+        @test has_edge(g22, 1, 3)
+        @test has_edge(g22, 1, 4)
+        @test has_edge(g22, 2, 4)
+        @test has_edge(g22, 3, 4)
+        @test !has_edge(g22, 2, 3)
+
+        coords = vec(Tuple{Int, Int}[(x, y) for x in 1:3, y in 1:2])
+        physical = GadgetSearch.get_physical_positions(Triangular(), coords)
+        udg = GadgetSearch.unit_disk_graph(physical, get_radius(Triangular()))
+        g32 = GadgetSearch.triangular_lattice_graph(3, 2)
+        @test nv(g32) == nv(udg)
+        @test ne(g32) == ne(udg)
+        @test all(has_edge(udg, src(edge), dst(edge)) for edge in edges(g32))
+        @test all(has_edge(g32, src(edge), dst(edge)) for edge in edges(udg))
+
+        gempty = GadgetSearch.triangular_lattice_graph(0, 3)
+        @test nv(gempty) == 0
+        @test ne(gempty) == 0
+    end
+end
+
+@testset "Triangular UDG Subsets" begin
+    @testset "dedup_inner_subsets Function" begin
+        inner_grid = GadgetSearch.triangular_lattice_graph(2, 2)
+
+        subsets_without_shortg = GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=false)
+        @test length(subsets_without_shortg) == 6
+        @test all(length(subset) == 2 for subset in subsets_without_shortg)
+
+        subsets_with_shortg = GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=true)
+        if Sys.which("shortg") === nothing
+            @test subsets_with_shortg == subsets_without_shortg
+        else
+            @test length(subsets_with_shortg) == 2
+            induced_edges = sort(unique(ne(Graphs.induced_subgraph(inner_grid, subset)[1]) for subset in subsets_with_shortg))
+            @test induced_edges == [0, 1]
+        end
+    end
+
+    @testset "generate_triangular_udg_subsets Integration" begin
+        temp_file = tempname() * ".g6"
+        result = generate_triangular_udg_subsets(2, 1; subset_sizes=1:2, deduplicate=false, path=temp_file)
+
+        @test result == temp_file
+        dataset = GraphDataset(temp_file)
+        @test dataset.n == 3
+        @test map(length, dataset.layouts) == [1, 1, 2]
+
+        loader = GraphLoader(temp_file)
+        edge_counts = sort([ne(loader[idx]) for idx in 1:length(loader)])
+        @test edge_counts == [0, 0, 1]
+
+        rm(temp_file)
+    end
+end
+
 @testset "get_pin_positions Function" begin
     @testset "Basic Pin Positioning" begin
         square = Square()
