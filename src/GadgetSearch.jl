@@ -37,8 +37,12 @@ export save_cache
 export save_graph
 
 export Square, Triangular
+export triangular_adjacency
+export triangular_lattice_graph
+export dedup_inner_subsets
 export generate_full_grid_udg
 export generate_full_grid_graph
+export generate_triangular_udg_subsets
 
 # Core types
 export Gadget
