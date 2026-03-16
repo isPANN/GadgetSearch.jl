@@ -22,7 +22,7 @@ function save_graph(g::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float6
     return path
 end
 
-function save_graph(g::Vector{Tuple{AbstractString, Vector{Tuple{Float64, Float64}}}}, path::String)
+function save_graph(g::Vector{Tuple{S, Vector{Tuple{Float64, Float64}}}}, path::String) where S<:AbstractString
     open(path, "w") do io
         for (g6, coords) in g
             println(io, g6, " ", join(["($(x),$(y))" for (x, y) in coords], ";"))
