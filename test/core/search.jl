@@ -413,13 +413,294 @@ end
     g = SimpleGraph(3)
     add_edge!(g, 1, 2)
     constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
-    
+
     # RydbergModel gadget
     rydberg_gadget = GadgetSearch.Gadget(GadgetSearch.RydbergModel, constraint, g, [1, 2], [1.0, 2.0, 1.0], nothing)
     @test rydberg_gadget.vertex_weights == [1.0, 2.0, 1.0]
     @test isempty(rydberg_gadget.edge_weights)
-    
+
     # Legacy compatibility
     @test rydberg_gadget.weights == [1.0, 2.0, 1.0]
     @test rydberg_gadget.ground_states == BitMatrix([1 0; 0 1])
+
+    # QUBOModel gadget
+    edge_list = [(1, 2)]
+    qubo_gadget = GadgetSearch.Gadget(GadgetSearch.QUBOModel, constraint, g, [1, 2], [1.0, 2.0, 1.0], [0.5], edge_list, nothing)
+    @test qubo_gadget.vertex_weights == [1.0, 2.0, 1.0]
+    @test qubo_gadget.edge_weights == [0.5]
+    @test qubo_gadget.edge_list == [(1, 2)]
+
+    # Legacy constructor (BitMatrix + weights)
+    legacy = GadgetSearch.Gadget(BitMatrix([1 0; 0 1]), g, [1, 2], [1.0, 2.0, 1.0], nothing)
+    @test legacy.weights == [1.0, 2.0, 1.0]
+    @test legacy.ground_states == BitMatrix([1 0; 0 1])
+
+    # getproperty fallback for normal fields
+    @test rydberg_gadget.graph === g
+    @test rydberg_gadget.pins == [1, 2]
+end
+
+@testset "TruthTableConstraint - Matrix{Bool} constructor" begin
+    tt = [true false; false true]
+    ttc = GadgetSearch.TruthTableConstraint(tt)
+    @test GadgetSearch.get_pin_num(ttc) == 2
+    @test ttc.truth_table isa BitMatrix
+end
+
+@testset "get_state_space - QUBOModel error" begin
+    large_g = SimpleGraph(33)
+    @test_throws ErrorException GadgetSearch.get_state_space(GadgetSearch.QUBOModel, large_g)
+end
+
+@testset "match_constraint_to_states - pin mismatch error" begin
+    masks = UInt32[0x1, 0x2]
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))  # 2 pins
+    @test_throws ErrorException GadgetSearch.match_constraint_to_states(masks, constraint, [1, 2, 3])
+end
+
+@testset "_find_weights - QUBOModel" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+
+    vertex_num = 3
+    edge_list = [(1, 2), (2, 3)]
+    # For QUBO, states are full 2^n space
+    # We want states 0x3 (011) and 0x5 (101) as targets
+    target_states = UInt32[0x3, 0x5]
+    wrong_states = UInt32[0x0, 0x1, 0x2, 0x4, 0x6, 0x7]
+    optimizer = create_mock_optimizer()
+    pin_set = [1, 3]
+
+    result = GadgetSearch._find_weights(
+        GadgetSearch.QUBOModel,
+        vertex_num, edge_list, pin_set, target_states, wrong_states,
+        optimizer, nothing, nothing, false, g, false
+    )
+
+    if result !== nothing
+        vw, ew = result
+        @test length(vw) == vertex_num
+        @test length(ew) == length(edge_list)
+        # Pin vertices should have non-zero weights
+        @test vw[1] != 0
+        @test vw[3] != 0
+    end
+end
+
+@testset "_find_weights - QUBOModel pin zero weight rejection" begin
+    # Construct a case where the solver would set a pin weight to 0
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+
+    # All states are targets — solver may find trivial solution with zero pin weights
+    target_states = UInt32[0x0, 0x1, 0x2, 0x3]
+    wrong_states = UInt32[]
+    optimizer = create_mock_optimizer()
+    pin_set = [1, 2]
+
+    result = GadgetSearch._find_weights(
+        GadgetSearch.QUBOModel,
+        2, [(1, 2)], pin_set, target_states, wrong_states,
+        optimizer, nothing, nothing, false, g, false
+    )
+    # Result is nothing or has non-zero pin weights
+    if result !== nothing
+        vw, _ = result
+        @test all(vw[p] != 0 for p in pin_set)
+    end
+end
+
+@testset "_find_weights - RydbergModel allow_defect=true" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+
+    vertex_num = 3
+    edge_list = [(1, 2), (2, 3)]
+    target_states = UInt32[0x1, 0x4]  # {1} and {3}
+    wrong_states = UInt32[0x2]        # {2}
+    optimizer = create_mock_optimizer()
+    pin_set = [1, 3]
+
+    # allow_defect=true: non-pin vertices can have weight 0
+    result = GadgetSearch._find_weights(
+        GadgetSearch.RydbergModel,
+        vertex_num, edge_list, pin_set, target_states, wrong_states,
+        optimizer, nothing, nothing, true, g, false
+    )
+    if result !== nothing
+        @test length(result) == vertex_num
+    end
+end
+
+@testset "_find_weights - RydbergModel connectivity check rejection" begin
+    # Build a path graph: 1-2-3 where removing vertex 2 disconnects
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+
+    vertex_num = 3
+    edge_list = [(1, 2), (2, 3)]
+    # Target: only vertex 1 active (mask 0x1) and vertex 3 active (mask 0x4)
+    target_states = UInt32[0x1, 0x4]
+    wrong_states = UInt32[0x2]
+    optimizer = create_mock_optimizer()
+    pin_set = [1, 3]
+
+    # With check_connectivity=true and allow_defect=true (allowing vertex 2 to have weight 0)
+    result = GadgetSearch._find_weights(
+        GadgetSearch.RydbergModel,
+        vertex_num, edge_list, pin_set, target_states, wrong_states,
+        optimizer, nothing, nothing, true, g, true  # check_connectivity=true
+    )
+    # If solver assigns 0 to vertex 2, connectivity check should reject
+    # Result may be nothing (rejected) or valid weights
+    @test result === nothing || length(result) == vertex_num
+end
+
+@testset "check_connectivity_after_removal - all vertices removed" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+    # Remove all vertices (0-based: [0, 1, 2] → 1-based: [1, 2, 3])
+    @test GadgetSearch.check_connectivity_after_removal(g, [0, 1, 2]) == false
+end
+
+@testset "solve_weights - QUBOModel" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 2, 3)
+
+    states, _ = GadgetSearch.get_state_space(GadgetSearch.QUBOModel, g)
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    pin_set = [1, 3]
+    target_indices_all = GadgetSearch.match_constraint_to_states(states, constraint, pin_set)
+    optimizer = create_mock_optimizer()
+
+    result = GadgetSearch.solve_weights(
+        GadgetSearch.QUBOModel, states, target_indices_all, g, pin_set,
+        optimizer, nothing, nothing, false, 100, false
+    )
+    if result !== nothing
+        vw, ew = result
+        @test length(vw) == 3
+        @test length(ew) == 2
+    end
+end
+
+@testset "solve_weights - empty target indices" begin
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+    states = UInt32[0x0, 0x1, 0x2, 0x3]
+    target_indices_all = [Int[], [1, 2]]  # First empty
+
+    result = GadgetSearch.solve_weights(
+        GadgetSearch.QUBOModel, states, target_indices_all, g, [1, 2],
+        create_mock_optimizer(), nothing, nothing, false, 100, false
+    )
+    @test result === nothing
+end
+
+@testset "solve_weights - no optimizer error" begin
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+    states = UInt32[0x0, 0x1, 0x2, 0x3]
+    target_indices_all = [[1], [2]]
+
+    @test_throws ErrorException GadgetSearch.solve_weights(
+        GadgetSearch.QUBOModel, states, target_indices_all, g, [1, 2],
+        nothing, nothing, nothing, false, 100, false
+    )
+end
+
+@testset "solve_weight_enumerate - graph=nothing error" begin
+    mis_result = UInt32[0x1, 0x2]
+    target_indices_all = [[1], [2]]
+    @test_throws ErrorException GadgetSearch.solve_weight_enumerate(
+        mis_result, target_indices_all, 2, [1, 2], create_mock_optimizer(),
+        nothing, nothing, false, 1000, nothing, false
+    )
+end
+
+@testset "make_filter - QUBOModel" begin
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    optimizer = create_mock_optimizer()
+
+    filter_fn = GadgetSearch.make_filter(
+        GadgetSearch.QUBOModel, constraint, optimizer, nothing;
+        connected=false, max_samples=10, pin_candidates=[[1, 2]]
+    )
+    @test filter_fn isa Function
+
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 2, 3)
+    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
+    result = filter_fn(g, pos, nothing)
+    @test result === nothing || result isa GadgetSearch.Gadget{GadgetSearch.QUBOModel}
+end
+
+@testset "make_filter - disconnected graph rejected" begin
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    optimizer = create_mock_optimizer()
+
+    filter_fn = GadgetSearch.make_filter(
+        GadgetSearch.RydbergModel, constraint, optimizer, nothing;
+        connected=false  # connected=false means we CHECK connectivity
+    )
+
+    # Disconnected graph: 1-2 and 3-4 are separate components
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 2)
+    add_edge!(g, 3, 4)
+    pos = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+
+    result = filter_fn(g, pos, [1, 2])
+    @test result === nothing  # disconnected → rejected
+end
+
+@testset "make_filter - pin_candidates with invalid pins warns" begin
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    optimizer = create_mock_optimizer()
+
+    filter_fn = GadgetSearch.make_filter(
+        GadgetSearch.RydbergModel, constraint, optimizer, nothing;
+        connected=false, pin_candidates=[[1, 5]]  # pin 5 not in pin_set
+    )
+
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 2, 3); add_edge!(g, 1, 3)
+    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
+
+    result = filter_fn(g, pos, [1, 2, 3])
+    # pin 5 not in pin_set [1,2,3] → candidate skipped → no match
+    @test result === nothing
+end
+
+@testset "search_gadgets - QUBOModel" begin
+    loader = create_test_loader()
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    optimizer = create_mock_optimizer()
+    temp_file = tempname() * ".json"
+
+    try
+        results, failed = GadgetSearch.search_gadgets(
+            GadgetSearch.QUBOModel, loader, [constraint];
+            optimizer=optimizer, max_result_num=1, save_path=temp_file,
+            pin_candidates=[[1, 2]]
+        )
+        @test results isa Vector{Vector{GadgetSearch.Gadget}}
+        @test length(results) == 1
+        @test failed isa Vector{GadgetSearch.TruthTableConstraint}
+    finally
+        isfile(temp_file) && rm(temp_file; force=true)
+    end
+end
+
+@testset "find_matching_gadget - keys_range parameter" begin
+    loader = create_test_loader()
+    simple_filter = (g, pos, pins) -> nothing
+    results = GadgetSearch.find_matching_gadget(loader; filter=simple_filter, keys_range=[1])
+    @test results isa Vector{GadgetSearch.Gadget}
+    @test length(results) == 0
 end

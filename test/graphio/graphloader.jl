@@ -117,6 +117,135 @@ end
 end
 
 
+# Test save_cache with no cache path
+@testset "GraphLoader Cache - no cachepath warning" begin
+    g6_codes = ["A_", "Bw"]
+    ds = GraphDataset(g6_codes)
+    loader = GraphLoader(ds; enable_cache=false)
+    # save_cache with no cachepath should warn, not error
+    @test_logs (:warn, "No cache path provided; cannot save cache.") save_cache(loader)
+end
+
+# Test cache file corruption handling
+@testset "GraphLoader Cache - corrupted cache file" begin
+    test_file = create_test_graph_file()
+    bad_cache = tempname()
+    write(bad_cache, "this is not a valid serialized file")
+
+    loader = @test_logs (:info,) (:warn,) match_mode=:any GraphLoader(test_file; enable_cache=true, cachepath=bad_cache)
+    @test length(loader.parsed) == 0  # corrupted cache ignored
+
+    rm(test_file)
+    rm(bad_cache)
+end
+
+# Test cache file with wrong type
+@testset "GraphLoader Cache - wrong type in cache" begin
+    test_file = create_test_graph_file()
+    bad_cache = tempname()
+    using Serialization
+    Serialization.serialize(bad_cache, [1, 2, 3])  # wrong type
+
+    loader = @test_logs (:info,) (:warn, "Cache file format unexpected, ignoring cache.") GraphLoader(test_file; enable_cache=true, cachepath=bad_cache)
+    @test length(loader.parsed) == 0
+
+    rm(test_file)
+    rm(bad_cache)
+end
+
+# Test GraphLoader string key error
+@testset "GraphLoader - invalid string key" begin
+    g6_codes = ["A_"]
+    ds = GraphDataset(g6_codes)
+    loader = GraphLoader(ds)
+    @test_throws ErrorException loader["abc"]  # not a valid integer
+end
+
+# Test GraphDataset mismatched lengths
+@testset "GraphDataset - mismatched g6codes and layouts" begin
+    @test_throws ArgumentError GraphDataset(["A_", "Bw"], [[(0.0, 0.0), (1.0, 0.0)]])
+end
+
+# Test GraphLoader show method
+@testset "GraphLoader show" begin
+    g6_codes = ["A_", "Bw"]
+    ds = GraphDataset(g6_codes)
+    loader = GraphLoader(ds)
+    str = sprint(show, loader)
+    @test occursin("2 graphs", str)
+    @test occursin("no cache", str)
+
+    loader2 = GraphLoader(ds; enable_cache=true)
+    str2 = sprint(show, loader2)
+    @test occursin("cache enabled", str2)
+end
+
+# Test GraphLoader cache eviction
+@testset "GraphLoader Cache - eviction" begin
+    g6_codes = ["A_", "Bw", "C~"]
+    ds = GraphDataset(g6_codes)
+    loader = GraphLoader(ds; enable_cache=true, max_cached=2)
+
+    _ = loader[1]
+    _ = loader[2]
+    @test length(loader.parsed) == 2
+
+    _ = loader[3]
+    @test length(loader.parsed) == 2  # oldest evicted
+
+    # Access 1 again (should not be in cache, re-parsed)
+    g = loader[1]
+    @test nv(g) == 2
+end
+
+# Test file with invalid coordinates
+@testset "GraphDataset - invalid coordinates in file" begin
+    test_data = "A_ not_a_coordinate"
+    test_file = tempname()
+    write(test_file, test_data)
+
+    ds = GraphDataset(test_file)
+    @test ds.n == 1
+    @test ds.g6codes[1] == "A_"
+    @test ds.layouts[1] === nothing  # invalid coords → nothing
+
+    rm(test_file)
+end
+
+# Test file with g6-only lines (no coordinates)
+@testset "GraphDataset - g6 only lines" begin
+    test_data = "A_\nBw"
+    test_file = tempname()
+    write(test_file, test_data)
+
+    ds = GraphDataset(test_file)
+    @test ds.n == 2
+    @test ds.layouts[1] === nothing
+    @test ds.layouts[2] === nothing
+
+    rm(test_file)
+end
+
+# Test file with blank/whitespace lines
+@testset "GraphDataset - blank lines in file" begin
+    test_data = "A_ (0.0,0.0);(1.0,0.0)\n\n   \nBw (0.0,0.0);(1.0,0.0);(0.5,1.0)"
+    test_file = tempname()
+    write(test_file, test_data)
+
+    ds = GraphDataset(test_file)
+    @test ds.n == 2  # blank lines skipped
+
+    rm(test_file)
+end
+
+# Test GraphLoader with pinset
+@testset "GraphLoader - pinset" begin
+    g6_codes = ["A_"]
+    ds = GraphDataset(g6_codes)
+    loader = GraphLoader(ds; pinset=[1, 2])
+    @test loader.pinset == [1, 2]
+end
+
 # Test Graph6 parsing functions
 @testset "Graph6 Parsing" begin
     @testset "Vertex Count Parsing" begin

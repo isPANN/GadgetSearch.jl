@@ -110,6 +110,22 @@ end
     end
 end
 
+@testset "check_gadget - QUBO model with edge weights" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 2, 3)
+    constraint = GadgetSearch.TruthTableConstraint(BitMatrix([1 0; 0 1]))
+    edge_list = [(1, 2), (2, 3)]
+    gadget = GadgetSearch.Gadget(GadgetSearch.QUBOModel, constraint, g, [1, 3],
+                                  [2.0, 1.0, 2.0], [1.0, 1.0], edge_list,
+                                  [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0)])
+
+    info = check_gadget_qubo(gadget; _return_info=true)
+    @test info isa String
+    @test occursin("QUBO", info)
+    @test occursin("Max energy", info)
+    @test occursin("pins=", info)
+end
+
 @testset "save_results_to_json - QUBO gadget includes edge weights" begin
     g = SimpleGraph(3)
     add_edge!(g, 1, 2); add_edge!(g, 2, 3)

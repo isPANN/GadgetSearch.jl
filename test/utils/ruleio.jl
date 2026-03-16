@@ -61,6 +61,42 @@ end
 end
 
 @testset "generic_rule - show_info flag" begin
-    # show_info=true should not throw
+    # show_info=false should not throw
     @test_nowarn GadgetSearch.generic_rule(0, (1, 1); show_info=false)
+    # show_info=true should not throw and should print output
+    tt = GadgetSearch.generic_rule(0, (1, 1); show_info=true)
+    @test tt isa BitMatrix
+    @test size(tt) == (2, 2)
+end
+
+@testset "show_rule_info - basic output" begin
+    rd, wr = redirect_stdout()
+    GadgetSearch.show_rule_info(0, (1, 1))
+    redirect_stdout()
+    close(wr)
+    output = read(rd, String)
+    @test occursin("Input (Binary)", output)
+    @test occursin("Output (Binary)", output)
+    @test occursin("0", output)
+end
+
+@testset "show_rule_info - 2-input 1-output" begin
+    rd, wr = redirect_stdout()
+    GadgetSearch.show_rule_info(8, (2, 1))
+    redirect_stdout()
+    close(wr)
+    output = read(rd, String)
+    @test occursin("Input (Binary)", output)
+    # Should have 4 rows (2^2 inputs)
+    lines = split(strip(output), '\n')
+    # header + separator + 4 data lines
+    @test length(lines) >= 6
+end
+
+@testset "generic_rule - 2-input 2-output" begin
+    # (2,2): 4 inputs, 4 outputs, max_gateid = 4^4 = 256
+    tt = GadgetSearch.generic_rule(0, (2, 2))
+    @test size(tt) == (4, 4)
+    # rule 0: all outputs are 0
+    @test all(tt[:, 3:4] .== false)
 end
