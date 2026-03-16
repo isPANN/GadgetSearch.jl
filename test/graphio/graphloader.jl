@@ -119,107 +119,83 @@ end
 
 # Test Graph6 parsing functions
 @testset "Graph6 Parsing" begin
-    # TODO
-    # Test _parse_vertex_count function
-    # @testset "Vertex Count Parsing" begin
-    #     # Small graphs (n <= 62): single character encoding
-    #     nv, pos = GadgetSearch._parse_vertex_count("A")  # 'A' = 65, so n = 65-63 = 2
-    #     @test nv == 2
-    #     @test pos == 2
-        
-    #     nv, pos = GadgetSearch._parse_vertex_count("?")  # '?' = 63, so n = 63-63 = 0
-    #     @test nv == 0
-    #     @test pos == 2
-        
-    #     nv, pos = GadgetSearch._parse_vertex_count("~")  # '~' = 126, so n = 126-63 = 63
-    #     @test nv == 63
-    #     @test pos == 2
-        
-    #     # Medium graphs (63 <= n <= 258047): 4-character encoding starting with "~"
-    #     # For n=100: encode as ~AAd where 100 = 1*4096 + 1*64 + 36*1
-    #     nv, pos = GadgetSearch._parse_vertex_count("~AAd")
-    #     @test nv == 100
-    #     @test pos == 5
-        
-    #     # Large graphs (n >= 258048): 7-character encoding starting with "~~"
-    #     # This is rarely used but let's test the boundary
-    #     nv, pos = GadgetSearch._parse_vertex_count("~~?????")  # Minimum large graph encoding
-    #     @test nv == 258048
-    #     @test pos == 9
-    # end
-    
-    # @testset "G6 String Parsing" begin
-    #     temp_bitvec = BitVector(undef, 100)
-        
-    #     # Test empty graph
-    #     g = GadgetSearch._parse_g6_string("?", temp_bitvec)
-    #     @test nv(g) == 0
-    #     @test ne(g) == 0
-        
-    #     # Test single vertex graph
-    #     g = GadgetSearch._parse_g6_string("@", temp_bitvec)  # '@' = 64, so n = 64-63 = 1
-    #     @test nv(g) == 1
-    #     @test ne(g) == 0
-        
-    #     # Test two vertex graphs
-    #     g = GadgetSearch._parse_g6_string("A_", temp_bitvec)  # No edge between vertices 1,2
-    #     @test nv(g) == 2
-    #     @test ne(g) == 0
-    #     @test !has_edge(g, 1, 2)
-        
-    #     g = GadgetSearch._parse_g6_string("A?", temp_bitvec)  # Edge between vertices 1,2
-    #     @test nv(g) == 2
-    #     @test ne(g) == 1
-    #     @test has_edge(g, 1, 2)
-        
-    #     # Test three vertex graphs
-    #     g = GadgetSearch._parse_g6_string("B_", temp_bitvec)  # Triangle with no edges
-    #     @test nv(g) == 3
-    #     @test ne(g) == 0
-        
-    #     g = GadgetSearch._parse_g6_string("BW", temp_bitvec)  # Complete triangle
-    #     @test nv(g) == 3
-    #     @test ne(g) == 3
-    #     @test has_edge(g, 1, 2)
-    #     @test has_edge(g, 1, 3)
-    #     @test has_edge(g, 2, 3)
-        
-    #     # Test four vertex graphs
-    #     g = GadgetSearch._parse_g6_string("C_", temp_bitvec)  # 4 vertices, no edges
-    #     @test nv(g) == 4
-    #     @test ne(g) == 0
-        
-    #     # Test graph6 header handling
-    #     g = GadgetSearch._parse_g6_string(">>graph6<<A?", temp_bitvec)
-    #     @test nv(g) == 2
-    #     @test ne(g) == 1
-    #     @test has_edge(g, 1, 2)
-        
-    #     # Test error handling
-    #     @test_throws ArgumentError GadgetSearch._parse_g6_string("", temp_bitvec)
-    # end
-    
-    # @testset "G6 Integration with GraphLoader" begin
-    #     # Test that GraphLoader correctly uses the g6 parsing
-    #     g6_codes = ["A_", "A?", "BW", "C_"]
-    #     dataset = GraphDataset(g6_codes)
-    #     loader = GraphLoader(dataset)
-        
-    #     # Test the parsed graphs
-    #     g1 = loader[1]  # A_: 2 vertices, no edges
-    #     @test nv(g1) == 2
-    #     @test ne(g1) == 0
-        
-    #     g2 = loader[2]  # A?: 2 vertices, 1 edge
-    #     @test nv(g2) == 2
-    #     @test ne(g2) == 1
-        
-    #     g3 = loader[3]  # BW: 3 vertices, complete triangle
-    #     @test nv(g3) == 3
-    #     @test ne(g3) == 3
-        
-    #     g4 = loader[4]  # C_: 4 vertices, no edges
-    #     @test nv(g4) == 4
-    #     @test ne(g4) == 0
-    # end
+    @testset "Vertex Count Parsing" begin
+        # Small graphs: single character encoding, n = char - 63
+        n, pos = GadgetSearch._parse_vertex_count("?")   # '?' = 63, n = 0
+        @test n == 0 && pos == 2
+
+        n, pos = GadgetSearch._parse_vertex_count("@")   # '@' = 64, n = 1
+        @test n == 1 && pos == 2
+
+        n, pos = GadgetSearch._parse_vertex_count("A")   # 'A' = 65, n = 2
+        @test n == 2 && pos == 2
+
+        n, pos = GadgetSearch._parse_vertex_count("B")   # 'B' = 66, n = 3
+        @test n == 3 && pos == 2
+
+        n, pos = GadgetSearch._parse_vertex_count("C")   # 'C' = 67, n = 4
+        @test n == 4 && pos == 2
+    end
+
+    @testset "G6 String Parsing" begin
+        temp_bitvec = BitVector(undef, 100)
+
+        # n=0: "?" returns empty graph
+        g = GadgetSearch._parse_g6_string("?", temp_bitvec)
+        @test nv(g) == 0
+        @test ne(g) == 0
+
+        # n=1: "@" returns single vertex, no edges
+        g = GadgetSearch._parse_g6_string("@", temp_bitvec)
+        @test nv(g) == 1
+        @test ne(g) == 0
+
+        # n=2: "A?" encodes no edge (val=0)
+        g = GadgetSearch._parse_g6_string("A?", temp_bitvec)
+        @test nv(g) == 2
+        @test ne(g) == 0
+        @test !has_edge(g, 1, 2)
+
+        # n=2: "A_" encodes edge 1-2 ('_'=95, val=32=0b100000, bit5=1)
+        g = GadgetSearch._parse_g6_string("A_", temp_bitvec)
+        @test nv(g) == 2
+        @test ne(g) == 1
+        @test has_edge(g, 1, 2)
+
+        # n=3: "Bw" encodes complete triangle ('w'=119, val=56=0b111000)
+        g = GadgetSearch._parse_g6_string("Bw", temp_bitvec)
+        @test nv(g) == 3
+        @test ne(g) == 3
+        @test has_edge(g, 1, 2)
+        @test has_edge(g, 1, 3)
+        @test has_edge(g, 2, 3)
+
+        # Header stripping: ">>graph6<<A_" should behave like "A_"
+        g = GadgetSearch._parse_g6_string(">>graph6<<A_", temp_bitvec)
+        @test nv(g) == 2
+        @test ne(g) == 1
+        @test has_edge(g, 1, 2)
+
+        # Empty string throws ArgumentError
+        @test_throws ArgumentError GadgetSearch._parse_g6_string("", temp_bitvec)
+    end
+
+    @testset "G6 Integration with GraphLoader" begin
+        # "A?" = 2 vertices, no edge; "A_" = 2 vertices, edge 1-2; "Bw" = triangle
+        g6_codes = ["A?", "A_", "Bw"]
+        dataset = GraphDataset(g6_codes)
+        loader = GraphLoader(dataset)
+
+        g1 = loader[1]   # A?: 2 vertices, no edges
+        @test nv(g1) == 2
+        @test ne(g1) == 0
+
+        g2 = loader[2]   # A_: 2 vertices, 1 edge
+        @test nv(g2) == 2
+        @test ne(g2) == 1
+
+        g3 = loader[3]   # Bw: complete triangle
+        @test nv(g3) == 3
+        @test ne(g3) == 3
+    end
 end
