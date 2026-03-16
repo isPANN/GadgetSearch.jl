@@ -70,27 +70,32 @@ end
 end
 
 @testset "show_rule_info - basic output" begin
-    rd, wr = redirect_stdout()
-    GadgetSearch.show_rule_info(0, (1, 1))
-    redirect_stdout()
-    close(wr)
-    output = read(rd, String)
+    tmp = tempname()
+    open(tmp, "w") do io
+        redirect_stdout(io) do
+            GadgetSearch.show_rule_info(0, (1, 1))
+        end
+    end
+    output = read(tmp, String)
     @test occursin("Input (Binary)", output)
     @test occursin("Output (Binary)", output)
     @test occursin("0", output)
+    rm(tmp; force=true)
 end
 
 @testset "show_rule_info - 2-input 1-output" begin
-    rd, wr = redirect_stdout()
-    GadgetSearch.show_rule_info(8, (2, 1))
-    redirect_stdout()
-    close(wr)
-    output = read(rd, String)
+    tmp = tempname()
+    open(tmp, "w") do io
+        redirect_stdout(io) do
+            GadgetSearch.show_rule_info(8, (2, 1))
+        end
+    end
+    output = read(tmp, String)
     @test occursin("Input (Binary)", output)
-    # Should have 4 rows (2^2 inputs)
     lines = split(strip(output), '\n')
     # header + separator + 4 data lines
     @test length(lines) >= 6
+    rm(tmp; force=true)
 end
 
 @testset "generic_rule - 2-input 2-output" begin
