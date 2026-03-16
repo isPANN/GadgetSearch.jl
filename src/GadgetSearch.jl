@@ -8,6 +8,7 @@ using ProgressMeter
 using IterTools
 using Combinatorics
 using Random
+using Serialization
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve
