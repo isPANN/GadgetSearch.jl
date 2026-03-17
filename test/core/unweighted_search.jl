@@ -51,60 +51,44 @@ function _to_g6(g)
     return GraphIO.Graph6._graphToG6String(g)[11:end]
 end
 
-@testset "Unified Unweighted Search" begin
-    @testset "Single Target Filter" begin
+@testset "Unweighted Search" begin
+    @testset "equivalent_representations" begin
         cross = _cross_graph()
-        batoidea = _batoidea_graph()
+        reprs = equivalent_representations(cross, [1, 2, 3, 4])
 
-        filter_fn = make_unweighted_filter(cross, [1, 2, 3, 4])
+        @test reprs isa Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
+        @test !isempty(reprs)
+        @test reprs[1] == (cross, [1, 2, 3, 4])
 
-        replacement = filter_fn(batoidea, nothing, nothing)
-        @test replacement !== nothing
-        @test replacement isa UnweightedGadget
-        @test replacement.boundary_vertices == [1, 2, 3, 4]
-        @test replacement.constant_offset == 2.0
-        @test replacement.target_index == 1
+        boundaries = [r[2] for r in reprs]
+        @test allunique(boundaries)
 
-        self_replacement = filter_fn(cross, nothing, [1, 2, 3, 4])
-        @test self_replacement !== nothing
-        @test self_replacement.constant_offset == 0.0
-        @test self_replacement.target_index == 1
-
-        @test filter_fn(SimpleGraph(3), nothing, nothing) === nothing
-    end
-
-    @testset "Multi-Target Filter" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-
-        targets = [
-            (cross, [1, 3, 2, 4]),
-            (cross, [1, 2, 4, 3]),
-            (cross, [1, 2, 3, 4]),
+        reduced_tensors = [
+            vec(Float64.(content.(calculate_reduced_alpha_tensor(r[1], r[2]))))
+            for r in reprs
         ]
-        filter_fn = make_unweighted_filter(targets)
-        result = filter_fn(batoidea, nothing, [1, 2, 3, 4])
-
-        @test result !== nothing
-        @test result isa UnweightedGadget
-        @test result.pattern_graph == cross
-        @test result.target_index == 3
-        @test result.constant_offset == 2.0
+        @test allunique(reduced_tensors)
+        @test all(r -> r[1] === cross, reprs)
     end
 
-    @testset "Multi-Target Prefilter" begin
-        loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
-        targets = [(_edge_graph(), [1, 2])]
+    @testset "search_unweighted_gadgets: basic" begin
+        cross = _cross_graph()
+        batoidea = _batoidea_graph()
+        loader = GraphLoader(
+            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
+            pinset=[1, 2, 3, 4],
+        )
 
-        results_prefilter_on = search_unweighted_gadgets(targets, loader; prefilter=true)
-        results_prefilter_off = search_unweighted_gadgets(targets, loader; prefilter=false)
+        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
 
-        @test isempty(results_prefilter_on)
-        @test length(results_prefilter_off) == 1
-        @test results_prefilter_off[1].target_index == 1
+        @test results isa Vector{UnweightedGadget}
+        @test any(r -> r.constant_offset == 0.0, results)
+        @test any(r -> r.constant_offset == 2.0, results)
+        @test all(r -> r.pattern_graph == cross, results)
+        @test !hasproperty(UnweightedGadget, :target_index)
     end
 
-    @testset "Search Keywords" begin
+    @testset "search_unweighted_gadgets: limit and max_results" begin
         cross = _cross_graph()
         batoidea = _batoidea_graph()
         loader = GraphLoader(
@@ -115,63 +99,48 @@ end
         limited = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; limit=1)
         @test length(limited) == 1
         @test limited[1].constant_offset == 0.0
-        @test limited[1].target_index == 1
 
         capped = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; max_results=1)
         @test length(capped) == 1
     end
 
-    @testset "Single and Multi-Target Search" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-        loader = GraphLoader(
-            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-            pinset=[1, 2, 3, 4],
-        )
+    @testset "search_unweighted_gadgets: prefilter" begin
+        loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
+        edge = _edge_graph()
 
-        single_results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
-        @test single_results isa Vector{UnweightedGadget}
-        @test any(r -> r.constant_offset == 0.0, single_results)
-        @test any(r -> r.constant_offset == 2.0, single_results)
-        @test all(r -> r.target_index == 1, single_results)
+        results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
+        results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
 
-        multi_results = search_unweighted_gadgets(
-            [
-                (cross, [1, 3, 2, 4]),
-                (cross, [1, 2, 4, 3]),
-                (cross, [1, 2, 3, 4]),
-            ],
-            loader;
-            max_results=2,
-        )
-        @test multi_results isa Vector{UnweightedGadget}
-        @test length(multi_results) == 2
-        @test any(r -> r.target_index == 3 && r.constant_offset == 0.0, multi_results)
-        @test any(r -> r.target_index == 3 && r.constant_offset == 2.0, multi_results)
+        @test isempty(results_on)
+        @test length(results_off) == 1
     end
 
-    @testset "inf_mask" begin
-        @test inf_mask([0.0, -Inf, 3.0, -Inf]) == BigInt(10)
-        @test inf_mask(fill(-Inf, 4)) == BigInt(15)
+    @testset "UnweightedGadget has no target_index" begin
+        @test !(:target_index in fieldnames(UnweightedGadget))
+    end
+
+    @testset "inf_mask (internal)" begin
+        @test GadgetSearch.inf_mask([0.0, -Inf, 3.0, -Inf]) == BigInt(10)
+        @test GadgetSearch.inf_mask(fill(-Inf, 4)) == BigInt(15)
 
         reduced = calculate_reduced_alpha_tensor(_cross_graph(), [1, 2, 3, 4])
-        @test inf_mask(reduced) == BigInt(60576)
-        @test inf_mask(reduced) == inf_mask(content.(reduced))
+        @test GadgetSearch.inf_mask(reduced) == BigInt(60576)
+        @test GadgetSearch.inf_mask(reduced) == GadgetSearch.inf_mask(content.(reduced))
     end
 
-    @testset "pins_prefilter" begin
+    @testset "pins_prefilter (internal)" begin
         connected = _connected_graph()
         disconnected = _cross_graph()
         isolated = _isolated_graph()
 
-        @test pins_prefilter(connected, [1])
-        @test pins_prefilter(disconnected, [1, 2])
-        @test !pins_prefilter(disconnected, [1])
-        @test !pins_prefilter(isolated, [1])
-        @test pins_prefilter(isolated, [1, 3])
+        @test GadgetSearch.pins_prefilter(connected, [1])
+        @test GadgetSearch.pins_prefilter(disconnected, [1, 2])
+        @test !GadgetSearch.pins_prefilter(disconnected, [1])
+        @test !GadgetSearch.pins_prefilter(isolated, [1])
+        @test GadgetSearch.pins_prefilter(isolated, [1, 3])
 
-        @test_throws ArgumentError pins_prefilter(connected, [1, 1])
-        @test_throws ArgumentError pins_prefilter(connected, [0])
+        @test_throws ArgumentError GadgetSearch.pins_prefilter(connected, [1, 1])
+        @test_throws ArgumentError GadgetSearch.pins_prefilter(connected, [0])
     end
 
     @testset "Triangular UDG Integration" begin
@@ -185,7 +154,6 @@ end
 
             @test length(results) == 1
             @test results[1].constant_offset == 0.0
-            @test results[1].target_index == 1
         finally
             isfile(path) && rm(path)
         end

@@ -8,7 +8,6 @@ Result of an unweighted gadget search (Definition 3.6 / Theorem 3.7 in the paper
 - `replacement_graph::SimpleGraph{Int}`: The candidate graph R' that replaces R
 - `boundary_vertices::Vector{Int}`: Boundary vertices of `replacement_graph`
 - `constant_offset::Float64`: Constant offset between the reduced alpha tensors of `pattern_graph` and `replacement_graph`
-- `target_index::Int`: Index of the matched target graph, defaults to `1` for single-target search
 - `pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}`: Vertex positions of `replacement_graph`
 """
 struct UnweightedGadget
@@ -16,93 +15,86 @@ struct UnweightedGadget
     replacement_graph::SimpleGraph{Int}
     boundary_vertices::Vector{Int}
     constant_offset::Float64
-    target_index::Int
     pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}
 end
 
-function UnweightedGadget(
-    pattern_graph::SimpleGraph{Int},
-    replacement_graph::SimpleGraph{Int},
-    boundary_vertices::Vector{Int},
-    constant_offset::Float64,
-    pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}
+"""
+    equivalent_representations(graph, boundary) -> Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
+
+Generate all equivalent representations of a target graph with its boundary.
+
+Two `(graph, boundary)` pairs are equivalent if they encode the same gadget rule
+— i.e. the same graph with a different boundary vertex ordering that yields a
+distinct reduced alpha tensor.  The input pair is always included as the first
+element of the returned vector.
+
+This function belongs to the graph-theory layer and is independently useful for
+inspection, testing, and future equivalence strategies (e.g. vertex additions).
+
+# Arguments
+- `graph::SimpleGraph{Int}`: The target graph R
+- `boundary::Vector{Int}`: Boundary vertices of R
+
+# Returns
+- `Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}`: All distinct equivalent
+  `(graph, permuted_boundary)` pairs.  The original `(graph, boundary)` is
+  guaranteed to be the first element.
+"""
+function equivalent_representations(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
 )
-    return UnweightedGadget(pattern_graph, replacement_graph, boundary_vertices, constant_offset, 1, pos)
+    base_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(graph, boundary))))
+    seen = Set{Vector{Float64}}()
+    push!(seen, base_reduced)
+
+    result = Tuple{SimpleGraph{Int}, Vector{Int}}[(graph, boundary)]
+
+    for perm in Combinatorics.permutations(boundary)
+        perm == boundary && continue
+        perm_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(graph, perm))))
+        if perm_reduced ∉ seen
+            push!(seen, perm_reduced)
+            push!(result, (graph, perm))
+        end
+    end
+
+    return result
 end
 
 """
-    make_unweighted_filter(target_graph, target_boundary)
+    _make_unweighted_filter(representations; prefilter)
 
-Create a filter closure for unweighted gadget search.
+Internal: build a filter closure from a set of equivalent target representations.
 
-For a single target, this is a thin wrapper around the multi-target method.
-
-# Arguments
-- `target_graph::SimpleGraph{Int}`: The pattern graph R
-- `target_boundary::Vector{Int}`: Boundary vertices of R
-
-# Keywords
-- `prefilter::Bool=false`: Whether to reject candidates whose allowed pin set
-  misses an entire connected component before tensor computation
-
-# Returns
-- `Function`: Closure `(candidate, pos, pin_set) -> UnweightedGadget | nothing`
+Pre-computes the reduced alpha tensor and `-Inf` mask for each representation,
+then returns a closure that checks candidate graphs against all of them.
 """
-function make_unweighted_filter(
-    target_graph::SimpleGraph{Int},
-    target_boundary::Vector{Int};
-    prefilter::Bool=false
-)
-    return make_unweighted_filter([(target_graph, target_boundary)]; prefilter=prefilter)
-end
-
-"""
-    make_unweighted_filter(targets; prefilter=true)
-
-Create a filter closure for unweighted gadget search over multiple targets.
-
-The reduced alpha tensors and `-Inf` masks of all targets are pre-computed once.
-Candidate boundaries are then compared only against targets with matching
-boundary size, using `inf_mask` for fast rejection before the constant-difference
-check.
-
-# Arguments
-- `targets::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}}`: Target
-  graphs paired with their boundary vertices
-
-# Keywords
-- `prefilter::Bool=true`: Whether to reject candidates whose allowed pin set
-  misses an entire connected component before tensor computation
-
-# Returns
-- `Function`: Closure `(candidate, pos, pin_set) -> UnweightedGadget | nothing`
-"""
-function make_unweighted_filter(
-    targets::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}};
+function _make_unweighted_filter(
+    representations::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}};
     prefilter::Bool=true
 )
-    isempty(targets) && throw(ArgumentError("targets must be non-empty"))
+    isempty(representations) && throw(ArgumentError("representations must be non-empty"))
 
-    target_groups = Dict{Int, Vector{NamedTuple{(:pattern_graph, :target_index, :reduced, :mask), Tuple{SimpleGraph{Int}, Int, Vector{Float64}, BigInt}}}}()
-    group_order = Int[]
+    target_data_list = NamedTuple{(:pattern_graph, :reduced, :mask), Tuple{SimpleGraph{Int}, Vector{Float64}, BigInt}}[]
+    k = length(representations[1][2])
 
-    for (target_index, (target_graph, target_boundary)) in enumerate(targets)
+    for (target_graph, target_boundary) in representations
+        length(target_boundary) == k || throw(ArgumentError(
+            "all representations must have the same boundary size, got $k and $(length(target_boundary))"))
+
         target_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(target_graph, target_boundary))))
-        all(isinf.(target_reduced)) && throw(ArgumentError("target graph at index $target_index has an entirely -Inf reduced alpha tensor"))
+        all(isinf.(target_reduced)) && throw(ArgumentError(
+            "target graph has an entirely -Inf reduced alpha tensor"))
 
-        k = length(target_boundary)
-        if !haskey(target_groups, k)
-            target_groups[k] = NamedTuple{(:pattern_graph, :target_index, :reduced, :mask), Tuple{SimpleGraph{Int}, Int, Vector{Float64}, BigInt}}[]
-            push!(group_order, k)
-        end
-
-        push!(target_groups[k], (
+        push!(target_data_list, (
             pattern_graph=target_graph,
-            target_index=target_index,
             reduced=target_reduced,
             mask=inf_mask(target_reduced),
         ))
     end
+
+    pattern_graph = representations[1][1]
 
     return function(candidate::SimpleGraph{Int}, pos, pin_set)
         vertex_pool = something(pin_set, 1:nv(candidate))
@@ -111,28 +103,25 @@ function make_unweighted_filter(
             return nothing
         end
 
-        for k in group_order
-            (nv(candidate) < k || length(vertex_pool) < k) && continue
+        (nv(candidate) < k || length(vertex_pool) < k) && return nothing
 
-            for boundary in Combinatorics.combinations(vertex_pool, k)
-                candidate_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(candidate, boundary))))
-                all(isinf.(candidate_reduced)) && continue
+        for boundary in Combinatorics.combinations(vertex_pool, k)
+            candidate_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(candidate, boundary))))
+            all(isinf.(candidate_reduced)) && continue
 
-                candidate_mask = inf_mask(candidate_reduced)
-                for target_data in target_groups[k]
-                    candidate_mask == target_data.mask || continue
+            candidate_mask = inf_mask(candidate_reduced)
+            for td in target_data_list
+                candidate_mask == td.mask || continue
 
-                    valid, constant_offset = is_diff_by_constant(candidate_reduced, target_data.reduced)
-                    if valid
-                        return UnweightedGadget(
-                            target_data.pattern_graph,
-                            candidate,
-                            collect(boundary),
-                            float(constant_offset),
-                            target_data.target_index,
-                            pos,
-                        )
-                    end
+                valid, constant_offset = is_diff_by_constant(candidate_reduced, td.reduced)
+                if valid
+                    return UnweightedGadget(
+                        pattern_graph,
+                        candidate,
+                        collect(boundary),
+                        float(constant_offset),
+                        pos,
+                    )
                 end
             end
         end
@@ -142,12 +131,14 @@ function make_unweighted_filter(
 end
 
 """
-    search_unweighted_gadgets(target_graph, target_boundary, loader; limit, max_results)
+    search_unweighted_gadgets(target_graph, target_boundary, loader; prefilter, limit, max_results)
 
-Search for unweighted gadget replacements of a single target graph.
+Search for unweighted gadget replacements of `target_graph` by iterating over a
+`GraphLoader`.
 
-This is a thin wrapper around the multi-target method and returns the same
-`Vector{UnweightedGadget}` result type.
+Internally, [`equivalent_representations`](@ref) is called to expand the target
+into all distinct boundary orderings, and candidates are matched against the
+full set.  The caller sees a single-target API.
 
 # Arguments
 - `target_graph::SimpleGraph{Int}`: The pattern graph R
@@ -155,7 +146,7 @@ This is a thin wrapper around the multi-target method and returns the same
 - `loader::GraphLoader`: Graph dataset to search over
 
 # Keywords
-- `prefilter::Bool=false`: Whether to reject candidates whose allowed pin set
+- `prefilter::Bool=true`: Whether to reject candidates whose allowed pin set
   misses an entire connected component before tensor computation
 - `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to examine
 - `max_results::Union{Int,Nothing}=nothing`: Stop after finding this many results
@@ -167,51 +158,12 @@ function search_unweighted_gadgets(
     target_graph::SimpleGraph{Int},
     target_boundary::Vector{Int},
     loader::GraphLoader;
-    prefilter::Bool=false,
-    limit::Union{Int,Nothing}=nothing,
-    max_results::Union{Int,Nothing}=nothing
-)
-    return search_unweighted_gadgets(
-        [(target_graph, target_boundary)],
-        loader;
-        prefilter=prefilter,
-        limit=limit,
-        max_results=max_results,
-    )
-end
-
-"""
-    search_unweighted_gadgets(targets, loader; prefilter=true, limit=nothing, max_results=nothing)
-
-Search for unweighted gadget replacements of multiple target graphs by iterating
-over a `GraphLoader`.
-
-For each candidate graph, boundary combinations are tested against all targets
-with the same boundary size. Matches are returned as `UnweightedGadget`s, and
-`target_index` records which target matched.
-
-# Arguments
-- `targets::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}}`: Target
-  graphs paired with their boundary vertices
-- `loader::GraphLoader`: Graph dataset to search over
-
-# Keywords
-- `prefilter::Bool=true`: Whether to reject candidates whose allowed pin set
-  misses an entire connected component before tensor computation
-- `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to examine
-- `max_results::Union{Int,Nothing}=nothing`: Stop after finding this many results
-
-# Returns
-- `Vector{UnweightedGadget}`
-"""
-function search_unweighted_gadgets(
-    targets::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}},
-    loader::GraphLoader;
     prefilter::Bool=true,
     limit::Union{Int,Nothing}=nothing,
     max_results::Union{Int,Nothing}=nothing
 )
-    filter_fn = make_unweighted_filter(targets; prefilter=prefilter)
+    reprs = equivalent_representations(target_graph, target_boundary)
+    filter_fn = _make_unweighted_filter(reprs; prefilter=prefilter)
     results = UnweightedGadget[]
     total = limit === nothing ? length(loader) : min(length(loader), limit)
 
