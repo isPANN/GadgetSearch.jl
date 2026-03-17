@@ -32,6 +32,12 @@ function _edge_graph()
     return g
 end
 
+function _graph_with_isolated_vertices(g::SimpleGraph{Int}, count::Int)
+    expanded = copy(g)
+    add_vertices!(expanded, count)
+    return expanded
+end
+
 function _connected_graph()
     g = SimpleGraph(4)
     add_edge!(g, 1, 3)
@@ -71,6 +77,13 @@ end
         @test all(r -> r[1] === cross, reprs)
     end
 
+    @testset "equivalent_representations: outward expansion" begin
+        cross = _cross_graph()
+        reprs = equivalent_representations(cross, [1, 2, 3, 4]; max_added_vertices=1)
+
+        @test any(r -> nv(r[1]) == 5 && r[2] == [1, 2, 3, 4], reprs)
+    end
+
     @testset "search_unweighted_gadgets: basic" begin
         cross = _cross_graph()
         batoidea = _batoidea_graph()
@@ -104,15 +117,30 @@ end
         @test length(capped) == 1
     end
 
-    @testset "search_unweighted_gadgets: prefilter" begin
+    @testset "search_unweighted_gadgets: prefilter stays sound with outward expansions" begin
         loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
         edge = _edge_graph()
 
         results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
         results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
 
-        @test isempty(results_on)
+        @test length(results_on) == 1
         @test length(results_off) == 1
+    end
+
+    @testset "search_unweighted_gadgets: outward expansion candidate" begin
+        cross = _cross_graph()
+        expanded_cross = _graph_with_isolated_vertices(cross, 1)
+        loader = GraphLoader(
+            GraphDataset([_to_g6(expanded_cross)]),
+            pinset=[1, 2, 3, 4],
+        )
+
+        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
+
+        @test length(results) == 1
+        @test results[1].replacement_graph == expanded_cross
+        @test results[1].constant_offset == 1.0
     end
 
     @testset "UnweightedGadget has no target_index" begin

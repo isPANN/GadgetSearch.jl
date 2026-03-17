@@ -19,14 +19,18 @@ struct UnweightedGadget
 end
 
 """
-    equivalent_representations(graph, boundary) -> Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
+    equivalent_representations(graph, boundary; max_added_vertices=0) -> Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
 
 Generate all equivalent representations of a target graph with its boundary.
 
-Two `(graph, boundary)` pairs are equivalent if they encode the same gadget rule
-— i.e. the same graph with a different boundary vertex ordering that yields a
-distinct reduced alpha tensor.  The input pair is always included as the first
-element of the returned vector.
+Two `(graph, boundary)` pairs are equivalent if they encode the same gadget rule.
+Currently this includes:
+
+- boundary permutations that yield distinct reduced alpha tensors
+- outward isolated-vertex expansions of the target graph, bounded by
+  `max_added_vertices`
+
+The input pair is always included as the first element of the returned vector.
 
 This function belongs to the graph-theory layer and is independently useful for
 inspection, testing, and future equivalence strategies (e.g. vertex additions).
@@ -35,27 +39,59 @@ inspection, testing, and future equivalence strategies (e.g. vertex additions).
 - `graph::SimpleGraph{Int}`: The target graph R
 - `boundary::Vector{Int}`: Boundary vertices of R
 
+# Keywords
+- `max_added_vertices::Int=0`: Maximum number of outward isolated vertices to
+  add when generating expanded equivalent representations
+
 # Returns
 - `Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}`: All distinct equivalent
-  `(graph, permuted_boundary)` pairs.  The original `(graph, boundary)` is
-  guaranteed to be the first element.
+  `(graph, boundary)` pairs. The original `(graph, boundary)` is guaranteed to
+  be the first element.
 """
 function equivalent_representations(
     graph::SimpleGraph{Int},
     boundary::Vector{Int},
+    ;
+    max_added_vertices::Int=0,
 )
-    base_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(graph, boundary))))
+    max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
+
+    seeds = Tuple{SimpleGraph{Int}, Vector{Int}}[]
+    for extra_vertices in 0:max_added_vertices
+        expanded_graph = _add_isolated_vertices(graph, extra_vertices)
+        append!(seeds, _boundary_permutation_representations(expanded_graph, boundary))
+    end
+
+    return _dedup_equivalent_representations(seeds)
+end
+
+function _add_isolated_vertices(graph::SimpleGraph{Int}, count::Int)
+    count == 0 && return graph
+    expanded = copy(graph)
+    add_vertices!(expanded, count)
+    return expanded
+end
+
+function _boundary_permutation_representations(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
+)
+    return [(graph, collect(perm)) for perm in Combinatorics.permutations(boundary)]
+end
+
+function _dedup_equivalent_representations(
+    seeds::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}},
+)
+    isempty(seeds) && return Tuple{SimpleGraph{Int}, Vector{Int}}[]
+
     seen = Set{Vector{Float64}}()
-    push!(seen, base_reduced)
+    result = Tuple{SimpleGraph{Int}, Vector{Int}}[]
 
-    result = Tuple{SimpleGraph{Int}, Vector{Int}}[(graph, boundary)]
-
-    for perm in Combinatorics.permutations(boundary)
-        perm == boundary && continue
-        perm_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(graph, perm))))
-        if perm_reduced ∉ seen
-            push!(seen, perm_reduced)
-            push!(result, (graph, perm))
+    for (graph, boundary) in seeds
+        reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(graph, boundary))))
+        if reduced ∉ seen
+            push!(seen, reduced)
+            push!(result, (graph, boundary))
         end
     end
 
@@ -76,8 +112,12 @@ function _make_unweighted_filter(
 )
     isempty(representations) && throw(ArgumentError("representations must be non-empty"))
 
-    target_data_list = NamedTuple{(:pattern_graph, :reduced, :mask), Tuple{SimpleGraph{Int}, Vector{Float64}, BigInt}}[]
+    target_data_list = NamedTuple{(:reduced, :mask, :offset_from_pattern), Tuple{Vector{Float64}, BigInt, Float64}}[]
     k = length(representations[1][2])
+    pattern_graph, pattern_boundary = representations[1]
+    pattern_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(pattern_graph, pattern_boundary))))
+    all(isinf.(pattern_reduced)) && throw(ArgumentError(
+        "target graph has an entirely -Inf reduced alpha tensor"))
 
     for (target_graph, target_boundary) in representations
         length(target_boundary) == k || throw(ArgumentError(
@@ -87,19 +127,21 @@ function _make_unweighted_filter(
         all(isinf.(target_reduced)) && throw(ArgumentError(
             "target graph has an entirely -Inf reduced alpha tensor"))
 
+        equivalent, offset_from_pattern = is_diff_by_constant(target_reduced, pattern_reduced)
+
         push!(target_data_list, (
-            pattern_graph=target_graph,
             reduced=target_reduced,
             mask=inf_mask(target_reduced),
+            offset_from_pattern=equivalent ? float(offset_from_pattern) : 0.0,
         ))
     end
 
-    pattern_graph = representations[1][1]
+    apply_prefilter = prefilter && !_allows_unpinned_components(representations)
 
     return function(candidate::SimpleGraph{Int}, pos, pin_set)
         vertex_pool = something(pin_set, 1:nv(candidate))
 
-        if prefilter && !pins_prefilter(candidate, vertex_pool)
+        if apply_prefilter && !pins_prefilter(candidate, vertex_pool)
             return nothing
         end
 
@@ -119,7 +161,7 @@ function _make_unweighted_filter(
                         pattern_graph,
                         candidate,
                         collect(boundary),
-                        float(constant_offset),
+                        float(constant_offset + td.offset_from_pattern),
                         pos,
                     )
                 end
@@ -130,6 +172,15 @@ function _make_unweighted_filter(
     end
 end
 
+function _allows_unpinned_components(
+    representations::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}},
+)
+    return any(representations) do (graph, boundary)
+        boundary_set = Set(boundary)
+        any(component -> !any(in(boundary_set), component), connected_components(graph))
+    end
+end
+
 """
     search_unweighted_gadgets(target_graph, target_boundary, loader; prefilter, limit, max_results)
 
@@ -137,8 +188,9 @@ Search for unweighted gadget replacements of `target_graph` by iterating over a
 `GraphLoader`.
 
 Internally, [`equivalent_representations`](@ref) is called to expand the target
-into all distinct boundary orderings, and candidates are matched against the
-full set.  The caller sees a single-target API.
+into all distinct equivalent representations, including boundary permutations
+and outward isolated-vertex expansions up to the largest candidate graph size
+in the searched portion of the loader. The caller sees a single-target API.
 
 # Arguments
 - `target_graph::SimpleGraph{Int}`: The pattern graph R
@@ -162,12 +214,17 @@ function search_unweighted_gadgets(
     limit::Union{Int,Nothing}=nothing,
     max_results::Union{Int,Nothing}=nothing
 )
-    reprs = equivalent_representations(target_graph, target_boundary)
+    keys_to_search = collect(Iterators.take(keys(loader), limit === nothing ? length(loader) : min(length(loader), limit)))
+    max_candidate_nv = isempty(keys_to_search) ? nv(target_graph) : maximum(key -> nv(loader[key]), keys_to_search)
+    reprs = equivalent_representations(
+        target_graph,
+        target_boundary;
+        max_added_vertices=max(0, max_candidate_nv - nv(target_graph)),
+    )
     filter_fn = _make_unweighted_filter(reprs; prefilter=prefilter)
     results = UnweightedGadget[]
-    total = limit === nothing ? length(loader) : min(length(loader), limit)
 
-    @showprogress for key in Iterators.take(keys(loader), total)
+    @showprogress for key in keys_to_search
         result = filter_fn(loader[key], loader.layout[key], loader.pinset)
         result === nothing && continue
         push!(results, result)
