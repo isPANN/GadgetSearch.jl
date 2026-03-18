@@ -5,29 +5,32 @@ const EXAMPLES_DIR = pkgdir(GadgetSearch, "examples")
 triangular_positions(nx::Int, ny::Int) =
     GadgetSearch.get_physical_positions(Triangular(), vec(Tuple{Int, Int}[(i, j) for i in 1:nx, j in 1:ny]))
 
-function plot_lattice_examples()
+function plot_lattice_examples(outdir::AbstractString=EXAMPLES_DIR)
+    mkpath(outdir)
     full_graph = triangular_lattice_graph(4, 4)
     full_positions = triangular_positions(4, 4)
-    full_path = joinpath(EXAMPLES_DIR, "triangular_lattice_4x4.svg")
+    full_path = joinpath(outdir, "triangular_lattice_4x4.svg")
     GadgetSearch.plot_graph(full_graph, full_path; pos=full_positions, plot_size=700, vertex_size=8, vertex_label_size=12)
 
     small_graph = triangular_lattice_graph(3, 3)
     small_positions = triangular_positions(3, 3)
-    small_path = joinpath(EXAMPLES_DIR, "triangular_lattice_3x3.svg")
+    small_path = joinpath(outdir, "triangular_lattice_3x3.svg")
     GadgetSearch.plot_graph(small_graph, small_path; pos=small_positions, plot_size=600, vertex_size=10, vertex_label_size=14)
 
     return (full_path, small_path)
 end
 
-function ensure_subset_dataset()
-    dataset_path = joinpath(EXAMPLES_DIR, "triangular_subset_dataset.g6")
+function ensure_subset_dataset(outdir::AbstractString=EXAMPLES_DIR)
+    mkpath(outdir)
+    dataset_path = joinpath(outdir, "triangular_subset_dataset.g6")
     if !isfile(dataset_path)
         generate_triangular_udg_subsets(3, 3; subset_sizes=2:3, deduplicate=true, path=dataset_path)
     end
     return dataset_path
 end
 
-function plot_subset_examples(dataset_path::String; nplots::Int=3)
+function plot_subset_examples(dataset_path::String; outdir::AbstractString=EXAMPLES_DIR, nplots::Int=3)
+    mkpath(outdir)
     loader = GraphLoader(dataset_path)
     plot_count = min(nplots, length(loader))
     saved_paths = String[]
@@ -37,7 +40,7 @@ function plot_subset_examples(dataset_path::String; nplots::Int=3)
         positions = loader.layout[idx]
         positions === nothing && continue
 
-        outpath = joinpath(EXAMPLES_DIR, "triangular_subset_$(idx).svg")
+        outpath = joinpath(outdir, "triangular_subset_$(idx).svg")
         GadgetSearch.plot_graph(graph, outpath; pos=positions, plot_size=500, vertex_size=12, vertex_label_size=16)
         push!(saved_paths, outpath)
     end
@@ -45,10 +48,10 @@ function plot_subset_examples(dataset_path::String; nplots::Int=3)
     return saved_paths
 end
 
-function main()
-    lattice_paths = plot_lattice_examples()
-    dataset_path = ensure_subset_dataset()
-    subset_paths = plot_subset_examples(dataset_path)
+function main(; outdir::AbstractString=EXAMPLES_DIR, nplots::Int=3)
+    lattice_paths = plot_lattice_examples(outdir)
+    dataset_path = ensure_subset_dataset(outdir)
+    subset_paths = plot_subset_examples(dataset_path; outdir=outdir, nplots=nplots)
 
     println("Triangular lattice plots:")
     foreach(println, lattice_paths)
@@ -58,5 +61,7 @@ function main()
     foreach(println, subset_paths)
 end
 
-main()
+if abspath(PROGRAM_FILE) == @__FILE__
+    main()
+end
 

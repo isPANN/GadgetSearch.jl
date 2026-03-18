@@ -2,6 +2,8 @@ using Test
 using GadgetSearch
 using Graphs
 
+include(joinpath(pkgdir(GadgetSearch), "examples", "plot_triangular_lattices.jl"))
+
 @testset "UDG Basic Types and Radius" begin
     @testset "Lattice Type Definitions" begin
         # Test that lattice types are concrete types
@@ -187,6 +189,12 @@ end
         end
     end
 
+    @testset "dedup_inner_subsets validation" begin
+        inner_grid = GadgetSearch.triangular_lattice_graph(2, 2)
+        @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, -1; use_shortg=false)
+        @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, 5; use_shortg=false)
+    end
+
     @testset "generate_triangular_udg_subsets Integration" begin
         temp_file = tempname() * ".g6"
         result = generate_triangular_udg_subsets(2, 1; subset_sizes=1:2, deduplicate=false, path=temp_file)
@@ -201,6 +209,54 @@ end
         @test edge_counts == [0, 0, 1]
 
         rm(temp_file)
+    end
+
+    @testset "generate_triangular_udg_subsets zero subset and validation" begin
+        temp_file = tempname() * ".g6"
+        try
+            result = generate_triangular_udg_subsets(
+                2,
+                1;
+                subset_sizes=0:1,
+                deduplicate=true,
+                use_shortg=false,
+                path=temp_file,
+            )
+
+            @test result == temp_file
+            dataset = GraphDataset(temp_file)
+            @test dataset.n == 3
+            @test dataset.layouts[1] === nothing
+            @test map(length, dataset.layouts[2:3]) == [1, 1]
+        finally
+            isfile(temp_file) && rm(temp_file)
+        end
+
+        @test_throws ArgumentError generate_triangular_udg_subsets(
+            2,
+            1;
+            subset_sizes=[-1],
+            deduplicate=false,
+            path=tempname() * ".g6",
+        )
+    end
+end
+
+@testset "Triangular lattice example smoke test" begin
+    mktempdir() do tmpdir
+        lattice_paths = plot_lattice_examples(tmpdir)
+        @test all(isfile, lattice_paths)
+        @test all(path -> filesize(path) > 0, lattice_paths)
+
+        dataset_path = ensure_subset_dataset(tmpdir)
+        @test isfile(dataset_path)
+        @test filesize(dataset_path) > 0
+
+        subset_paths = plot_subset_examples(dataset_path; outdir=tmpdir, nplots=2)
+        @test length(subset_paths) == 2
+        @test all(isfile, subset_paths)
+
+        @test_nowarn main(; outdir=tmpdir, nplots=2)
     end
 end
 
