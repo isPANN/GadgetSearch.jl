@@ -40,6 +40,7 @@ export save_graph
 export Square, Triangular
 export triangular_adjacency
 export triangular_lattice_graph
+export canonical_crossing_pins
 export dedup_inner_subsets
 export generate_full_grid_udg
 export generate_full_grid_graph

@@ -248,6 +248,16 @@ end
     end
 end
 
+@testset "canonical_crossing_pins Function" begin
+    top = (10.0, 1.0)
+    bottom = (10.0, 9.0)
+    left = (1.0, 5.0)
+    right = (19.0, 5.0)
+
+    pins = GadgetSearch.canonical_crossing_pins(top, bottom, left, right)
+    @test pins == [left, top, right, bottom]
+end
+
 @testset "get_inner_points Function" begin
     @testset "Basic Inner Points" begin
         square = Square()
@@ -306,6 +316,17 @@ end
             if isfile(temp_file)
                 rm(temp_file)
         end
+    end
+
+    @testset "Canonical crossing pin order" begin
+        square = Square()
+        top, bottom, left, right = GadgetSearch.get_pin_positions(square, 1, 1)
+        pins = GadgetSearch.canonical_crossing_pins(top[1], bottom[1], left[1], right[1])
+
+        @test pins[1] == left[1]
+        @test pins[2] == top[1]
+        @test pins[3] == right[1]
+        @test pins[4] == bottom[1]
     end
     
     @testset "Parameter Validation" begin

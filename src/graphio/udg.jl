@@ -178,6 +178,21 @@ function get_inner_points(lattice::LatticeType, nx::Int, ny::Int)
 end
 
 """
+    canonical_crossing_pins(top, bottom, left, right)
+
+Return the four boundary pin positions in the canonical crossing order used by
+the unweighted crossing search:
+
+- pin `1`: left
+- pin `2`: top
+- pin `3`: right
+- pin `4`: bottom
+"""
+function canonical_crossing_pins(top, bottom, left, right)
+    return [left, top, right, bottom]
+end
+
+"""
     complete_graph(n::Int) -> SimpleGraph
 
 Create a complete graph with n vertices where every pair of vertices is connected.
@@ -262,13 +277,13 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
     for top in top_candidates, bottom in bottom_candidates,
         left in left_candidates, right in right_candidates
 
-        selected = vcat([top, right, bottom, left], inner_points)
+        selected = vcat(canonical_crossing_pins(top, bottom, left, right), inner_points)
 
         g = unit_disk_graph(selected, radius)
 
         push!(results, (g, selected))
     end
-    @info "pinset in generated graphs: [1,2,3,4]"
+    @info "pinset in generated graphs follows canonical crossing roles: [left, top, right, bottom]"
     return _process_and_save_graphs(results, path)
 end
 
