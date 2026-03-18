@@ -65,3 +65,47 @@ end
         isfile(candidate) && rm(candidate; force=true)
     end
 end
+
+@testset "visualize: equivalent representations gallery" begin
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 2, 4)
+
+    svg = tempname() * ".svg"
+    GadgetSearch.plot_equivalent_representations(
+        g,
+        [1, 2, 3, 4],
+        svg;
+        max_added_vertices=1,
+        columns=2,
+        panel_graph_size=180,
+    )
+
+    @test isfile(svg)
+    @test filesize(svg) > 0
+
+    rm(svg; force=true)
+end
+
+@testset "visualize: unweighted search report" begin
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 2, 4)
+    sample_candidate = copy(g)
+    add_vertex!(sample_candidate)
+
+    svg = tempname() * ".svg"
+    GadgetSearch.plot_unweighted_search_report(
+        g,
+        [1, 2, 3, 4],
+        svg;
+        max_added_vertices=1,
+        sample_candidate=sample_candidate,
+        sample_candidate_boundary=[1, 2, 3, 4],
+    )
+
+    @test isfile(svg)
+    @test filesize(svg) > 0
+
+    rm(svg; force=true)
+end

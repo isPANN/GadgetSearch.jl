@@ -25,6 +25,7 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
+include("utils/flip_variants.jl")
 include("core/unweighted_search.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
@@ -58,11 +59,15 @@ export search_by_truth_tables
 # Visualization
 export get_radius
 export plot_gadget
+export plot_equivalent_representations
+export plot_unweighted_search_report
 
 # Utilities
 export clear_cache!
 export get_cache_stats
 export check_gadget, check_gadget_rydberg, check_gadget_qubo
+export generate_flip_patterns
+export apply_flip_to_tensor
 
 # Alpha tensor
 export calculate_alpha_tensor

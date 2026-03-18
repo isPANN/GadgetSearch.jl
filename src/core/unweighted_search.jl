@@ -27,21 +27,22 @@ Two `(graph, boundary)` pairs are equivalent if they encode the same gadget rule
 Currently this includes:
 
 - boundary permutations that yield distinct reduced alpha tensors
-- outward isolated-vertex expansions of the target graph, bounded by
-  `max_added_vertices`
+- edge-subdivision expansions of the target graph, with up to
+  `max_added_vertices` inserted path vertices distributed across the target
+  edges
 
 The input pair is always included as the first element of the returned vector.
 
 This function belongs to the graph-theory layer and is independently useful for
-inspection, testing, and future equivalence strategies (e.g. vertex additions).
+inspection, testing, and future equivalence strategies such as logical flips.
 
 # Arguments
 - `graph::SimpleGraph{Int}`: The target graph R
 - `boundary::Vector{Int}`: Boundary vertices of R
 
 # Keywords
-- `max_added_vertices::Int=0`: Maximum number of outward isolated vertices to
-  add when generating expanded equivalent representations
+- `max_added_vertices::Int=0`: Maximum number of inserted internal vertices to
+  distribute across the target edges when generating expanded representations
 
 # Returns
 - `Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}`: All distinct equivalent
@@ -57,18 +58,70 @@ function equivalent_representations(
     max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
 
     seeds = Tuple{SimpleGraph{Int}, Vector{Int}}[]
-    for extra_vertices in 0:max_added_vertices
-        expanded_graph = _add_isolated_vertices(graph, extra_vertices)
+    for expanded_graph in _subdivision_graph_variants(graph, max_added_vertices)
         append!(seeds, _boundary_permutation_representations(expanded_graph, boundary))
     end
 
     return _dedup_equivalent_representations(seeds)
 end
 
-function _add_isolated_vertices(graph::SimpleGraph{Int}, count::Int)
-    count == 0 && return graph
-    expanded = copy(graph)
-    add_vertices!(expanded, count)
+function _subdivision_graph_variants(graph::SimpleGraph{Int}, max_added_vertices::Int)
+    max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
+
+    edge_list = sort([(min(src(e), dst(e)), max(src(e), dst(e))) for e in edges(graph)])
+    allocations = _subdivision_allocations(length(edge_list), max_added_vertices)
+    return [_subdivide_graph_edges(graph, edge_list, counts) for counts in allocations]
+end
+
+function _subdivision_allocations(edge_count::Int, max_added_vertices::Int)
+    allocations = Vector{Vector{Int}}()
+    current = zeros(Int, edge_count)
+
+    function recurse(edge_idx::Int, remaining::Int)
+        if edge_idx > edge_count
+            push!(allocations, copy(current))
+            return
+        end
+
+        for inserted in 0:remaining
+            current[edge_idx] = inserted
+            recurse(edge_idx + 1, remaining - inserted)
+        end
+    end
+
+    recurse(1, max_added_vertices)
+    return allocations
+end
+
+function _subdivide_graph_edges(
+    graph::SimpleGraph{Int},
+    edge_list::AbstractVector{<:Tuple{Int, Int}},
+    inserted_counts::AbstractVector{<:Integer},
+)
+    length(edge_list) == length(inserted_counts) || throw(ArgumentError(
+        "edge_list and inserted_counts must have the same length"))
+    all(==(0), inserted_counts) && return graph
+
+    expanded = SimpleGraph(nv(graph))
+
+    for ((u, v), count) in zip(edge_list, inserted_counts)
+        count < 0 && throw(ArgumentError("inserted edge-subdivision counts must be non-negative"))
+
+        if count == 0
+            add_edge!(expanded, u, v)
+            continue
+        end
+
+        previous = u
+        for _ in 1:count
+            add_vertex!(expanded)
+            next_vertex = nv(expanded)
+            add_edge!(expanded, previous, next_vertex)
+            previous = next_vertex
+        end
+        add_edge!(expanded, previous, v)
+    end
+
     return expanded
 end
 
@@ -82,7 +135,7 @@ end
 function _dedup_equivalent_representations(
     seeds::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}},
 )
-    isempty(seeds) && return Tuple{SimpleGraph{Int}, Vector{Int}}[]
+    isempty(seeds) && throw(ArgumentError("seeds must be non-empty"))
 
     seen = Set{Vector{Float64}}()
     result = Tuple{SimpleGraph{Int}, Vector{Int}}[]
@@ -98,6 +151,98 @@ function _dedup_equivalent_representations(
     return result
 end
 
+function _offset_from_pattern(
+    target_graph::SimpleGraph{Int},
+    pattern_graph::SimpleGraph{Int},
+    pattern_boundary::Vector{Int},
+    pattern_reduced::AbstractVector{<:Real},
+    offset_cache::IdDict{SimpleGraph{Int}, Union{Nothing, Float64}},
+)
+    if haskey(offset_cache, target_graph)
+        return offset_cache[target_graph]
+    end
+
+    if target_graph === pattern_graph
+        offset_cache[target_graph] = 0.0
+        return 0.0
+    end
+
+    target_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(target_graph, pattern_boundary))))
+    equivalent, offset = is_diff_by_constant(target_reduced, pattern_reduced)
+    result = equivalent ? float(offset) : nothing
+    offset_cache[target_graph] = result
+    return result
+end
+
+function _build_target_data(
+    representations::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}};
+    include_logical_flips::Bool=true,
+)
+    isempty(representations) && throw(ArgumentError("representations must be non-empty"))
+
+    k = length(representations[1][2])
+    pattern_graph, pattern_boundary = representations[1]
+    pattern_tensor = Float64.(content.(calculate_reduced_alpha_tensor(pattern_graph, pattern_boundary)))
+    pattern_reduced = vec(pattern_tensor)
+    all(isinf.(pattern_reduced)) && throw(ArgumentError(
+        "target graph has an entirely -Inf reduced alpha tensor"))
+
+    flip_patterns =
+        if include_logical_flips
+            generate_flip_patterns(k)
+        else
+            [(Int[], "no-flip")]
+        end
+    seen = Set{Vector{Float64}}()
+    structural_offset_cache = IdDict{SimpleGraph{Int}, Union{Nothing, Float64}}()
+    target_data_list = NamedTuple{(:graph, :boundary, :reduced, :mask, :offset_from_pattern, :maps_to_pattern, :flip_mask, :flip_desc), Tuple{SimpleGraph{Int}, Vector{Int}, Vector{Float64}, BigInt, Union{Nothing, Float64}, Bool, Vector{Int}, String}}[]
+
+    for (target_graph, target_boundary) in representations
+        length(target_boundary) == k || throw(ArgumentError(
+            "all representations must have the same boundary size, got $k and $(length(target_boundary))"))
+
+        target_tensor = Float64.(content.(calculate_reduced_alpha_tensor(target_graph, target_boundary)))
+        all(isinf.(target_tensor)) && throw(ArgumentError(
+            "target graph has an entirely -Inf reduced alpha tensor"))
+
+        for (flip_mask, flip_desc) in flip_patterns
+            transformed_tensor = apply_flip_to_tensor(target_tensor, flip_mask)
+            target_reduced = vec(Float64.(transformed_tensor))
+            target_reduced ∈ seen && continue
+
+            maps_to_pattern = false
+            offset_from_pattern =
+                if isempty(flip_mask)
+                    structural_offset = _offset_from_pattern(
+                        target_graph,
+                        pattern_graph,
+                        pattern_boundary,
+                        pattern_reduced,
+                        structural_offset_cache,
+                    )
+                    maps_to_pattern = structural_offset !== nothing
+                    structural_offset
+                else
+                    nothing
+                end
+
+            push!(seen, target_reduced)
+            push!(target_data_list, (
+                graph=target_graph,
+                boundary=target_boundary,
+                reduced=target_reduced,
+                mask=inf_mask(target_reduced),
+                offset_from_pattern=offset_from_pattern,
+                maps_to_pattern=maps_to_pattern,
+                flip_mask=copy(flip_mask),
+                flip_desc=flip_desc,
+            ))
+        end
+    end
+
+    return target_data_list
+end
+
 """
     _make_unweighted_filter(representations; prefilter)
 
@@ -108,33 +253,17 @@ then returns a closure that checks candidate graphs against all of them.
 """
 function _make_unweighted_filter(
     representations::AbstractVector{<:Tuple{SimpleGraph{Int}, Vector{Int}}};
-    prefilter::Bool=true
+    prefilter::Bool=true,
+    include_logical_flips::Bool=true,
 )
     isempty(representations) && throw(ArgumentError("representations must be non-empty"))
 
-    target_data_list = NamedTuple{(:reduced, :mask, :offset_from_pattern), Tuple{Vector{Float64}, BigInt, Float64}}[]
     k = length(representations[1][2])
     pattern_graph, pattern_boundary = representations[1]
-    pattern_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(pattern_graph, pattern_boundary))))
-    all(isinf.(pattern_reduced)) && throw(ArgumentError(
-        "target graph has an entirely -Inf reduced alpha tensor"))
-
-    for (target_graph, target_boundary) in representations
-        length(target_boundary) == k || throw(ArgumentError(
-            "all representations must have the same boundary size, got $k and $(length(target_boundary))"))
-
-        target_reduced = vec(Float64.(content.(calculate_reduced_alpha_tensor(target_graph, target_boundary))))
-        all(isinf.(target_reduced)) && throw(ArgumentError(
-            "target graph has an entirely -Inf reduced alpha tensor"))
-
-        equivalent, offset_from_pattern = is_diff_by_constant(target_reduced, pattern_reduced)
-
-        push!(target_data_list, (
-            reduced=target_reduced,
-            mask=inf_mask(target_reduced),
-            offset_from_pattern=equivalent ? float(offset_from_pattern) : 0.0,
-        ))
-    end
+    target_data_list = _build_target_data(
+        representations;
+        include_logical_flips=include_logical_flips,
+    )
 
     apply_prefilter = prefilter && !_allows_unpinned_components(representations)
 
@@ -157,11 +286,17 @@ function _make_unweighted_filter(
 
                 valid, constant_offset = is_diff_by_constant(candidate_reduced, td.reduced)
                 if valid
+                    total_offset =
+                        if td.maps_to_pattern
+                            float(constant_offset + something(td.offset_from_pattern))
+                        else
+                            float(constant_offset)
+                        end
                     return UnweightedGadget(
                         pattern_graph,
                         candidate,
                         collect(boundary),
-                        float(constant_offset + td.offset_from_pattern),
+                        total_offset,
                         pos,
                     )
                 end
@@ -188,9 +323,10 @@ Search for unweighted gadget replacements of `target_graph` by iterating over a
 `GraphLoader`.
 
 Internally, [`equivalent_representations`](@ref) is called to expand the target
-into all distinct equivalent representations, including boundary permutations
-and outward isolated-vertex expansions up to the largest candidate graph size
-in the searched portion of the loader. The caller sees a single-target API.
+into all distinct search representations, including boundary permutations,
+edge-subdivision expansions, and logical-flip tensor variants. The subdivision
+budget is controlled explicitly by `max_added_vertices`, so the target semantics
+do not depend on the searched loader.
 
 # Arguments
 - `target_graph::SimpleGraph{Int}`: The pattern graph R
@@ -198,6 +334,8 @@ in the searched portion of the loader. The caller sees a single-target API.
 - `loader::GraphLoader`: Graph dataset to search over
 
 # Keywords
+- `max_added_vertices::Int=0`: Maximum number of inserted internal vertices to
+  distribute across target edges when generating equivalent representations
 - `prefilter::Bool=true`: Whether to reject candidates whose allowed pin set
   misses an entire connected component before tensor computation
 - `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to examine
@@ -210,21 +348,28 @@ function search_unweighted_gadgets(
     target_graph::SimpleGraph{Int},
     target_boundary::Vector{Int},
     loader::GraphLoader;
+    max_added_vertices::Int=0,
     prefilter::Bool=true,
+    include_logical_flips::Bool=true,
     limit::Union{Int,Nothing}=nothing,
     max_results::Union{Int,Nothing}=nothing
 )
-    keys_to_search = collect(Iterators.take(keys(loader), limit === nothing ? length(loader) : min(length(loader), limit)))
-    max_candidate_nv = isempty(keys_to_search) ? nv(target_graph) : maximum(key -> nv(loader[key]), keys_to_search)
+    max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
+
+    total = limit === nothing ? length(loader) : min(length(loader), limit)
     reprs = equivalent_representations(
         target_graph,
         target_boundary;
-        max_added_vertices=max(0, max_candidate_nv - nv(target_graph)),
+        max_added_vertices=max_added_vertices,
     )
-    filter_fn = _make_unweighted_filter(reprs; prefilter=prefilter)
+    filter_fn = _make_unweighted_filter(
+        reprs;
+        prefilter=prefilter,
+        include_logical_flips=include_logical_flips,
+    )
     results = UnweightedGadget[]
 
-    @showprogress for key in keys_to_search
+    @showprogress for key in Iterators.take(keys(loader), total)
         result = filter_fn(loader[key], loader.layout[key], loader.pinset)
         result === nothing && continue
         push!(results, result)

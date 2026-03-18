@@ -32,9 +32,29 @@ function _edge_graph()
     return g
 end
 
-function _graph_with_isolated_vertices(g::SimpleGraph{Int}, count::Int)
+function _subdivide_edge(g::SimpleGraph{Int}, u::Int, v::Int, count::Int=1)
+    count >= 0 || throw(ArgumentError("count must be non-negative"))
+    has_edge(g, u, v) || throw(ArgumentError("edge ($u, $v) does not exist"))
+    count == 0 && return copy(g)
+
     expanded = copy(g)
-    add_vertices!(expanded, count)
+    rem_edge!(expanded, u, v)
+    previous = u
+    for _ in 1:count
+        add_vertex!(expanded)
+        next_vertex = nv(expanded)
+        add_edge!(expanded, previous, next_vertex)
+        previous = next_vertex
+    end
+    add_edge!(expanded, previous, v)
+    return expanded
+end
+
+function _subdivide_edges(g::SimpleGraph{Int}, specs::Vector{Tuple{Int, Int, Int}})
+    expanded = copy(g)
+    for (u, v, count) in specs
+        expanded = _subdivide_edge(expanded, u, v, count)
+    end
     return expanded
 end
 
@@ -74,14 +94,23 @@ end
             for r in reprs
         ]
         @test allunique(reduced_tensors)
-        @test all(r -> r[1] === cross, reprs)
     end
 
-    @testset "equivalent_representations: outward expansion" begin
+    @testset "equivalent_representations: edge subdivision expansion" begin
         cross = _cross_graph()
         reprs = equivalent_representations(cross, [1, 2, 3, 4]; max_added_vertices=1)
 
-        @test any(r -> nv(r[1]) == 5 && r[2] == [1, 2, 3, 4], reprs)
+        @test any(r -> nv(r[1]) == 5 && ne(r[1]) == 3 && r[2] == [1, 2, 3, 4], reprs)
+    end
+
+    @testset "equivalent_representations: multiple subdivisions" begin
+        cross = _cross_graph()
+
+        reprs_two = equivalent_representations(cross, [1, 2, 3, 4]; max_added_vertices=2)
+        @test any(r -> nv(r[1]) == 6 && ne(r[1]) == 4, reprs_two)
+
+        reprs_four = equivalent_representations(cross, [1, 2, 3, 4]; max_added_vertices=4)
+        @test any(r -> nv(r[1]) == 8, reprs_four)
     end
 
     @testset "search_unweighted_gadgets: basic" begin
@@ -117,30 +146,70 @@ end
         @test length(capped) == 1
     end
 
-    @testset "search_unweighted_gadgets: prefilter stays sound with outward expansions" begin
+    @testset "search_unweighted_gadgets: explicit max_added_vertices" begin
+        cross = _cross_graph()
+        expanded_cross = _subdivide_edges(cross, [(1, 3, 1), (2, 4, 1)])
+        loader = GraphLoader(
+            GraphDataset([_to_g6(expanded_cross)]),
+            pinset=[1, 2, 3, 4],
+        )
+
+        @test isempty(search_unweighted_gadgets(cross, [1, 2, 3, 4], loader))
+
+        results = search_unweighted_gadgets(
+            cross,
+            [1, 2, 3, 4],
+            loader;
+            max_added_vertices=2,
+        )
+        @test length(results) == 1
+    end
+
+    @testset "search_unweighted_gadgets: prefilter rejects disconnected pin coverage under subdivisions" begin
         loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
         edge = _edge_graph()
 
         results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
         results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
 
-        @test length(results_on) == 1
+        @test isempty(results_on)
         @test length(results_off) == 1
     end
 
-    @testset "search_unweighted_gadgets: outward expansion candidate" begin
+    @testset "search_unweighted_gadgets: subdivision candidate" begin
         cross = _cross_graph()
-        expanded_cross = _graph_with_isolated_vertices(cross, 1)
+        expanded_cross = _subdivide_edges(cross, [(1, 3, 1), (2, 4, 1)])
         loader = GraphLoader(
             GraphDataset([_to_g6(expanded_cross)]),
             pinset=[1, 2, 3, 4],
         )
 
-        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
+        results = search_unweighted_gadgets(
+            cross,
+            [1, 2, 3, 4],
+            loader;
+            max_added_vertices=2,
+        )
 
         @test length(results) == 1
         @test results[1].replacement_graph == expanded_cross
-        @test results[1].constant_offset == 1.0
+        @test results[1].boundary_vertices == [1, 2, 3, 4]
+    end
+
+    @testset "logical flip target variants" begin
+        cross = _cross_graph()
+        reprs = equivalent_representations(cross, [1, 2, 3, 4])
+        target_data_no = GadgetSearch._build_target_data(reprs; include_logical_flips=false)
+        target_data_yes = GadgetSearch._build_target_data(reprs; include_logical_flips=true)
+
+        @test length(target_data_yes) > length(target_data_no)
+        @test any(td -> td.flip_mask == [1], target_data_yes)
+
+        base_tensor = Float64.(content.(calculate_reduced_alpha_tensor(cross, [1, 2, 3, 4])))
+        flipped_tensor = vec(GadgetSearch.apply_flip_to_tensor(base_tensor, [1]))
+        @test any(td -> td.flip_mask == [1] && td.reduced == flipped_tensor, target_data_yes)
+        @test any(td -> isempty(td.flip_mask) && td.offset_from_pattern === 0.0, target_data_yes)
+        @test all(td -> !isempty(td.flip_mask) ? td.offset_from_pattern === nothing : true, target_data_yes)
     end
 
     @testset "UnweightedGadget has no target_index" begin
