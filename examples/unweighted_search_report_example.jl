@@ -29,6 +29,7 @@ plot_unweighted_search_report(
     target_boundary,
     outpath;
     max_added_vertices=1,
+    preserve_boundary_roles=true,
     sample_candidate=sample_candidate,
     sample_candidate_boundary=target_boundary,
     prefilter=true,

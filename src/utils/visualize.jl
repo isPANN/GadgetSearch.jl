@@ -435,7 +435,7 @@ function _draw_equivalent_representation_graph(
 end
 
 """
-    plot_equivalent_representations(graph, boundary, save_path; max_added_vertices=0, columns=3, panel_graph_size=220)
+    plot_equivalent_representations(graph, boundary, save_path; max_added_vertices=0, preserve_boundary_roles=true, columns=3, panel_graph_size=220)
 
 Create a gallery-style visualization of all distinct outputs of
 [`equivalent_representations`](@ref). Each panel shows one representation with
@@ -449,6 +449,8 @@ deduplication.
 
 # Keywords
 - `max_added_vertices::Int=0`: Forwarded to [`equivalent_representations`](@ref)
+- `preserve_boundary_roles::Bool=true`: Forwarded to
+  [`equivalent_representations`](@ref)
 - `columns::Int=3`: Number of panels per row
 - `panel_graph_size::Int=220`: Size of each graph drawing region
 - `panel_margin::Int=18`: Inner graph margin within each panel
@@ -466,6 +468,7 @@ function plot_equivalent_representations(
     boundary::Vector{Int},
     save_path::String;
     max_added_vertices::Int=0,
+    preserve_boundary_roles::Bool=true,
     columns::Int=3,
     panel_graph_size::Int=220,
     panel_margin::Int=18,
@@ -480,7 +483,12 @@ function plot_equivalent_representations(
     panel_graph_size > 0 || throw(ArgumentError("panel_graph_size must be positive"))
     max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
 
-    reprs = equivalent_representations(graph, boundary; max_added_vertices=max_added_vertices)
+    reprs = equivalent_representations(
+        graph,
+        boundary;
+        max_added_vertices=max_added_vertices,
+        preserve_boundary_roles=preserve_boundary_roles,
+    )
     annotation_lines = [
         _equivalent_representation_lines(graph, repr_graph, repr_boundary;
             show_reduced_tensor=show_reduced_tensor,
@@ -511,7 +519,7 @@ function plot_equivalent_representations(
 
         fontsize(11)
         text(
-            "Input boundary = $(boundary), max_added_vertices = $(max_added_vertices), orange nodes are boundary vertices labeled as vertex/boundary-order.",
+            "Input boundary = $(boundary), max_added_vertices = $(max_added_vertices), preserve_boundary_roles = $(preserve_boundary_roles), orange nodes are boundary vertices labeled as vertex/boundary-order.",
             Point(-canvas_width / 2 + panel_gap, -canvas_height / 2 + 44);
             halign=:left,
             valign=:middle,
@@ -551,6 +559,346 @@ function plot_equivalent_representations(
 
             fontsize(10)
             for (line_idx, line) in enumerate(annotation_lines[idx])
+                text(
+                    line,
+                    Point(left + panel_padding, top + panel_padding + panel_graph_size + 12 + (line_idx - 1) * line_height);
+                    halign=:left,
+                    valign=:middle,
+                )
+            end
+        end
+    end
+
+    println("Drawing saved as $save_path")
+    return save_path
+end
+
+function _simple_path_between(graph::SimpleGraph{Int}, start::Int, goal::Int)
+    start == goal && return [start]
+
+    parents = fill(0, nv(graph))
+    visited = falses(nv(graph))
+    queue = [start]
+    visited[start] = true
+    head = 1
+
+    while head <= length(queue)
+        current = queue[head]
+        head += 1
+
+        for neighbor in neighbors(graph, current)
+            visited[neighbor] && continue
+            visited[neighbor] = true
+            parents[neighbor] = current
+            neighbor == goal && break
+            push!(queue, neighbor)
+        end
+
+        visited[goal] && break
+    end
+
+    visited[goal] || throw(ArgumentError("no path exists between $start and $goal"))
+
+    path = Int[goal]
+    while path[end] != start
+        push!(path, parents[path[end]])
+    end
+    reverse!(path)
+    return path
+end
+
+function _crossing_arm_paths(graph::SimpleGraph{Int}, boundary::Vector{Int})
+    length(boundary) == 4 || throw(ArgumentError("crossing gallery expects exactly 4 boundary vertices"))
+
+    horizontal_path = _simple_path_between(graph, boundary[1], boundary[3])
+    vertical_path = _simple_path_between(graph, boundary[2], boundary[4])
+    covered_vertices = Set(vcat(horizontal_path, vertical_path))
+    covered_vertices == Set(1:nv(graph)) || throw(ArgumentError(
+        "crossing gallery expects a graph formed only by the 1-3 and 2-4 arms"))
+
+    return horizontal_path, vertical_path
+end
+
+function _crossing_signature(graph::SimpleGraph{Int}, boundary::Vector{Int})
+    horizontal_path, vertical_path = _crossing_arm_paths(graph, boundary)
+    return (
+        horizontal_subdivisions=length(horizontal_path) - 2,
+        vertical_subdivisions=length(vertical_path) - 2,
+        horizontal_path=horizontal_path,
+        vertical_path=vertical_path,
+    )
+end
+
+function _can_draw_with_crossing_geometry(graph::SimpleGraph{Int}, boundary::Vector{Int})
+    try
+        _crossing_signature(graph, boundary)
+        return true
+    catch err
+        if err isa ArgumentError
+            return false
+        end
+        rethrow()
+    end
+end
+
+function _crossing_layout_map(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
+    horizontal_path::Vector{Int},
+    vertical_path::Vector{Int},
+)
+    axis_extent = 0.86
+    crossing_gap = 0.16
+    positions = Dict{Int, Point}()
+
+    function _axis_coordinate(t::Real)
+        if t < 0.5
+            return -axis_extent + (t / 0.5) * (axis_extent - crossing_gap)
+        elseif t > 0.5
+            return crossing_gap + ((t - 0.5) / 0.5) * (axis_extent - crossing_gap)
+        end
+
+        # Keep the geometric crossing empty: a path midpoint is nudged off-center
+        # instead of becoming an artificial shared graph vertex.
+        return crossing_gap
+    end
+
+    for (idx, vertex) in enumerate(horizontal_path)
+        t = length(horizontal_path) == 1 ? 0.5 : (idx - 1) / (length(horizontal_path) - 1)
+        positions[vertex] = Point(_axis_coordinate(t), 0.0)
+    end
+
+    for (idx, vertex) in enumerate(vertical_path)
+        t = length(vertical_path) == 1 ? 0.5 : (idx - 1) / (length(vertical_path) - 1)
+        positions[vertex] = Point(0.0, _axis_coordinate(t))
+    end
+
+    length(positions) == nv(graph) || throw(ArgumentError(
+        "crossing gallery could not assign positions to every vertex"))
+
+    return positions
+end
+
+function _draw_crossing_path(
+    path_vertices::Vector{Int},
+    positions::Dict{Int, Point},
+    scale::Real;
+    gap_at_center::Bool=false,
+    center_gap_radius::Real=0.0,
+)
+    for (u, v) in zip(path_vertices[1:end-1], path_vertices[2:end])
+        start_point = positions[u] * scale
+        end_point = positions[v] * scale
+
+        if gap_at_center
+            if isapprox(start_point.y, 0.0; atol=1e-9) &&
+               isapprox(end_point.y, 0.0; atol=1e-9) &&
+               start_point.x * end_point.x < 0
+                line(start_point, Point(-center_gap_radius, 0), :stroke)
+                line(Point(center_gap_radius, 0), end_point, :stroke)
+                continue
+            elseif isapprox(start_point.x, 0.0; atol=1e-9) &&
+                   isapprox(end_point.x, 0.0; atol=1e-9) &&
+                   start_point.y * end_point.y < 0
+                line(start_point, Point(0, -center_gap_radius), :stroke)
+                line(Point(0, center_gap_radius), end_point, :stroke)
+                continue
+            end
+        end
+
+        line(start_point, end_point, :stroke)
+    end
+end
+
+function _draw_crossing_variant_graph(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
+    panel_graph_size::Int,
+)
+    signature = _crossing_signature(graph, boundary)
+    positions = _crossing_layout_map(
+        graph,
+        boundary,
+        signature.horizontal_path,
+        signature.vertical_path,
+    )
+    scale = panel_graph_size / 2
+    boundary_set = Set(boundary)
+    horizontal_center_vertex = findfirst(v -> positions[v] == Point(0.0, 0.0), signature.horizontal_path)
+    vertical_center_vertex = findfirst(v -> positions[v] == Point(0.0, 0.0), signature.vertical_path)
+    horizontal_owns_center = !isnothing(horizontal_center_vertex)
+    vertical_owns_center = !isnothing(vertical_center_vertex)
+    center_gap_radius = 0.12 * scale
+
+    setline(3.2)
+    sethue(RGB(0.22, 0.45, 0.82))
+    _draw_crossing_path(
+        signature.horizontal_path,
+        positions,
+        scale;
+        gap_at_center=vertical_owns_center && !horizontal_owns_center,
+        center_gap_radius=center_gap_radius,
+    )
+
+    sethue(RGB(0.84, 0.31, 0.26))
+    _draw_crossing_path(
+        signature.vertical_path,
+        positions,
+        scale;
+        gap_at_center=horizontal_owns_center && !vertical_owns_center,
+        center_gap_radius=center_gap_radius,
+    )
+
+    for vertex in 1:nv(graph)
+        point = positions[vertex] * scale
+        if vertex in boundary_set
+            sethue(RGB(0.95, 0.69, 0.20))
+            circle(point, 13, :fill)
+        else
+            sethue(RGB(0.78, 0.88, 0.98))
+            circle(point, 11, :fill)
+        end
+        sethue("black")
+        circle(point, vertex in boundary_set ? 13 : 11, :stroke)
+        fontsize(12)
+        text(string(vertex), point; halign=:center, valign=:middle)
+    end
+
+    return signature
+end
+
+function _crossing_panel_title(horizontal_subdivisions::Int, vertical_subdivisions::Int)
+    if horizontal_subdivisions == 0 && vertical_subdivisions == 0
+        return "canonical crossing"
+    elseif horizontal_subdivisions > 0 && vertical_subdivisions == 0
+        return "stretch 1-3 arm"
+    elseif horizontal_subdivisions == 0 && vertical_subdivisions > 0
+        return "stretch 2-4 arm"
+    end
+
+    return "stretch both arms"
+end
+
+"""
+    plot_crossing_equivalence_gallery(graph, boundary, save_path; ...)
+
+Create a report-friendly gallery for a canonical 4-pin crossing target with
+fixed boundary roles. The figure uses a fixed geometric layout:
+`1 = left`, `2 = top`, `3 = right`, `4 = bottom`.
+
+The gallery highlights structural examples from
+[`equivalent_representations`](@ref) using the fixed crossing geometry. Logical
+flips remain tensor-level variants and are therefore described in text rather
+than drawn as separate graph rewrites here.
+"""
+function plot_crossing_equivalence_gallery(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
+    save_path::String;
+    max_added_vertices::Int=4,
+    preserve_boundary_roles::Bool=true,
+    example_signatures::Vector{Tuple{Int, Int}}=[(0, 0), (1, 0), (0, 1), (2, 2)],
+    columns::Int=2,
+    panel_graph_size::Int=220,
+    panel_padding::Int=18,
+    panel_gap::Int=18,
+    title_height::Int=78,
+)
+    preserve_boundary_roles || throw(ArgumentError(
+        "crossing gallery requires preserve_boundary_roles=true"))
+    length(boundary) == 4 || throw(ArgumentError("crossing gallery expects exactly 4 boundary vertices"))
+    max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
+    columns >= 1 || throw(ArgumentError("columns must be positive"))
+
+    reprs = equivalent_representations(
+        graph,
+        boundary;
+        max_added_vertices=max_added_vertices,
+        preserve_boundary_roles=preserve_boundary_roles,
+    )
+
+    repr_lookup = Dict{Tuple{Int, Int}, NamedTuple{(:graph, :boundary, :signature), Tuple{SimpleGraph{Int}, Vector{Int}, NamedTuple}}}()
+    for (repr_graph, repr_boundary) in reprs
+        signature = _crossing_signature(repr_graph, repr_boundary)
+        key = (signature.horizontal_subdivisions, signature.vertical_subdivisions)
+        haskey(repr_lookup, key) && continue
+        repr_lookup[key] = (graph=repr_graph, boundary=repr_boundary, signature=signature)
+    end
+
+    selected = [
+        merge((key=signature_key,), repr_lookup[signature_key])
+        for signature_key in example_signatures
+        if haskey(repr_lookup, signature_key)
+    ]
+    isempty(selected) && throw(ArgumentError("no requested crossing examples were found"))
+
+    line_height = 16
+    annotation_height = 78
+    panel_width = panel_graph_size + 2 * panel_padding
+    panel_height = panel_graph_size + annotation_height + 2 * panel_padding
+    rows = cld(length(selected), columns)
+    canvas_width = columns * panel_width + (columns + 1) * panel_gap
+    canvas_height = title_height + rows * panel_height + (rows + 1) * panel_gap
+
+    _with_drawing(save_path, canvas_width, canvas_height) do
+        background("white")
+
+        sethue("black")
+        fontsize(20)
+        text(
+            "Canonical Crossing Equivalence Gallery",
+            Point(-canvas_width / 2 + panel_gap, -canvas_height / 2 + 24);
+            halign=:left,
+            valign=:middle,
+        )
+
+        fontsize(11)
+        text(
+            "Fixed roles: 1 = left, 2 = top, 3 = right, 4 = bottom. Blue shows the 1-3 arm; red shows the 2-4 arm.",
+            Point(-canvas_width / 2 + panel_gap, -canvas_height / 2 + 46);
+            halign=:left,
+            valign=:middle,
+        )
+
+        text(
+            "Panels show structural examples from equivalent_representations(...); logical flips remain tensor-level variants.",
+            Point(-canvas_width / 2 + panel_gap, -canvas_height / 2 + 64);
+            halign=:left,
+            valign=:middle,
+        )
+
+        for (idx, example) in enumerate(selected)
+            row = fld(idx - 1, columns)
+            col = mod(idx - 1, columns)
+            left = -canvas_width / 2 + panel_gap + col * (panel_width + panel_gap)
+            top = -canvas_height / 2 + title_height + panel_gap + row * (panel_height + panel_gap)
+
+            sethue(RGB(0.97, 0.97, 0.98))
+            box(Point(left + panel_width / 2, top + panel_height / 2), panel_width, panel_height, :fill)
+            sethue(RGB(0.82, 0.84, 0.88))
+            box(Point(left + panel_width / 2, top + panel_height / 2), panel_width, panel_height, :stroke)
+
+            sethue("black")
+            fontsize(14)
+            text(
+                _crossing_panel_title(example.signature.horizontal_subdivisions, example.signature.vertical_subdivisions),
+                Point(left + panel_padding, top + 18);
+                halign=:left,
+                valign=:middle,
+            )
+
+            gsave()
+            translate(Point(left + panel_width / 2, top + panel_padding + panel_graph_size / 2))
+            _draw_crossing_variant_graph(example.graph, example.boundary, panel_graph_size - 22)
+            grestore()
+
+            fontsize(10)
+            annotation_lines = [
+                "1-3 arm: $(join(example.signature.horizontal_path, "-"))",
+                "2-4 arm: $(join(example.signature.vertical_path, "-"))",
+                "extra vertices: $(nv(example.graph) - nv(graph))",
+            ]
+            for (line_idx, line) in enumerate(annotation_lines)
                 text(
                     line,
                     Point(left + panel_padding, top + panel_padding + panel_graph_size + 12 + (line_idx - 1) * line_height);
@@ -660,7 +1008,16 @@ function _draw_graph_thumbnail(
     pos::Union{Nothing, Vector{Tuple{Float64, Float64}}}=nothing,
     show_boundary_order::Bool=false,
     margin::Int=14,
+    crossing_geometry::Bool=false,
 )
+    if crossing_geometry
+        gsave()
+        translate(center)
+        _draw_crossing_variant_graph(graph, boundary, plot_size - 2 * margin)
+        grestore()
+        return
+    end
+
     boundary_order = Dict(vertex => idx for (idx, vertex) in enumerate(boundary))
     vertex_labels = [
         if show_boundary_order && haskey(boundary_order, vertex)
@@ -710,6 +1067,7 @@ function plot_unweighted_search_report(
     target_boundary::Vector{Int},
     save_path::String;
     max_added_vertices::Int=1,
+    preserve_boundary_roles::Bool=true,
     prefilter::Bool=true,
     sample_candidate::Union{Nothing, SimpleGraph{Int}}=nothing,
     sample_candidate_boundary::Union{Nothing, Vector{Int}}=nothing,
@@ -722,9 +1080,18 @@ function plot_unweighted_search_report(
         target_graph,
         target_boundary;
         max_added_vertices=max_added_vertices,
+        preserve_boundary_roles=preserve_boundary_roles,
     )
     structural_variants = _subdivision_graph_variants(target_graph, max_added_vertices)
-    seed_count = sum(length(_boundary_permutation_representations(g, target_boundary)) for g in structural_variants)
+    seed_count = sum(
+        length(
+            _boundary_equivalent_representations(
+                g,
+                target_boundary;
+                preserve_boundary_roles=preserve_boundary_roles,
+            ),
+        ) for g in structural_variants
+    )
     apply_prefilter = prefilter && !_allows_unpinned_components(reprs)
     target_data = GadgetSearch._build_target_data(reprs; include_logical_flips=true)
     flipped_target_count = count(td -> !isempty(td.flip_mask), target_data)
@@ -772,13 +1139,15 @@ function plot_unweighted_search_report(
             "Call site: search_unweighted_gadgets(target_graph, target_boundary, loader)",
             "Input target R has |V|=$(nv(target_graph)), |E|=$(ne(target_graph)), boundary size k=$(length(target_boundary)).",
             "The search API is now single-target: the caller passes one graph and one boundary.",
-            "Boundary vertices are highlighted in orange in the thumbnail on the right.",
+            "Boundary vertices are highlighted in orange in the thumbnail on the right; preserve_boundary_roles = $(preserve_boundary_roles).",
         ],
         [
             "Internally call equivalent_representations(target_graph, target_boundary; max_added_vertices=...).",
             "Distribute the added-vertex budget across the target edges and subdivide those edges into longer paths.",
             "Example here: $(seed_count) raw seeds are generated before any deduplication.",
-            "So a crossing arm like 1-3 may become 1-5-3, or both arms may be extended simultaneously.",
+            preserve_boundary_roles ?
+            "So a crossing arm like 1-3 may become 1-5-3 while the boundary roles stay fixed." :
+            "So a crossing arm like 1-3 may become 1-5-3, with optional boundary renumbering also explored.",
         ],
         [
             "For every seed, compute calculate_reduced_alpha_tensor(graph, boundary).",
@@ -823,7 +1192,7 @@ function plot_unweighted_search_report(
 
         fontsize(12)
         text(
-            "This figure explains how search_unweighted_gadgets expands a canonical crossing target into subdivided and logical-flip-aware representations.",
+            "This figure explains how search_unweighted_gadgets expands a canonical crossing target into subdivided and logical-flip-aware representations with fixed boundary roles by default.",
             Point(-canvas_width / 2 + 34, -canvas_height / 2 + 54);
             halign=:left,
             valign=:middle,
@@ -857,8 +1226,8 @@ function plot_unweighted_search_report(
             target_boundary,
             Point(right_x, centers[1].y + 12),
             185;
-            pos=target_pos,
-            show_boundary_order=true,
+            crossing_geometry=preserve_boundary_roles &&
+                _can_draw_with_crossing_geometry(target_graph, target_boundary),
         )
 
         _draw_graph_thumbnail(
@@ -866,8 +1235,8 @@ function plot_unweighted_search_report(
             target_boundary,
             Point(small_left_x, centers[2].y + 12),
             120;
-            pos=target_pos,
-            show_boundary_order=false,
+            crossing_geometry=preserve_boundary_roles &&
+                _can_draw_with_crossing_geometry(target_graph, target_boundary),
         )
         if max_added_vertices > 0
             expanded_graph = first(filter(g -> nv(g) > nv(target_graph), structural_variants))
@@ -876,7 +1245,8 @@ function plot_unweighted_search_report(
                 target_boundary,
                 Point(small_right_x, centers[2].y + 12),
                 120;
-                show_boundary_order=false,
+                crossing_geometry=preserve_boundary_roles &&
+                    _can_draw_with_crossing_geometry(expanded_graph, target_boundary),
             )
         end
         fontsize(10)
@@ -892,7 +1262,8 @@ function plot_unweighted_search_report(
             repr_preview[2],
             Point(right_x, centers[3].y + 8),
             150;
-            show_boundary_order=true,
+            crossing_geometry=preserve_boundary_roles &&
+                _can_draw_with_crossing_geometry(repr_preview[1], repr_preview[2]),
         )
 
         sethue(RGB(0.95, 0.96, 0.99))
@@ -917,7 +1288,8 @@ function plot_unweighted_search_report(
             Point(right_x, centers[5].y + 8),
             170;
             pos=sample_candidate_pos,
-            show_boundary_order=false,
+            crossing_geometry=preserve_boundary_roles &&
+                _can_draw_with_crossing_geometry(sample_graph, sample_boundary),
         )
 
         result_border = sample_valid ? RGB(0.53, 0.75, 0.56) : RGB(0.86, 0.55, 0.55)

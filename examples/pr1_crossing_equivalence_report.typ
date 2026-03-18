@@ -12,10 +12,11 @@
 
 This report summarizes the updated semantics of `pr1-unify-unweighted-search-api`.
 The search target is the canonical 4-pin crossing gadget with boundary pins
-`[1, 2, 3, 4]`. The purpose of the branch is not to search for isolated extra
-vertices, but to recognize gadgets that still realize the same crossing even if
-their crossing arms are stretched by inserted path vertices or realized with
-logical flips on the boundary pins.
+`[1, 2, 3, 4]`, and those boundary roles are now kept fixed during search. The
+purpose of the branch is not to search for isolated extra vertices, but to
+recognize gadgets that still realize the same crossing even if their crossing
+arms are stretched by inserted path vertices or realized with logical flips on
+the boundary pins.
 
 #v(0.8em)
 
@@ -56,7 +57,7 @@ accepted as a match for the original crossing gadget.
 1. Start from the canonical crossing target and its fixed boundary
    `[1, 2, 3, 4]`.
 2. Generate structural equivalents by subdividing target edges with an explicit
-   `max_added_vertices` expansion budget.
+   `max_added_vertices` expansion budget, while keeping boundary pin roles fixed.
 3. Generate logical-flip tensor variants for the resulting target family.
 4. Deduplicate all generated representations by their reduced alpha tensors.
 5. Precompute cached comparison data for every surviving target variant.
@@ -80,10 +81,13 @@ accepted as a match for the original crossing gadget.
 #figure(
   image("equivalent_representations_cross.svg", width: 100%),
   caption: [
-    Example gallery for the canonical crossing target. The generated
-    representations include subdivided edges such as `1-5-3` and larger path
-    extensions, while keeping the same four boundary pins: `1`, `2`, `3`, and
-    `4`.
+    Geometry-fixed gallery for the canonical crossing target. Here the roles are
+    drawn explicitly as `1 = left`, `2 = top`, `3 = right`, and `4 = bottom`.
+    The blue arm tracks the `1-3` channel and the red arm tracks the `2-4`
+    channel, so subdivisions such as `1-5-3` or `2-6-4` still read visually as
+    the same crossing. Logical flips are part of the search semantics too, but
+    they are tensor-level variants and are therefore not shown as separate graph
+    rewrites in this figure.
   ],
 )
 
@@ -105,6 +109,8 @@ The updated PR1 behavior is now aligned with the actual crossing-gadget goal:
 - it may realize the same crossing through subdivided target edges
 - it may also realize a logical-flip variant that can later be converted back to
   the canonical crossing semantics
+- but it is no longer allowed to satisfy the target only by reordering the
+  boundary labels
 
 So the branch now searches for the crossing gadget through a richer and more
 useful equivalence class, instead of through isolated-vertex expansions that do

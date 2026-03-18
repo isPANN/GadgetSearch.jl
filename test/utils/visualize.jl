@@ -87,6 +87,26 @@ end
     rm(svg; force=true)
 end
 
+@testset "visualize: crossing equivalence gallery" begin
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 2, 4)
+
+    svg = tempname() * ".svg"
+    GadgetSearch.plot_crossing_equivalence_gallery(
+        g,
+        [1, 2, 3, 4],
+        svg;
+        max_added_vertices=4,
+        panel_graph_size=180,
+    )
+
+    @test isfile(svg)
+    @test filesize(svg) > 0
+
+    rm(svg; force=true)
+end
+
 @testset "visualize: unweighted search report" begin
     g = SimpleGraph(4)
     add_edge!(g, 1, 3)

@@ -85,15 +85,27 @@ end
         @test reprs isa Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
         @test !isempty(reprs)
         @test reprs[1] == (cross, [1, 2, 3, 4])
-
-        boundaries = [r[2] for r in reprs]
-        @test allunique(boundaries)
+        @test all(r -> r[2] == [1, 2, 3, 4], reprs)
 
         reduced_tensors = [
             vec(Float64.(content.(calculate_reduced_alpha_tensor(r[1], r[2]))))
             for r in reprs
         ]
         @test allunique(reduced_tensors)
+    end
+
+    @testset "equivalent_representations: optional boundary permutations" begin
+        cross = _cross_graph()
+        reprs_fixed = equivalent_representations(cross, [1, 2, 3, 4])
+        reprs_relaxed = equivalent_representations(
+            cross,
+            [1, 2, 3, 4];
+            preserve_boundary_roles=false,
+        )
+
+        @test length(reprs_relaxed) > length(reprs_fixed)
+        @test any(r -> r[2] != [1, 2, 3, 4], reprs_relaxed)
+        @test all(r -> r[2] == [1, 2, 3, 4], reprs_fixed)
     end
 
     @testset "equivalent_representations: edge subdivision expansion" begin

@@ -19,19 +19,24 @@ struct UnweightedGadget
 end
 
 """
-    equivalent_representations(graph, boundary; max_added_vertices=0) -> Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
+    equivalent_representations(graph, boundary; max_added_vertices=0, preserve_boundary_roles=true) -> Vector{Tuple{SimpleGraph{Int}, Vector{Int}}}
 
 Generate all equivalent representations of a target graph with its boundary.
 
 Two `(graph, boundary)` pairs are equivalent if they encode the same gadget rule.
 Currently this includes:
 
-- boundary permutations that yield distinct reduced alpha tensors
 - edge-subdivision expansions of the target graph, with up to
   `max_added_vertices` inserted path vertices distributed across the target
   edges
+- optional boundary permutations that yield distinct reduced alpha tensors
+  when `preserve_boundary_roles=false`
 
 The input pair is always included as the first element of the returned vector.
+
+By default, the input boundary ordering is preserved so boundary pin roles stay
+fixed during crossing-gadget search. Set `preserve_boundary_roles=false` to
+recover the older numbering-agnostic behavior.
 
 This function belongs to the graph-theory layer and is independently useful for
 inspection, testing, and future equivalence strategies such as logical flips.
@@ -54,12 +59,20 @@ function equivalent_representations(
     boundary::Vector{Int},
     ;
     max_added_vertices::Int=0,
+    preserve_boundary_roles::Bool=true,
 )
     max_added_vertices >= 0 || throw(ArgumentError("max_added_vertices must be non-negative"))
 
     seeds = Tuple{SimpleGraph{Int}, Vector{Int}}[]
     for expanded_graph in _subdivision_graph_variants(graph, max_added_vertices)
-        append!(seeds, _boundary_permutation_representations(expanded_graph, boundary))
+        append!(
+            seeds,
+            _boundary_equivalent_representations(
+                expanded_graph,
+                boundary;
+                preserve_boundary_roles=preserve_boundary_roles,
+            ),
+        )
     end
 
     return _dedup_equivalent_representations(seeds)
@@ -123,6 +136,19 @@ function _subdivide_graph_edges(
     end
 
     return expanded
+end
+
+function _boundary_equivalent_representations(
+    graph::SimpleGraph{Int},
+    boundary::Vector{Int},
+    ;
+    preserve_boundary_roles::Bool,
+)
+    if preserve_boundary_roles
+        return [(graph, copy(boundary))]
+    end
+
+    return _boundary_permutation_representations(graph, boundary)
 end
 
 function _boundary_permutation_representations(
@@ -317,16 +343,17 @@ function _allows_unpinned_components(
 end
 
 """
-    search_unweighted_gadgets(target_graph, target_boundary, loader; prefilter, limit, max_results)
+    search_unweighted_gadgets(target_graph, target_boundary, loader; max_added_vertices, preserve_boundary_roles, prefilter, limit, max_results)
 
 Search for unweighted gadget replacements of `target_graph` by iterating over a
 `GraphLoader`.
 
 Internally, [`equivalent_representations`](@ref) is called to expand the target
-into all distinct search representations, including boundary permutations,
-edge-subdivision expansions, and logical-flip tensor variants. The subdivision
-budget is controlled explicitly by `max_added_vertices`, so the target semantics
-do not depend on the searched loader.
+into all distinct search representations, including edge-subdivision expansions
+and logical-flip tensor variants. By default the boundary ordering is preserved,
+so pin `1/2/3/4` keeps its canonical role during crossing search. The
+subdivision budget is controlled explicitly by `max_added_vertices`, so the
+target semantics do not depend on the searched loader.
 
 # Arguments
 - `target_graph::SimpleGraph{Int}`: The pattern graph R
@@ -336,6 +363,9 @@ do not depend on the searched loader.
 # Keywords
 - `max_added_vertices::Int=0`: Maximum number of inserted internal vertices to
   distribute across target edges when generating equivalent representations
+- `preserve_boundary_roles::Bool=true`: Keep the input boundary ordering fixed
+  when generating equivalent representations. Set to `false` to allow distinct
+  boundary permutations during matching.
 - `prefilter::Bool=true`: Whether to reject candidates whose allowed pin set
   misses an entire connected component before tensor computation
 - `limit::Union{Int,Nothing}=nothing`: Maximum number of graphs to examine
@@ -349,6 +379,7 @@ function search_unweighted_gadgets(
     target_boundary::Vector{Int},
     loader::GraphLoader;
     max_added_vertices::Int=0,
+    preserve_boundary_roles::Bool=true,
     prefilter::Bool=true,
     include_logical_flips::Bool=true,
     limit::Union{Int,Nothing}=nothing,
@@ -361,6 +392,7 @@ function search_unweighted_gadgets(
         target_graph,
         target_boundary;
         max_added_vertices=max_added_vertices,
+        preserve_boundary_roles=preserve_boundary_roles,
     )
     filter_fn = _make_unweighted_filter(
         reprs;
