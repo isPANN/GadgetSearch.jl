@@ -32,5 +32,6 @@ m3n6pad1_min3max18_direct4.*
 m3n7pad1_min3max21_direct4.*
 /notes/
 /examples/*.png
+/examples/*.pdf
 /examples/*.g6
 /examples/*.json
