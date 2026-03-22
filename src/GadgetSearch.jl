@@ -59,9 +59,6 @@ export search_by_truth_tables
 # Visualization
 export get_radius
 export plot_gadget
-export plot_equivalent_representations
-export plot_crossing_equivalence_gallery
-export plot_unweighted_search_report
 
 # Utilities
 export clear_cache!
