@@ -33,6 +33,7 @@ include("utils/visualize.jl")
 
 export GraphDataset
 export GraphLoader
+export graph_to_g6
 export find_matching_gadget
 export search_by_truth_tables
 export save_cache

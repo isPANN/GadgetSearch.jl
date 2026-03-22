@@ -1,6 +1,5 @@
 using GadgetSearch
 using Graphs
-using GraphIO
 using GenericTensorNetworks: content
 using Test
 
@@ -74,7 +73,7 @@ function _isolated_graph()
 end
 
 function _to_g6(g)
-    return GraphIO.Graph6._graphToG6String(g)[11:end]
+    return graph_to_g6(g)
 end
 
 @testset "Unweighted Search" begin

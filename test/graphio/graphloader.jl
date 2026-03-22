@@ -328,3 +328,45 @@ end
         @test ne(g3) == 3
     end
 end
+
+@testset "Graph6 Encoding" begin
+    @testset "roundtrip without header" begin
+        g = SimpleGraph(4)
+        add_edge!(g, 1, 3)
+        add_edge!(g, 2, 4)
+
+        g6 = graph_to_g6(g)
+        @test !startswith(g6, ">>graph6<<")
+
+        parsed = GadgetSearch._parse_g6_string(g6, BitVector(undef, 0))
+        @test nv(parsed) == nv(g)
+        @test ne(parsed) == ne(g)
+        @test collect(edges(parsed)) == collect(edges(g))
+    end
+
+    @testset "header option" begin
+        g = SimpleGraph(2)
+        add_edge!(g, 1, 2)
+
+        with_header = graph_to_g6(g; include_header=true)
+        @test startswith(with_header, ">>graph6<<")
+
+        parsed = GadgetSearch._parse_g6_string(with_header, BitVector(undef, 0))
+        @test nv(parsed) == 2
+        @test ne(parsed) == 1
+        @test has_edge(parsed, 1, 2)
+    end
+
+    @testset "extended vertex-count encoding" begin
+        g = SimpleGraph(70) # requires extended graph6 vertex-count prefix
+        add_edge!(g, 1, 70)
+        add_edge!(g, 2, 69)
+
+        g6 = graph_to_g6(g)
+        parsed = GadgetSearch._parse_g6_string(g6, BitVector(undef, 0))
+        @test nv(parsed) == 70
+        @test ne(parsed) == 2
+        @test has_edge(parsed, 1, 70)
+        @test has_edge(parsed, 2, 69)
+    end
+end
