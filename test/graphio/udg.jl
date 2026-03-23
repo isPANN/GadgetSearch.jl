@@ -176,13 +176,15 @@ end
         inner_grid = GadgetSearch.triangular_lattice_graph(2, 2)
 
         subsets_without_shortg = GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=false)
-        @test length(subsets_without_shortg) == 6
+        @test length(subsets_without_shortg) == 2
         @test all(length(subset) == 2 for subset in subsets_without_shortg)
+        induced_edges_no_shortg = sort(unique(ne(Graphs.induced_subgraph(inner_grid, subset)[1]) for subset in subsets_without_shortg))
+        @test induced_edges_no_shortg == [0, 1]
 
-        subsets_with_shortg = GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=true)
         if Sys.which("shortg") === nothing
-            @test subsets_with_shortg == subsets_without_shortg
+            @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=true)
         else
+            subsets_with_shortg = GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=true)
             @test length(subsets_with_shortg) == 2
             induced_edges = sort(unique(ne(Graphs.induced_subgraph(inner_grid, subset)[1]) for subset in subsets_with_shortg))
             @test induced_edges == [0, 1]
@@ -193,6 +195,9 @@ end
         inner_grid = GadgetSearch.triangular_lattice_graph(2, 2)
         @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, -1; use_shortg=false)
         @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, 5; use_shortg=false)
+        if Sys.which("shortg") === nothing
+            @test_throws ArgumentError GadgetSearch.dedup_inner_subsets(inner_grid, 2; use_shortg=true)
+        end
     end
 
     @testset "generate_triangular_udg_subsets Integration" begin
@@ -225,9 +230,9 @@ end
 
             @test result == temp_file
             dataset = GraphDataset(temp_file)
-            @test dataset.n == 3
+            @test dataset.n == 2
             @test dataset.layouts[1] === nothing
-            @test map(length, dataset.layouts[2:3]) == [1, 1]
+            @test map(length, dataset.layouts[2:2]) == [1]
         finally
             isfile(temp_file) && rm(temp_file)
         end
@@ -239,6 +244,66 @@ end
             deduplicate=false,
             path=tempname() * ".g6",
         )
+
+        if Sys.which("shortg") === nothing
+            @test_throws ArgumentError generate_triangular_udg_subsets(
+                2,
+                1;
+                subset_sizes=1:2,
+                deduplicate=true,
+                use_shortg=true,
+                strict_dedup=true,
+                path=tempname() * ".g6",
+            )
+        end
+
+        @test_throws ArgumentError generate_triangular_udg_subsets(
+            2,
+            1;
+            subset_sizes=1:2,
+            deduplicate=true,
+            use_shortg=false,
+            strict_dedup=true,
+            path=tempname() * ".g6",
+        )
+    end
+
+    @testset "generate_triangular_udg_subsets dedup strategy behavior" begin
+        raw_file = tempname() * ".g6"
+        dedup_file = tempname() * ".g6"
+        try
+            generate_triangular_udg_subsets(
+                2,
+                2;
+                subset_sizes=[2],
+                deduplicate=false,
+                use_shortg=false,
+                path=raw_file,
+            )
+            generate_triangular_udg_subsets(
+                2,
+                2;
+                subset_sizes=[2],
+                deduplicate=true,
+                use_shortg=false,
+                path=dedup_file,
+            )
+
+            raw_dataset = GraphDataset(raw_file)
+            dedup_dataset = GraphDataset(dedup_file)
+
+            @test raw_dataset.n == 6
+            @test dedup_dataset.n == 2
+            @test dedup_dataset.n <= raw_dataset.n
+            @test all(layout -> layout !== nothing && length(layout) == 2, dedup_dataset.layouts)
+
+            dedup_loader = GraphLoader(dedup_file)
+            dedup_edge_counts = sort([ne(dedup_loader[idx]) for idx in 1:length(dedup_loader)])
+            @test dedup_edge_counts == [0, 1]
+        finally
+            isfile(raw_file) && rm(raw_file)
+            isfile(dedup_file) && rm(dedup_file)
+        end
     end
 end
 

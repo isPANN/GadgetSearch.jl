@@ -112,29 +112,43 @@ get_radius(::Triangular) = 1.1
 
 _triangular_grid_coordinates(nx::Int, ny::Int) = vec(Tuple{Int, Int}[(i, j) for i in 1:nx, j in 1:ny])
 
+function _all_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer)
+    return [collect(subset) for subset in Combinatorics.combinations(vertices(inner_grid), k)]
+end
+
+function _dedup_subsets_by_g6(inner_grid::SimpleGraph{Int}, subsets::Vector{Vector{Int}})
+    seen = Set{String}()
+    deduped = Vector{Vector{Int}}()
+    for subset in subsets
+        subgraph, _ = Graphs.induced_subgraph(inner_grid, subset)
+        g6 = GraphIO.Graph6._graphToG6String(subgraph)[11:end]
+        if !(g6 in seen)
+            push!(seen, g6)
+            push!(deduped, subset)
+        end
+    end
+    return deduped
+end
+
 """
     dedup_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer; use_shortg::Bool=true) -> Vector{Vector{Int}}
 
-Enumerate all `k`-vertex subsets of `inner_grid` and, when possible, retain
-one representative from each isomorphism class using `shortg`.
+Enumerate all `k`-vertex subsets of `inner_grid` and retain one representative
+per class.
 
-# Arguments
-- `inner_grid::SimpleGraph{Int}`: The lattice graph whose vertex subsets are enumerated.
-- `k::Integer`: Size of each subset to generate.
-- `use_shortg::Bool=true`: Whether to use `shortg` for isomorphism-based deduplication
-  when the executable is available in `PATH`.
-
-# Returns
-- `Vector{Vector{Int}}`: A collection of vertex subsets, each represented by the
-  original vertex indices from `inner_grid`.
+When `use_shortg=true`, deduplication is by graph isomorphism via `shortg`.
+When `use_shortg=false`, deduplication uses g6-string equality (same labeled
+graph encoding).
 """
 function dedup_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer; use_shortg::Bool=true)
     0 <= k <= nv(inner_grid) || throw(ArgumentError("subset size k must satisfy 0 <= k <= nv(inner_grid)"))
 
-    subsets = [collect(subset) for subset in Combinatorics.combinations(vertices(inner_grid), k)]
-    if isempty(subsets) || !use_shortg || Sys.which("shortg") === nothing
-        return subsets
+    subsets = _all_inner_subsets(inner_grid, k)
+    isempty(subsets) && return subsets
+    if !use_shortg
+        return _dedup_subsets_by_g6(inner_grid, subsets)
     end
+    Sys.which("shortg") === nothing && throw(ArgumentError("use_shortg=true requires `shortg` in PATH"))
 
     subgraphs = SimpleGraph{Int}[]
     for subset in subsets
@@ -147,8 +161,7 @@ function dedup_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer; use_short
 
     try
         save_graph(subgraphs, temp_path)
-        ok = _call_shortg(temp_path, mapping_file)
-        ok || return subsets
+        _call_shortg(temp_path, mapping_file)
 
         canonical_to_original, _ = _parse_shortg_mapping(mapping_file)
         return [subsets[canonical_to_original[idx][1]] for idx in sort!(collect(keys(canonical_to_original)))]
@@ -292,6 +305,7 @@ end
                                     subset_sizes=0:(nx * ny),
                                     deduplicate::Bool=true,
                                     use_shortg::Bool=true,
+                                    strict_dedup::Bool=false,
                                     path::String="triangular_udg_subsets.g6") -> String
 
 Generate all triangular-lattice unit-disk graphs obtained by selecting subsets
@@ -303,6 +317,7 @@ of the `nx × ny` inner lattice sites and save them to disk.
 - `subset_sizes=0:(nx * ny)`: Iterable of subset sizes to enumerate.
 - `deduplicate::Bool=true`: Whether to collapse isomorphic inner subsets before saving.
 - `use_shortg::Bool=true`: Whether `shortg` may be used for deduplication when available.
+- `strict_dedup::Bool=false`: When `true`, require `shortg` and throw if unavailable.
 - `path::String="triangular_udg_subsets.g6"`: Output file path.
 
 # Returns
@@ -314,19 +329,30 @@ function generate_triangular_udg_subsets(
     subset_sizes=0:(nx * ny),
     deduplicate::Bool=true,
     use_shortg::Bool=true,
+    strict_dedup::Bool=false,
     path::String="triangular_udg_subsets.g6",
 )
     inner_grid = triangular_lattice_graph(nx, ny)
     grid_coords = _triangular_grid_coordinates(nx, ny)
     physical_positions = get_physical_positions(Triangular(), grid_coords)
     results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[]
+    shortg_available = Sys.which("shortg") !== nothing
+    do_shortg_dedup = deduplicate && use_shortg && shortg_available
+
+    if strict_dedup && deduplicate && !do_shortg_dedup
+        throw(ArgumentError("strict_dedup=true requires use_shortg=true and `shortg` available in PATH"))
+    end
+
+    if deduplicate && use_shortg && !shortg_available
+        @warn "`shortg` not found; falling back to g6-string deduplication."
+    end
 
     for k in subset_sizes
         0 <= k <= nv(inner_grid) || throw(ArgumentError("subset sizes must satisfy 0 <= k <= nx * ny"))
 
         subsets = deduplicate ?
-            dedup_inner_subsets(inner_grid, k; use_shortg=use_shortg) :
-            [collect(subset) for subset in Combinatorics.combinations(vertices(inner_grid), k)]
+            dedup_inner_subsets(inner_grid, k; use_shortg=do_shortg_dedup) :
+            _all_inner_subsets(inner_grid, k)
 
         for subset in subsets
             subset_positions = physical_positions[subset]
@@ -340,15 +366,8 @@ function generate_triangular_udg_subsets(
 end
 
 function _call_shortg(temp_path::String, mapping_file::String)
-    if Sys.which("shortg") === nothing
-        # Make shortg optional: log and signal caller to fallback
-        @warn "Optional tool `shortg` not found; skipping canonicalization/dedup."
-        return false
-    else
-        @info "shortg found in PATH; running canonicalization"
-    end
+    @info "shortg found in PATH; running canonicalization"
     run(pipeline(`shortg -v -u $(temp_path)`, stderr=mapping_file))
-    return true
 end
 
 function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
