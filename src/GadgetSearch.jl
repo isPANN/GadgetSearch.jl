@@ -76,7 +76,6 @@ export is_gadget_replacement
 
 # Unweighted search
 export UnweightedGadget
-export equivalent_representations
 export search_unweighted_gadgets
 
 end # module
