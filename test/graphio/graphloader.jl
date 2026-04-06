@@ -369,4 +369,29 @@ end
         @test has_edge(parsed, 1, 70)
         @test has_edge(parsed, 2, 69)
     end
+
+    @testset "empty graph roundtrip" begin
+        g = SimpleGraph(0)
+        g6 = graph_to_g6(g)
+        parsed = GadgetSearch._parse_g6_string(g6, BitVector(undef, 0))
+        @test nv(parsed) == 0
+        @test ne(parsed) == 0
+    end
+
+    @testset "single vertex (no edges) roundtrip" begin
+        g = SimpleGraph(1)
+        g6 = graph_to_g6(g)
+        parsed = GadgetSearch._parse_g6_string(g6, BitVector(undef, 0))
+        @test nv(parsed) == 1
+        @test ne(parsed) == 0
+    end
+
+    @testset "_encode_vertex_count error paths" begin
+        @test_throws ArgumentError GadgetSearch._encode_vertex_count(-1)
+    end
+
+    @testset "_parse_vertex_count error paths" begin
+        @test_throws ArgumentError GadgetSearch._parse_vertex_count("")
+        @test_throws ArgumentError GadgetSearch._parse_vertex_count("~~")
+    end
 end
