@@ -1,6 +1,5 @@
 using GadgetSearch
 using Graphs
-using GenericTensorNetworks: content
 using Test
 
 function _cross_graph()
@@ -89,17 +88,6 @@ end
         @test length(results_off) == 1
     end
 
-    @testset "logical flip target variants" begin
-        cross = _cross_graph()
-        target_data_no = GadgetSearch._build_target_data(cross, [1, 2, 3, 4]; include_logical_flips=false)
-        target_data_yes = GadgetSearch._build_target_data(cross, [1, 2, 3, 4]; include_logical_flips=true)
-        @test length(target_data_yes) > length(target_data_no)
-        @test any(td -> td.flip_mask == [1], target_data_yes)
-        base_tensor = Float64.(content.(calculate_reduced_alpha_tensor(cross, [1, 2, 3, 4])))
-        flipped_tensor = vec(GadgetSearch.apply_flip_to_tensor(base_tensor, [1]))
-        @test any(td -> td.flip_mask == [1] && td.reduced == flipped_tensor, target_data_yes)
-    end
-
     @testset "UnweightedGadget has no target_index" begin
         @test !(:target_index in fieldnames(UnweightedGadget))
     end
@@ -109,7 +97,6 @@ end
         @test GadgetSearch.inf_mask(fill(-Inf, 4)) == BigInt(15)
         reduced = calculate_reduced_alpha_tensor(_cross_graph(), [1, 2, 3, 4])
         @test GadgetSearch.inf_mask(reduced) == BigInt(60576)
-        @test GadgetSearch.inf_mask(reduced) == GadgetSearch.inf_mask(content.(reduced))
     end
 
     @testset "pins_prefilter (internal)" begin

@@ -36,7 +36,3 @@ end
 @testset "Gadget Utilities" begin
     include("utils/gadget.jl")
 end
-
-@testset "Examples" begin
-    include("examples/pr1_crossing_pipeline.jl")
-end

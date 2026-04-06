@@ -25,7 +25,6 @@ include("graphio/graphloader.jl")
 include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
-include("utils/flip_variants.jl")
 include("core/unweighted_search.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
@@ -65,9 +64,6 @@ export plot_gadget
 export clear_cache!
 export get_cache_stats
 export check_gadget, check_gadget_rydberg, check_gadget_qubo
-export generate_flip_patterns
-export apply_flip_to_tensor
-
 # Alpha tensor
 export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor
