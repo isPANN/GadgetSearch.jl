@@ -10,6 +10,7 @@ Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 GenericTensorNetworks = "3521c873-ad32-4bb4-b63d-f4f178f42b49"
 GraphIO = "aa1b3936-2fda-51b9-ab35-c553d3a640a2"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
+HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
@@ -26,6 +27,7 @@ Combinatorics = "1"
 GenericTensorNetworks = "4.1.0"
 GraphIO = "0.7.1"
 Graphs = "1.9.0"
+HiGHS = "1.7.5"
 IterTools = "1.10.0"
 JSON3 = "1.14.1"
 JuMP = "1"
@@ -36,8 +38,7 @@ Serialization = "1.11.0"
 julia = "1"
 
 [extras]
-HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "HiGHS"]
+test = ["Test"]

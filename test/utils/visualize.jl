@@ -65,3 +65,13 @@ end
         isfile(candidate) && rm(candidate; force=true)
     end
 end
+
+@testset "_layout_from_points" begin
+    points = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
+    pts = GadgetSearch._layout_from_points(points, 500, 20)
+    @test length(pts) == 4
+    # collinear points (all same y)
+    pts2 = GadgetSearch._layout_from_points([(0.0, 0.0), (1.0, 0.0)], 500, 20)
+    @test length(pts2) == 2
+end
+

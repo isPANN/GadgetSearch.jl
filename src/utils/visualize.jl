@@ -12,8 +12,10 @@ function _scale_values_with_margin(xvals, yvals, xmax_abs_val, ymax_abs_val, mar
     allowed_x_max = xmax_abs_val / 2 - margin
     allowed_y_max = ymax_abs_val / 2 - margin
     
-    scale_factor_x = allowed_x_max / maximum(abs.(xvals))
-    scale_factor_y = allowed_y_max / maximum(abs.(yvals))
+    x_denom = max(maximum(abs.(xvals)), eps(Float64))
+    y_denom = max(maximum(abs.(yvals)), eps(Float64))
+    scale_factor_x = allowed_x_max / x_denom
+    scale_factor_y = allowed_y_max / y_denom
 
     if preserve_aspect_ratio
         scale_factor = min(scale_factor_x, scale_factor_y)
@@ -340,3 +342,16 @@ function plot_graph(g::SimpleGraph, save_path::String;
     end
     println("Drawing saved as $save_path")
 end
+
+function _layout_from_points(points, plot_size::Int, margin::Int; preserve_aspect_ratio::Bool=true)
+    x_vals = [p[1] for p in points]
+    y_vals = [p[2] for p in points]
+    x_min, x_max = minimum(x_vals), maximum(x_vals)
+    y_min, y_max = minimum(y_vals), maximum(y_vals)
+    map_xcoordinates, map_ycoordinates = _map_to_symmetric_range(x_min, x_max, y_min, y_max)
+    x_new_vals = map_xcoordinates.(x_vals)
+    y_new_vals = map_ycoordinates.(y_vals)
+    x_scale_factor, y_scale_factor = _scale_values_with_margin(x_new_vals, y_new_vals, plot_size, plot_size, margin, preserve_aspect_ratio)
+    return [Point(x*x_scale_factor, y*y_scale_factor) for (x, y) in zip(x_new_vals, y_new_vals)]
+end
+

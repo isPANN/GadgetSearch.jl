@@ -1,16 +1,14 @@
 using GadgetSearch
 using Graphs
-using GraphIO
 using Test
 
-# Build CROSS graph: 4 vertices, edges 1-3 and 2-4
 function _cross_graph()
     g = SimpleGraph(4)
-    add_edge!(g, 1, 3); add_edge!(g, 2, 4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 2, 4)
     return g
 end
 
-# Build BATOIDEA graph: 11-vertex replacement for CROSS (Figure 6 in the paper)
 function _batoidea_graph()
     g = SimpleGraph(11)
     add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
@@ -26,39 +24,105 @@ function _batoidea_graph()
     return g
 end
 
-# Encode a graph to a Graph6 string (strips the >>graph6<< header)
+function _edge_graph()
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+    return g
+end
+
+function _connected_graph()
+    g = SimpleGraph(4)
+    add_edge!(g, 1, 3)
+    add_edge!(g, 1, 4)
+    add_edge!(g, 2, 4)
+    add_edge!(g, 3, 4)
+    return g
+end
+
+function _isolated_graph()
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2)
+    return g
+end
+
 function _to_g6(g)
-    return GraphIO.Graph6._graphToG6String(g)[11:end]
+    return graph_to_g6(g)
 end
 
-@testset "make_unweighted_filter: CROSS → BATOIDEA" begin
-    cross = _cross_graph()
-    batoidea = _batoidea_graph()
+@testset "Unweighted Search" begin
+    @testset "search_unweighted_gadgets: basic" begin
+        cross = _cross_graph()
+        batoidea = _batoidea_graph()
+        loader = GraphLoader(
+            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
+            pinset=[1, 2, 3, 4],
+        )
+        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
+        @test results isa Vector{UnweightedGadget}
+        @test any(r -> r.constant_offset == 0.0, results)
+        @test any(r -> r.constant_offset == 2.0, results)
+        @test all(r -> r.pattern_graph == cross, results)
+        @test !hasproperty(UnweightedGadget, :target_index)
+    end
 
-    # Build a loader containing only BATOIDEA
-    loader = GraphLoader(GraphDataset([_to_g6(batoidea)]))
+    @testset "search_unweighted_gadgets: limit and max_results" begin
+        cross = _cross_graph()
+        batoidea = _batoidea_graph()
+        loader = GraphLoader(
+            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
+            pinset=[1, 2, 3, 4],
+        )
+        limited = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; limit=1)
+        @test length(limited) == 1
+        @test limited[1].constant_offset == 0.0
+        capped = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; max_results=1)
+        @test length(capped) == 1
+    end
 
-    filter_fn = make_unweighted_filter(cross, [1, 2, 3, 4])
-    result = filter_fn(batoidea, nothing, nothing)
+    @testset "search_unweighted_gadgets: prefilter rejects disconnected pin coverage" begin
+        loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
+        edge = _edge_graph()
+        results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
+        results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
+        @test isempty(results_on)
+        @test length(results_off) == 1
+    end
 
-    @test result !== nothing
-    @test result isa UnweightedGadget
-    @test result.boundary_vertices == [1, 2, 3, 4]
-    @test result.constant_offset == 2.0
+    @testset "UnweightedGadget has no target_index" begin
+        @test !(:target_index in fieldnames(UnweightedGadget))
+    end
+
+    @testset "inf_mask (internal)" begin
+        @test GadgetSearch.inf_mask([0.0, -Inf, 3.0, -Inf]) == BigInt(10)
+        @test GadgetSearch.inf_mask(fill(-Inf, 4)) == BigInt(15)
+        reduced = calculate_reduced_alpha_tensor(_cross_graph(), [1, 2, 3, 4])
+        @test GadgetSearch.inf_mask(reduced) == BigInt(60576)
+    end
+
+    @testset "pins_prefilter (internal)" begin
+        connected = _connected_graph()
+        disconnected = _cross_graph()
+        isolated = _isolated_graph()
+        @test GadgetSearch.pins_prefilter(connected, [1])
+        @test GadgetSearch.pins_prefilter(disconnected, [1, 2])
+        @test !GadgetSearch.pins_prefilter(disconnected, [1])
+        @test !GadgetSearch.pins_prefilter(isolated, [1])
+        @test GadgetSearch.pins_prefilter(isolated, [1, 3])
+        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [1, 1])
+        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [0])
+    end
+
+    @testset "Triangular UDG Integration" begin
+        path = tempname() * ".g6"
+        try
+            generate_full_grid_udg(Triangular(), 1, 1; path=path)
+            loader = GraphLoader(path; pinset=[1, 2, 3, 4])
+            target = loader[1]
+            results = search_unweighted_gadgets(target, [1, 2, 3, 4], loader; limit=1, max_results=1)
+            @test length(results) == 1
+            @test results[1].constant_offset == 0.0
+        finally
+            isfile(path) && rm(path)
+        end
+    end
 end
-
-@testset "search_unweighted_gadgets: finds BATOIDEA as replacement for CROSS" begin
-    cross = _cross_graph()
-    batoidea = _batoidea_graph()
-
-    # Loader with two graphs: CROSS itself (offset 0) and BATOIDEA (offset +2)
-    loader = GraphLoader(GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-                         pinset=[1, 2, 3, 4])
-
-    results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
-
-    @test length(results) >= 1
-    # BATOIDEA should appear with constant_offset == 2.0
-    @test any(r -> r.constant_offset == 2.0, results)
-end
-

@@ -32,6 +32,7 @@ include("utils/visualize.jl")
 
 export GraphDataset
 export GraphLoader
+export graph_to_g6
 export find_matching_gadget
 export search_by_truth_tables
 export save_cache
@@ -63,7 +64,6 @@ export plot_gadget
 export clear_cache!
 export get_cache_stats
 export check_gadget, check_gadget_rydberg, check_gadget_qubo
-
 # Alpha tensor
 export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor
@@ -72,7 +72,6 @@ export is_gadget_replacement
 
 # Unweighted search
 export UnweightedGadget
-export make_unweighted_filter
 export search_unweighted_gadgets
 
 end # module

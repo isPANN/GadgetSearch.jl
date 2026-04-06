@@ -1,7 +1,7 @@
 function save_graph(g::Vector{SimpleGraph{T}}, path::String) where T
     open(path, "w") do io
         for graph in g
-            println(io, GraphIO.Graph6._graphToG6String(graph))
+            println(io, graph_to_g6(graph; include_header=true))
         end
     end
     return path
@@ -10,7 +10,7 @@ end
 function save_graph(g::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String; g6_only::Bool=false) where T
     open(path, "w") do io
         for (graph, coords) in g
-            g6 = GraphIO.Graph6._graphToG6String(graph)[11:end]
+            g6 = graph_to_g6(graph)
             if !g6_only
                 coord_str = join(["($(x),$(y))" for (x, y) in coords], ";")
                 println(io, g6, " ", coord_str)

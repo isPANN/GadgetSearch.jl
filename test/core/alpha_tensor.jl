@@ -1,6 +1,6 @@
 using GadgetSearch
 using Graphs
-using GenericTensorNetworks: content, Tropical
+using GenericTensorNetworks: content
 using Test
 
 # Helper to build the CROSS graph: 4 vertices with two crossing edges {1-3, 2-4}
@@ -72,8 +72,7 @@ end
 @testset "Figure 1 right graph: reduced alpha tensor against Table 1" begin
     g = make_figure1_right_graph()
     boundary = [1, 2, 3, 4]
-    reduced = calculate_reduced_alpha_tensor(g, boundary)
-    vals = content.(reduced)
+    vals = calculate_reduced_alpha_tensor(g, boundary)
     @test vals[1,1,1,1] == 0.0
     @test vals[1,1,1,2] == 1.0
     @test vals[1,1,2,1] == 1.0
@@ -142,8 +141,7 @@ end
 @testset "Figure 1 left graph: reduced alpha tensor against Table 1" begin
     g = make_figure1_left_graph()
     boundary = [1, 2, 3, 4]
-    reduced = calculate_reduced_alpha_tensor(g, boundary)
-    vals = content.(reduced)
+    vals = calculate_reduced_alpha_tensor(g, boundary)
 
     # Verify against Table 1 from the paper (α̃(R) column)
     # Indexing: (s1+1, s2+1, s3+1, s4+1) for boundary config s1s2s3s4
@@ -185,10 +183,10 @@ end
     valid3, _ = is_diff_by_constant(t5, t6)
     @test valid3 == false
 
-    # All -Inf → assertion error (callers should guard against this)
+    # All -Inf → explicit argument error
     t7 = [-Inf, -Inf]
     t8 = [-Inf, -Inf]
-    @test_throws AssertionError is_diff_by_constant(t7, t8)
+    @test_throws ArgumentError is_diff_by_constant(t7, t8)
 
     # Tensors with different sizes → throw
     t9 = [3.0, 4.0, -Inf, 5.0]
