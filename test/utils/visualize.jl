@@ -36,9 +36,19 @@ end
     rm(pdf1; force=true)
 end
 
-@testset "plot_gadget: shape-aware grid" begin
+@testset "plot_gadget: shape-aware grid (strings)" begin
     gadget = _make_sample_gadget()
     for s in ["grid", "KSG", "TLSG"]
+        path = tempname() * ".svg"
+        GadgetSearch.plot_gadget(gadget, path; shape=s, background_grid=true)
+        @test isfile(path)
+        rm(path; force=true)
+    end
+end
+
+@testset "plot_gadget: shape-aware grid (types)" begin
+    gadget = _make_sample_gadget()
+    for s in [GadgetSearch.GridSG(), GadgetSearch.KSG(), GadgetSearch.TLSG()]
         path = tempname() * ".svg"
         GadgetSearch.plot_gadget(gadget, path; shape=s, background_grid=true)
         @test isfile(path)

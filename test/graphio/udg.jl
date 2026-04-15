@@ -27,8 +27,8 @@ using Graphs
 end
 
 @testset "get_shape Function" begin
-    @test GadgetSearch.get_shape(Square()) == "KSG"
-    @test GadgetSearch.get_shape(Triangular()) == "TLSG"
+    @test GadgetSearch.get_shape(Square()) isa GadgetSearch.KSG
+    @test GadgetSearch.get_shape(Triangular()) isa GadgetSearch.TLSG
 end
 
 @testset "unit_disk_graph Function" begin

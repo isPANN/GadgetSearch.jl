@@ -34,8 +34,25 @@ function get_physical_positions(::Triangular, pos::Vector{Tuple{Int, Int}})
     return Vector{Tuple{Float64, Float64}}([(Float64(x) - Float64(y)/2, Float64(y) * sqrt(3)/2) for (x, y) in pos])
 end
 
-get_shape(::Square) = "KSG"
-get_shape(::Triangular) = "TLSG"
+# Grid shape types — describe graph connectivity on a lattice
+abstract type GridShape end
+struct GridSG <: GridShape end    # Grid Sub Graph — 4 neighbors (no diagonals)
+struct KSG <: GridShape end       # King Sub Graph — 8 neighbors (all diagonals)
+struct TLSG <: GridShape end      # Triangular Lattice Sub Graph — 6 neighbors
+
+function parse_shape(s::String)
+    s == "grid" && return GridSG()
+    s == "KSG" && return KSG()
+    s == "TLSG" && return TLSG()
+    error("Unknown shape: $s")
+end
+
+shape_name(::GridSG) = "grid"
+shape_name(::KSG) = "KSG"
+shape_name(::TLSG) = "TLSG"
+
+get_shape(::Square) = KSG()
+get_shape(::Triangular) = TLSG()
 
 function get_pin_positions(::LatticeType, nx::Int, ny::Int)
     top    = Tuple{Int, Int}[(1, y)     for y in 2:ny+1]
@@ -91,8 +108,8 @@ function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::
     int_pos = vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny])
     n = length(int_pos)
     g = complete_graph(n)
-    shape = get_shape(lattice)
-    results = Tuple{SimpleGraph{Int}, String, Vector{Tuple{Int, Int}}}[(g, shape, int_pos)]
+    sname = shape_name(get_shape(lattice))
+    results = Tuple{SimpleGraph{Int}, String, Vector{Tuple{Int, Int}}}[(g, sname, int_pos)]
     save_graph(results, path)
     @info "Generated complete graph with $n vertices on $(nx)×$(ny) grid"
     return path
@@ -120,14 +137,14 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
     top_candidates, bottom_candidates, left_candidates, right_candidates = get_pin_positions(lattice, nx, ny)
     inner_points = get_inner_points(lattice, nx, ny)
     radius = get_radius(lattice)
-    shape = get_shape(lattice)
+    sname = shape_name(get_shape(lattice))
     results = Tuple{SimpleGraph{Int}, String, Vector{Tuple{Int, Int}}}[]
     for top in top_candidates, bottom in bottom_candidates,
         left in left_candidates, right in right_candidates
         int_pos = vcat([top, right, bottom, left], inner_points)
         physical = get_physical_positions(lattice, int_pos)
         g = unit_disk_graph(physical, radius)
-        push!(results, (g, shape, int_pos))
+        push!(results, (g, sname, int_pos))
     end
     @info "pinset in generated graphs: [1,2,3,4]"
     return _process_and_save_graphs(results, path)

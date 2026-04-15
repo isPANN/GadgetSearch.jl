@@ -40,6 +40,7 @@ export save_graph
 export export_g6
 
 export Square, Triangular, get_shape
+export GridShape, GridSG, KSG, TLSG, parse_shape, shape_name
 export generate_full_grid_udg
 export generate_full_grid_graph
 
