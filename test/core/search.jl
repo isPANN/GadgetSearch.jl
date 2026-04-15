@@ -26,12 +26,14 @@ function create_test_loader()
     
     # Convert to g6 format (simplified for testing)
     g6codes = ["Bw", "C~"]  # These are actual g6 codes for simple graphs
-    layouts = [
+    n = length(g6codes)
+    shapes = Union{Nothing, String}[nothing for _ in 1:n]
+    grid_positions = Union{Nothing, Vector{Tuple{Int, Int}}}[nothing for _ in 1:n]
+    layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[
         [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)],
         [(0.0, 0.0), (1.0, 0.0), (2.0, 0.0), (1.0, 1.0)]
     ]
-    
-    dataset = GadgetSearch.GraphDataset(g6codes, layouts)
+    dataset = GadgetSearch.GraphDataset(g6codes, shapes, grid_positions, layouts, n)
     return GadgetSearch.GraphLoader(dataset, [1, 2, 3], BitVector(undef, 1024), false, 10, nothing, Dict{String, SimpleGraph{Int}}(), String[])
 end
 

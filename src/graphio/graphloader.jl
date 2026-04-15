@@ -1,5 +1,15 @@
+function _compute_physical_positions(shape::String, grid_pos::Vector{Tuple{Int, Int}})
+    if shape == "TLSG"
+        return Tuple{Float64, Float64}[(Float64(x) - Float64(y)/2, Float64(y) * sqrt(3)/2) for (x, y) in grid_pos]
+    else  # "KSG" or "grid"
+        return Tuple{Float64, Float64}[(Float64(x), Float64(y)) for (x, y) in grid_pos]
+    end
+end
+
 struct GraphDataset
     g6codes::Vector{<:AbstractString}
+    shapes::Vector{Union{Nothing, String}}
+    grid_positions::Vector{Union{Nothing, Vector{Tuple{Int, Int}}}}
     layouts::Vector{Union{Nothing, Vector{Tuple{Float64, Float64}}}}
     n::Int  # number of graphs
 end
@@ -22,43 +32,61 @@ struct LayoutAccessor
     cds::GraphLoader
 end
 
-# Constructors for direct data input
-function GraphDataset(g6codes::Vector{<:AbstractString}, layouts::Union{Nothing, Vector{Vector{Tuple{Float64, Float64}}}})
+function GraphDataset(g6codes::Vector{<:AbstractString},
+                      shapes::Vector{Union{Nothing, String}},
+                      grid_positions::Vector{Union{Nothing, Vector{Tuple{Int, Int}}}})
     n = length(g6codes)
-    if length(layouts) != n
-        throw(ArgumentError("g6codes and layouts must have the same length"))
-    end
-    # Convert to SubString{String} for consistency
+    length(shapes) == n || throw(ArgumentError("g6codes and shapes must have the same length"))
+    length(grid_positions) == n || throw(ArgumentError("g6codes and grid_positions must have the same length"))
     codes_string = String[string(code) for code in g6codes]
-    return GraphDataset(codes_string, layouts, n)
+    layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[]
+    for i in 1:n
+        if shapes[i] !== nothing && grid_positions[i] !== nothing
+            push!(layouts, _compute_physical_positions(shapes[i], grid_positions[i]))
+        else
+            push!(layouts, nothing)
+        end
+    end
+    return GraphDataset(codes_string, shapes, grid_positions, layouts, n)
 end
 
 function GraphDataset(g6codes::Vector{<:AbstractString})
     n = length(g6codes)
-    layouts = fill(nothing, n)
-    # Convert to SubString{String} for consistency  
     codes_string = String[string(code) for code in g6codes]
-    return GraphDataset(codes_string, layouts, n)
+    shapes = Union{Nothing, String}[nothing for _ in 1:n]
+    grid_positions = Union{Nothing, Vector{Tuple{Int, Int}}}[nothing for _ in 1:n]
+    layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[nothing for _ in 1:n]
+    return GraphDataset(codes_string, shapes, grid_positions, layouts, n)
 end
 
-# Constructors for reading from file
-# Each line of the file should contain a g6 code and optionally a layout
 function GraphDataset(path::String)
     codes = String[]
+    shapes = Union{Nothing, String}[]
+    grid_positions = Union{Nothing, Vector{Tuple{Int, Int}}}[]
     layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[]
     for line in eachline(path)
         stripped = strip(line)
         isempty(stripped) && continue
         obj = JSON3.read(stripped)
         push!(codes, String(obj[:g6]))
-        if haskey(obj, :pos) && obj[:pos] !== nothing
-            coords = Tuple{Float64, Float64}[(Float64(p[1]), Float64(p[2])) for p in obj[:pos]]
-            push!(layouts, coords)
+        if haskey(obj, :shape) && obj[:shape] !== nothing
+            shape = String(obj[:shape])
+            push!(shapes, shape)
+            if haskey(obj, :pos) && obj[:pos] !== nothing
+                gpos = Tuple{Int, Int}[(Int(p[1]), Int(p[2])) for p in obj[:pos]]
+                push!(grid_positions, gpos)
+                push!(layouts, _compute_physical_positions(shape, gpos))
+            else
+                push!(grid_positions, nothing)
+                push!(layouts, nothing)
+            end
         else
+            push!(shapes, nothing)
+            push!(grid_positions, nothing)
             push!(layouts, nothing)
         end
     end
-    return GraphDataset(codes, layouts, length(codes))
+    return GraphDataset(codes, shapes, grid_positions, layouts, length(codes))
 end
 
 

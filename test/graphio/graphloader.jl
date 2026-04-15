@@ -5,9 +5,9 @@ using JSON3
 
 function create_test_graph_file()
     lines = [
-        JSON3.write(Dict("g6" => "A_", "pos" => [[0.0, 0.0], [1.0, 0.0]])),
-        JSON3.write(Dict("g6" => "B_", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]])),
-        JSON3.write(Dict("g6" => "C_", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.5, 0.5]]))
+        JSON3.write(Dict("g6" => "A_", "shape" => "grid", "pos" => [[0, 0], [1, 0]])),
+        JSON3.write(Dict("g6" => "B_", "shape" => "grid", "pos" => [[0, 0], [1, 0], [0, 1]])),
+        JSON3.write(Dict("g6" => "C_", "shape" => "grid", "pos" => [[0, 0], [1, 0], [0, 1], [1, 1]]))
     ]
     test_file = tempname() * ".jsonl"
     write(test_file, join(lines, "\n"))
@@ -27,8 +27,8 @@ end
     
     # Test layouts
     @test ds.layouts[1] == [(0.0, 0.0), (1.0, 0.0)]
-    @test ds.layouts[2] == [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
-    @test ds.layouts[3] == [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0), (0.5, 0.5)]
+    @test ds.layouts[2] == [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+    @test ds.layouts[3] == [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
     
     rm(test_file)
 end
@@ -84,35 +84,28 @@ end
     
     # Test layout access
     @test loader.layout[1] == [(0.0, 0.0), (1.0, 0.0)]
-    @test loader.layout[2] == [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
-    @test loader.layout[3] == [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0), (0.5, 0.5)]
-    
-    # Test string key access
+    @test loader.layout[2] == [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+    @test loader.layout[3] == [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0), (1.0, 1.0)]
     @test loader.layout["1"] == [(0.0, 0.0), (1.0, 0.0)]
     
     rm(test_file)
 end
 
-# Test flexible constructors
 @testset "GraphDataset Flexible Constructors" begin
-    # Test constructor with just g6 codes
     g6_codes = ["A_", "B_"]
     ds1 = GraphDataset(g6_codes)
-    
     @test ds1.n == 2
     @test length(ds1.g6codes) == 2
     @test ds1.g6codes[1] == "A_"
     @test all(layout === nothing for layout in ds1.layouts)
-    
-    # Test constructor with g6 codes and layouts
-    layouts = [[(0.0, 0.0), (1.0, 0.0)], [(0.0, 0.0), (1.0, 1.0)]]
-    ds2 = GraphDataset(g6_codes, layouts)
-    
+
+    shapes = Union{Nothing, String}["grid", "grid"]
+    gpos = Union{Nothing, Vector{Tuple{Int, Int}}}[[(0, 0), (1, 0)], [(0, 0), (1, 1)]]
+    ds2 = GraphDataset(g6_codes, shapes, gpos)
     @test ds2.n == 2
     @test ds2.layouts[1] == [(0.0, 0.0), (1.0, 0.0)]
     @test ds2.layouts[2] == [(0.0, 0.0), (1.0, 1.0)]
-    
-    # Test GraphLoader with GraphDataset
+
     loader = GraphLoader(ds2)
     @test length(loader) == 2
     @test loader.layout[1] == [(0.0, 0.0), (1.0, 0.0)]
@@ -163,9 +156,12 @@ end
     @test_throws ErrorException loader["abc"]  # not a valid integer
 end
 
-# Test GraphDataset mismatched lengths
-@testset "GraphDataset - mismatched g6codes and layouts" begin
-    @test_throws ArgumentError GraphDataset(["A_", "Bw"], [[(0.0, 0.0), (1.0, 0.0)]])
+@testset "GraphDataset - mismatched lengths" begin
+    @test_throws ArgumentError GraphDataset(
+        ["A_", "Bw"],
+        Union{Nothing, String}["grid"],
+        Union{Nothing, Vector{Tuple{Int, Int}}}[[(0,0), (1,0)]]
+    )
 end
 
 # Test GraphLoader show method
@@ -207,6 +203,8 @@ end
     ds = GraphDataset(test_file)
     @test ds.n == 1
     @test ds.g6codes[1] == "A_"
+    @test ds.shapes[1] === nothing
+    @test ds.grid_positions[1] === nothing
     @test ds.layouts[1] === nothing
     rm(test_file)
 end
@@ -217,6 +215,8 @@ end
     write(test_file, join(lines, "\n"))
     ds = GraphDataset(test_file)
     @test ds.n == 2
+    @test ds.shapes[1] === nothing
+    @test ds.shapes[2] === nothing
     @test ds.layouts[1] === nothing
     @test ds.layouts[2] === nothing
     rm(test_file)
@@ -224,10 +224,10 @@ end
 
 @testset "GraphDataset - blank lines in file" begin
     lines = [
-        JSON3.write(Dict("g6" => "A_", "pos" => [[0.0, 0.0], [1.0, 0.0]])),
+        JSON3.write(Dict("g6" => "A_", "shape" => "grid", "pos" => [[0, 0], [1, 0]])),
         "",
         "   ",
-        JSON3.write(Dict("g6" => "Bw", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]]))
+        JSON3.write(Dict("g6" => "Bw", "shape" => "grid", "pos" => [[0, 0], [1, 0], [0, 1]]))
     ]
     test_file = tempname() * ".jsonl"
     write(test_file, join(lines, "\n"))
@@ -392,4 +392,43 @@ end
         @test_throws ArgumentError GadgetSearch._parse_vertex_count("")
         @test_throws ArgumentError GadgetSearch._parse_vertex_count("~~")
     end
+end
+
+@testset "GraphDataset - shape field" begin
+    lines = [
+        JSON3.write(Dict("g6" => "A_", "shape" => "TLSG", "pos" => [[0, 0], [1, 0]])),
+        JSON3.write(Dict("g6" => "Bw", "shape" => "KSG", "pos" => [[0, 0], [1, 0], [0, 1]])),
+        JSON3.write(Dict("g6" => "A_"))
+    ]
+    test_file = tempname() * ".jsonl"
+    write(test_file, join(lines, "\n"))
+    ds = GraphDataset(test_file)
+    @test ds.n == 3
+    @test ds.shapes[1] == "TLSG"
+    @test ds.shapes[2] == "KSG"
+    @test ds.shapes[3] === nothing
+    @test ds.grid_positions[1] == [(0, 0), (1, 0)]
+    @test ds.grid_positions[2] == [(0, 0), (1, 0), (0, 1)]
+    @test ds.grid_positions[3] === nothing
+    @test ds.layouts[1] !== nothing
+    @test ds.layouts[1][1] == (0.0, 0.0)
+    @test ds.layouts[1][2] == (1.0, 0.0)
+    @test ds.layouts[2] !== nothing
+    @test ds.layouts[2][3] == (0.0, 1.0)
+    @test ds.layouts[3] === nothing
+    rm(test_file)
+end
+
+@testset "GraphDataset - TLSG physical positions" begin
+    lines = [
+        JSON3.write(Dict("g6" => "A_", "shape" => "TLSG", "pos" => [[0, 1], [1, 1]]))
+    ]
+    test_file = tempname() * ".jsonl"
+    write(test_file, join(lines, "\n"))
+    ds = GraphDataset(test_file)
+    @test ds.layouts[1][1][1] ≈ -0.5
+    @test ds.layouts[1][1][2] ≈ sqrt(3)/2
+    @test ds.layouts[1][2][1] ≈ 0.5
+    @test ds.layouts[1][2][2] ≈ sqrt(3)/2
+    rm(test_file)
 end
