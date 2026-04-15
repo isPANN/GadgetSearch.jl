@@ -86,54 +86,11 @@ function _filter_zero_weights(gadget::Gadget)
             new_edge_weights, new_edge_list)
 end
 
-function _draw_lattice_grid(shape::GridShape, x_centered, y_centered, sx, sy)
-    x_lo = minimum(x_centered) - 0.5
-    x_hi = maximum(x_centered) + 0.5
-    y_lo = minimum(y_centered) - 0.5
-    y_hi = maximum(y_centered) + 0.5
-    to_pt(x, y) = Point(x * sx, -y * sy)
-    sethue("gray")
-    setline(0.3)
-    y_min_i = floor(Int, minimum(y_centered) - 1)
-    y_max_i = ceil(Int, maximum(y_centered) + 1)
-    x_min_i = floor(Int, minimum(x_centered) - 1)
-    x_max_i = ceil(Int, maximum(x_centered) + 1)
-    for yi in y_min_i:y_max_i
-        line(to_pt(x_lo, Float64(yi)), to_pt(x_hi, Float64(yi)), :stroke)
-    end
-    for xi in x_min_i:x_max_i
-        line(to_pt(Float64(xi), y_lo), to_pt(Float64(xi), y_hi), :stroke)
-    end
-    _draw_diagonals(shape, to_pt, x_lo, x_hi, y_lo, y_hi, x_min_i, x_max_i, y_min_i, y_max_i)
-end
-
-_draw_diagonals(::GridSG, args...) = nothing
-
-function _draw_diagonals(::KSG, to_pt, x_lo, x_hi, y_lo, y_hi, x_min_i, x_max_i, y_min_i, y_max_i)
-    for c in (x_min_i - y_max_i):(x_max_i - y_min_i)
-        line(to_pt(x_lo, x_lo - c), to_pt(x_hi, x_hi - c), :stroke)
-    end
-    for c in (x_min_i + y_min_i):(x_max_i + y_max_i)
-        line(to_pt(x_lo, c - x_lo), to_pt(x_hi, c - x_hi), :stroke)
-    end
-end
-
-function _draw_diagonals(::TLSG, to_pt, x_lo, x_hi, y_lo, y_hi, x_min_i, x_max_i, _, _)
-    inv3 = 1.0 / sqrt(3)
-    for c in (x_min_i - 1):(x_max_i + 1)
-        xa = Float64(c) + y_lo * inv3
-        xb = Float64(c) + y_hi * inv3
-        line(to_pt(xa, y_lo), to_pt(xb, y_hi), :stroke)
-    end
-end
-
 # ----- Public API -----
 
 function plot_gadget(gadget::Gadget, save_path::String;
-                     shape::Union{Nothing, String, GridShape}=nothing,
                      plot_size=400, margin=30,
                      preserve_aspect_ratio=true,
-                     background_grid=false,
                      show_weights=true,
                      show_edge_weights=true,
                      round_weights=false,
@@ -144,28 +101,8 @@ function plot_gadget(gadget::Gadget, save_path::String;
     pts = _positions_to_layout(pos, plot_size, margin; preserve_aspect_ratio=preserve_aspect_ratio)
     node_colors = _generate_vertex_color(weights, discrete_color_scheme, continuous_color_scheme)
     has_ew = !isempty(edge_weights)
-    # Compute centered coords for grid drawing
-    x_vals = [p[1] for p in pos]
-    y_vals = [p[2] for p in pos]
-    x_center = (minimum(x_vals) + maximum(x_vals)) / 2
-    y_center = (minimum(y_vals) + maximum(y_vals)) / 2
-    xc = x_vals .- x_center
-    yc = y_vals .- y_center
-    allowed = plot_size / 2 - margin
-    x_ext = max(maximum(abs.(xc)), eps(Float64))
-    y_ext = max(maximum(abs.(yc)), eps(Float64))
-    sx = allowed / x_ext
-    sy = allowed / y_ext
-    if preserve_aspect_ratio
-        s = min(sx, sy)
-        sx, sy = s, s
-    end
     _with_drawing(save_path, plot_size, plot_size) do
         background("white")
-        if background_grid && shape !== nothing
-            gs = shape isa String ? parse_shape(shape) : shape
-            _draw_lattice_grid(gs, xc, yc, sx, sy)
-        end
         sethue("black")
         # Edge weight map for QUBO
         edge_weight_map = Dict{Tuple{Int,Int}, Float64}()
