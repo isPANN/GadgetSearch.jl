@@ -44,62 +44,20 @@ end
 # Constructors for reading from file
 # Each line of the file should contain a g6 code and optionally a layout
 function GraphDataset(path::String)
-    raw = read(path, String)
-    codes = SubString{String}[]
+    codes = String[]
     layouts = Union{Nothing, Vector{Tuple{Float64, Float64}}}[]
-    i = 1; line_start = 1
-    len = lastindex(raw)
-
-    while line_start <= len
-        line_end = findnext(==('\n'), raw, line_start)
-        line_end === nothing && (line_end = len)
-
-        # Trim leading/trailing space
-        start = line_start
-        stop  = line_end
-        while start <= stop && isspace(raw[start])
-            start += 1
+    for line in eachline(path)
+        stripped = strip(line)
+        isempty(stripped) && continue
+        obj = JSON3.read(stripped)
+        push!(codes, String(obj[:g6]))
+        if haskey(obj, :pos) && obj[:pos] !== nothing
+            coords = Tuple{Float64, Float64}[(Float64(p[1]), Float64(p[2])) for p in obj[:pos]]
+            push!(layouts, coords)
+        else
+            push!(layouts, nothing)
         end
-        while stop >= start && isspace(raw[stop])
-            stop -= 1
-        end
-
-        if start <= stop
-            line = @view raw[start:stop]
-            sep = findfirst(isspace, line)
-            g6 = sep === nothing ? line : @view line[1:sep-1]
-            push!(codes, g6)
-
-            if sep === nothing
-                push!(layouts, nothing)
-            else
-                coords_str = String(line[sep+1:end])
-                coord_parts = split(coords_str, ';')
-                parsed_coords = Tuple{Float64, Float64}[]
-                valid = true
-                for part in coord_parts
-                    m = match(r"\(?\s*([-+eE.\d]+)\s*,\s*([-+eE.\d]+)\s*\)?", part)
-                    if m === nothing
-                        valid = false
-                        break
-                    end
-                    x = tryparse(Float64, m.captures[1])
-                    y = tryparse(Float64, m.captures[2])
-                    if x === nothing || y === nothing
-                        valid = false
-                        break
-                    end
-                    push!(parsed_coords, (x, y))
-                end
-                push!(layouts, valid ? parsed_coords : nothing)
-            end
-
-            i += 1
-        end
-
-        line_start = line_end + 1
     end
-
     return GraphDataset(codes, layouts, length(codes))
 end
 

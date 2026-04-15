@@ -1,14 +1,16 @@
 using Test
 using GadgetSearch
 using Graphs
+using JSON3
 
-# Create a temporary test file with some graph data
 function create_test_graph_file()
-    test_data = """A_ (0.0, 0.0); (1.0, 0.0)
-B_ (0.0, 0.0); (1.0, 0.0); (0.5, 1.0)
-C_ (0.0, 0.0); (1.0, 0.0); (0.5, 1.0); (0.5, 0.5)"""
-    test_file = tempname()
-    write(test_file, test_data)
+    lines = [
+        JSON3.write(Dict("g6" => "A_", "pos" => [[0.0, 0.0], [1.0, 0.0]])),
+        JSON3.write(Dict("g6" => "B_", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]])),
+        JSON3.write(Dict("g6" => "C_", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.5, 0.5]]))
+    ]
+    test_file = tempname() * ".jsonl"
+    write(test_file, join(lines, "\n"))
     return test_file
 end
 
@@ -198,43 +200,39 @@ end
     @test nv(g) == 2
 end
 
-# Test file with invalid coordinates
-@testset "GraphDataset - invalid coordinates in file" begin
-    test_data = "A_ not_a_coordinate"
-    test_file = tempname()
+@testset "GraphDataset - no pos key" begin
+    test_data = JSON3.write(Dict("g6" => "A_"))
+    test_file = tempname() * ".jsonl"
     write(test_file, test_data)
-
     ds = GraphDataset(test_file)
     @test ds.n == 1
     @test ds.g6codes[1] == "A_"
-    @test ds.layouts[1] === nothing  # invalid coords → nothing
-
+    @test ds.layouts[1] === nothing
     rm(test_file)
 end
 
-# Test file with g6-only lines (no coordinates)
 @testset "GraphDataset - g6 only lines" begin
-    test_data = "A_\nBw"
-    test_file = tempname()
-    write(test_file, test_data)
-
+    lines = [JSON3.write(Dict("g6" => "A_")), JSON3.write(Dict("g6" => "Bw"))]
+    test_file = tempname() * ".jsonl"
+    write(test_file, join(lines, "\n"))
     ds = GraphDataset(test_file)
     @test ds.n == 2
     @test ds.layouts[1] === nothing
     @test ds.layouts[2] === nothing
-
     rm(test_file)
 end
 
-# Test file with blank/whitespace lines
 @testset "GraphDataset - blank lines in file" begin
-    test_data = "A_ (0.0,0.0);(1.0,0.0)\n\n   \nBw (0.0,0.0);(1.0,0.0);(0.5,1.0)"
-    test_file = tempname()
-    write(test_file, test_data)
-
+    lines = [
+        JSON3.write(Dict("g6" => "A_", "pos" => [[0.0, 0.0], [1.0, 0.0]])),
+        "",
+        "   ",
+        JSON3.write(Dict("g6" => "Bw", "pos" => [[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]]))
+    ]
+    test_file = tempname() * ".jsonl"
+    write(test_file, join(lines, "\n"))
     ds = GraphDataset(test_file)
-    @test ds.n == 2  # blank lines skipped
-
+    @test ds.n == 2
     rm(test_file)
 end
 
