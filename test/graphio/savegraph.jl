@@ -113,3 +113,39 @@ end
         isfile(dst_file) && rm(dst_file; force=true)
     end
 end
+
+@testset "save_graph - with shape and int positions" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 2, 3)
+    shape = "TLSG"
+    pos = [(0, 0), (1, 0), (0, 1)]
+
+    tmp = tempname() * ".jsonl"
+    try
+        save_graph([(g, shape, pos)], tmp)
+        lines = readlines(tmp)
+        obj = JSON3.read(lines[1])
+        @test obj[:shape] == "TLSG"
+        @test obj[:pos] == [[0, 0], [1, 0], [0, 1]]
+    finally
+        isfile(tmp) && rm(tmp; force=true)
+    end
+end
+
+@testset "save_graph - g6 string with shape" begin
+    g6 = "Bw"
+    shape = "KSG"
+    pos = [(0, 0), (1, 0), (0, 1)]
+
+    tmp = tempname() * ".jsonl"
+    try
+        save_graph([(g6, shape, pos)], tmp)
+        lines = readlines(tmp)
+        obj = JSON3.read(lines[1])
+        @test obj[:g6] == "Bw"
+        @test obj[:shape] == "KSG"
+        @test obj[:pos] == [[0, 0], [1, 0], [0, 1]]
+    finally
+        isfile(tmp) && rm(tmp; force=true)
+    end
+end

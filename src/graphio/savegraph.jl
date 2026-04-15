@@ -30,6 +30,28 @@ function save_graph(g::Vector{Tuple{S, Vector{Tuple{Float64, Float64}}}}, path::
     return path
 end
 
+function save_graph(g::Vector{Tuple{SimpleGraph{T}, String, Vector{Tuple{Int, Int}}}}, path::String) where T
+    open(path, "w") do io
+        for (graph, shape, pos) in g
+            obj = Dict("g6" => graph_to_g6(graph), "shape" => shape, "pos" => [[x, y] for (x, y) in pos])
+            JSON3.write(io, obj)
+            println(io)
+        end
+    end
+    return path
+end
+
+function save_graph(g::Vector{Tuple{S, String, Vector{Tuple{Int, Int}}}}, path::String) where S<:AbstractString
+    open(path, "w") do io
+        for (g6, shape, pos) in g
+            obj = Dict("g6" => String(g6), "shape" => shape, "pos" => [[x, y] for (x, y) in pos])
+            JSON3.write(io, obj)
+            println(io)
+        end
+    end
+    return path
+end
+
 """
     export_g6(jsonl_path::String, g6_path::String) -> String
 
