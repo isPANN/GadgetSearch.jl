@@ -24,43 +24,6 @@ using JSON3
     end
 end
 
-@testset "save_graph - Vector{Tuple{SimpleGraph, positions}} JSONL" begin
-    g = SimpleGraph(3)
-    add_edge!(g, 1, 2)
-    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
-
-    tmp = tempname() * ".jsonl"
-    try
-        result = save_graph([(g, pos)], tmp)
-        @test result == tmp
-        lines = readlines(tmp)
-        obj = JSON3.read(lines[1])
-        @test haskey(obj, :g6)
-        @test haskey(obj, :pos)
-        @test length(obj[:pos]) == 3
-        @test obj[:pos][1] == [0.0, 0.0]
-    finally
-        isfile(tmp) && rm(tmp; force=true)
-    end
-end
-
-@testset "save_graph - Vector{Tuple{AbstractString, positions}} JSONL" begin
-    g6 = "Bw"
-    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
-
-    tmp = tempname() * ".jsonl"
-    try
-        result = save_graph([(g6, pos)], tmp)
-        @test result == tmp
-        lines = readlines(tmp)
-        obj = JSON3.read(lines[1])
-        @test obj[:g6] == "Bw"
-        @test obj[:pos][1] == [0.0, 0.0]
-    finally
-        isfile(tmp) && rm(tmp; force=true)
-    end
-end
-
 @testset "save_graph - empty vector" begin
     tmp = tempname() * ".jsonl"
     try
@@ -75,12 +38,11 @@ end
 @testset "export_g6 - extracts pure g6 lines" begin
     g = SimpleGraph(3)
     add_edge!(g, 1, 2); add_edge!(g, 2, 3)
-    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
 
     src_file = tempname() * ".jsonl"
     dst_file = tempname() * ".g6"
     try
-        save_graph([(g, pos)], src_file)
+        save_graph([(g, "grid", [(0, 0), (1, 0), (0, 1)])], src_file)
         export_g6(src_file, dst_file)
         lines = readlines(dst_file)
         @test length(lines) == 1
