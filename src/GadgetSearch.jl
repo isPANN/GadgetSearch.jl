@@ -39,7 +39,7 @@ export save_cache
 export save_graph
 export export_g6
 
-export Square, Triangular
+export Square, Triangular, get_shape
 export generate_full_grid_udg
 export generate_full_grid_graph
 

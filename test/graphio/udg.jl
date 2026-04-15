@@ -18,12 +18,17 @@ using Graphs
     @testset "get_radius Function" begin
         # Test radius values for different lattice types
         @test get_radius(Square()) == 1.5
-        @test get_radius(Triangular()) == 1.1
+        @test get_radius(Triangular()) == 1.5
         
         # Test return type is Float64
         @test typeof(get_radius(Square())) == Float64
         @test typeof(get_radius(Triangular())) == Float64
     end
+end
+
+@testset "get_shape Function" begin
+    @test GadgetSearch.get_shape(Square()) == "KSG"
+    @test GadgetSearch.get_shape(Triangular()) == "TLSG"
 end
 
 @testset "unit_disk_graph Function" begin
@@ -87,21 +92,18 @@ end
         triangular = Triangular()
         pos = [(1, 1), (2, 1), (1, 2), (2, 2)]
         physical_pos = GadgetSearch.get_physical_positions(triangular, pos)
-        
-        h = sqrt(3) / 2  # triangular lattice height factor
-        
-        # Check expected transformations
+
+        # New transform: (x - y/2, y * √3/2)
         expected = [
-            (1.0 + 0.5, 1 * h),  # (1,1) -> odd y, add 0.5 to x
-            (2.0 + 0.5, 1 * h),        # (2,1) -> odd y, add 0.5 to x  
-            (1.0, 2 * h),        # (1,2) -> even y, no x offset
-            (2.0, 2 * h)   # (2,2) -> even y, no x offset
+            (1.0 - 0.5, sqrt(3)/2),   # (1,1) -> (0.5, √3/2)
+            (2.0 - 0.5, sqrt(3)/2),   # (2,1) -> (1.5, √3/2)
+            (1.0 - 1.0, sqrt(3)),     # (1,2) -> (0.0, √3)
+            (2.0 - 1.0, sqrt(3))      # (2,2) -> (1.0, √3)
         ]
-        
+
         @test length(physical_pos) == 4
         @test typeof(physical_pos) == Vector{Tuple{Float64, Float64}}
-        
-        # Test individual coordinates with tolerance for floating point
+
         for (i, (actual, exp)) in enumerate(zip(physical_pos, expected))
             @test actual[1] ≈ exp[1] atol=1e-10
             @test actual[2] ≈ exp[2] atol=1e-10
@@ -114,42 +116,33 @@ end
         square = Square()
         nx, ny = 2, 2
         top, bottom, left, right = GadgetSearch.get_pin_positions(square, nx, ny)
-        
-        # Test that we get the right number of positions
+
         @test length(top) == ny
         @test length(bottom) == ny
         @test length(left) == nx
         @test length(right) == nx
-        
-        # Test specific positions for nx=2, ny=2
-        # Top: (1, y) for y in 2:3
-        @test top == [(1.0, 2.0), (1.0, 3.0)]
-        # Bottom: (4, y) for y in 2:3  
-        @test bottom == [(4.0, 2.0), (4.0, 3.0)]
-        # Left: (x, 1) for x in 2:3
-        @test left == [(2.0, 1.0), (3.0, 1.0)]
-        # Right: (x, 4) for x in 2:3
-        @test right == [(2.0, 4.0), (3.0, 4.0)]
+
+        # Now returns integer tuples
+        @test top == [(1, 2), (1, 3)]
+        @test bottom == [(4, 2), (4, 3)]
+        @test left == [(2, 1), (3, 1)]
+        @test right == [(2, 4), (3, 4)]
     end
-    
+
     @testset "Triangular Lattice Pin Positions" begin
         triangular = Triangular()
         nx, ny = 1, 1
         top, bottom, left, right = GadgetSearch.get_pin_positions(triangular, nx, ny)
-        
-        h = sqrt(3) / 2
-        
-        # For nx=1, ny=1, we should get one position for each side
+
+        # Returns integer tuples (same for all lattice types)
         @test length(top) == 1
         @test length(bottom) == 1
         @test length(left) == 1
         @test length(right) == 1
-        
-        # Check that positions are properly transformed for triangular lattice
-        @test top[1][2] ≈ 2 * h  # y=2 -> 2*h
-        @test bottom[1][2] ≈ 2 * h  # y=2 -> 2*h
-        @test left[1][2] ≈ 1 * h  # y=1 -> 1*h
-        @test right[1][2] ≈ 3 * h  # y=3 -> 3*h
+        @test top[1] == (1, 2)
+        @test bottom[1] == (3, 2)
+        @test left[1] == (2, 1)
+        @test right[1] == (2, 3)
     end
 end
 
@@ -158,35 +151,26 @@ end
         square = Square()
         nx, ny = 2, 2
         inner_points = GadgetSearch.get_inner_points(square, nx, ny)
-        
-        # For nx=2, ny=2, inner points should be at (x,y) for x in 2:3, y in 2:3
-        expected_points = [(2.0, 2.0), (3.0, 2.0), (2.0, 3.0), (3.0, 3.0)]
-        
+
+        expected_points = [(2, 2), (3, 2), (2, 3), (3, 3)]
         @test length(inner_points) == 4
         @test Set(inner_points) == Set(expected_points)
     end
-    
+
     @testset "Single Inner Point" begin
         square = Square()
         nx, ny = 1, 1
         inner_points = GadgetSearch.get_inner_points(square, nx, ny)
-        
-        # For nx=1, ny=1, should have only one inner point at (2,2)
         @test length(inner_points) == 1
-        @test inner_points[1] == (2.0, 2.0)
+        @test inner_points[1] == (2, 2)
     end
-    
+
     @testset "Triangular Lattice Inner Points" begin
         triangular = Triangular()
         nx, ny = 1, 1
         inner_points = GadgetSearch.get_inner_points(triangular, nx, ny)
-        
-        h = sqrt(3) / 2
-        
         @test length(inner_points) == 1
-        # Point (2,2) in triangular lattice: x=2, y=2 (even) -> (2.0, 2*h)
-        @test inner_points[1][1] ≈ 2.0
-        @test inner_points[1][2] ≈ 2 * h
+        @test inner_points[1] == (2, 2)  # integer, same for all lattices
     end
 end
 

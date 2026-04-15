@@ -27,25 +27,26 @@ struct Square <: LatticeType end
 struct Triangular <: LatticeType end
 
 get_radius(::Square) = 1.5
-get_radius(::Triangular) = 1.1
+get_radius(::Triangular) = 1.5
 
 get_physical_positions(::Square, pos::Vector{Tuple{Int, Int}}) = Vector{Tuple{Float64, Float64}}(pos)
 function get_physical_positions(::Triangular, pos::Vector{Tuple{Int, Int}})
-    h = sqrt(3) / 2
-    return Vector{Tuple{Float64, Float64}}([(x + (isodd(y) ? 0.5 : 0.0), y * h) for (x, y) in pos])
+    return Vector{Tuple{Float64, Float64}}([(Float64(x) - Float64(y)/2, Float64(y) * sqrt(3)/2) for (x, y) in pos])
 end
 
-function get_pin_positions(lattice::LatticeType, nx::Int, ny::Int)
-    top_candidates    = get_physical_positions(lattice, Tuple{Int, Int}[(1, y)     for y in 2:ny+1])
-    bottom_candidates = get_physical_positions(lattice, Tuple{Int, Int}[(nx+2, y)  for y in 2:ny+1])
-    left_candidates   = get_physical_positions(lattice, Tuple{Int, Int}[(x, 1)     for x in 2:nx+1])
-    right_candidates  = get_physical_positions(lattice, Tuple{Int, Int}[(x, ny+2)  for x in 2:nx+1])
-    return top_candidates, bottom_candidates, left_candidates, right_candidates
+get_shape(::Square) = "KSG"
+get_shape(::Triangular) = "TLSG"
+
+function get_pin_positions(::LatticeType, nx::Int, ny::Int)
+    top    = Tuple{Int, Int}[(1, y)     for y in 2:ny+1]
+    bottom = Tuple{Int, Int}[(nx+2, y)  for y in 2:ny+1]
+    left   = Tuple{Int, Int}[(x, 1)     for x in 2:nx+1]
+    right  = Tuple{Int, Int}[(x, ny+2)  for x in 2:nx+1]
+    return top, bottom, left, right
 end
 
-function get_inner_points(lattice::LatticeType, nx::Int, ny::Int)
-    original_points = Tuple{Int, Int}[(x, y) for x in 2:nx+1, y in 2:ny+1]
-    return get_physical_positions(lattice, vec(original_points))
+function get_inner_points(::LatticeType, nx::Int, ny::Int)
+    return vec(Tuple{Int, Int}[(x, y) for x in 2:nx+1, y in 2:ny+1])
 end
 
 """
@@ -87,15 +88,11 @@ Generates a single complete graph on the nx×ny grid. The physical positions
 follow the lattice geometry, but edges connect all pairs of vertices.
 """
 function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.jsonl")
-    # grid points (no boundary expansion)
-    grid_points = get_physical_positions(lattice, 
-        vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny]))
-
-    n = length(grid_points)
+    int_pos = vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny])
+    n = length(int_pos)
     g = complete_graph(n)
-
-    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[(g, grid_points)]
-    
+    shape = get_shape(lattice)
+    results = Tuple{SimpleGraph{Int}, String, Vector{Tuple{Int, Int}}}[(g, shape, int_pos)]
     save_graph(results, path)
     @info "Generated complete graph with $n vertices on $(nx)×$(ny) grid"
     return path
@@ -120,24 +117,17 @@ Generates all possible UDGs by placing pins on boundary positions and
 connecting vertices within unit distance on the specified lattice type.
 """
 function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.jsonl")
-    # get possible pin positions on the boundary
     top_candidates, bottom_candidates, left_candidates, right_candidates = get_pin_positions(lattice, nx, ny)
-
-    # inner points are fixed
     inner_points = get_inner_points(lattice, nx, ny)
-
     radius = get_radius(lattice)
-
-    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[]
-
+    shape = get_shape(lattice)
+    results = Tuple{SimpleGraph{Int}, String, Vector{Tuple{Int, Int}}}[]
     for top in top_candidates, bottom in bottom_candidates,
         left in left_candidates, right in right_candidates
-
-        selected = vcat([top, right, bottom, left], inner_points)
-
-        g = unit_disk_graph(selected, radius)
-
-        push!(results, (g, selected))
+        int_pos = vcat([top, right, bottom, left], inner_points)
+        physical = get_physical_positions(lattice, int_pos)
+        g = unit_disk_graph(physical, radius)
+        push!(results, (g, shape, int_pos))
     end
     @info "pinset in generated graphs: [1,2,3,4]"
     return _process_and_save_graphs(results, path)
@@ -155,7 +145,7 @@ function _call_shortg(temp_path::String, mapping_file::String)
     return true
 end
 
-function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
+function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, String, Vector{Tuple{Int, Int}}}}, path::String) where T
     if Sys.which("shortg") === nothing
         @warn "`shortg` not found in PATH; saving graphs without deduplication."
         save_graph(results, path)
@@ -164,7 +154,7 @@ function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{T
     mapping_file = tempname()
     temp_jsonl = tempname() * ".jsonl"
     temp_g6 = tempname() * ".g6"
-    original_coords = getindex.(results, 2)
+    original_data = [(r[2], r[3]) for r in results]
     save_graph(results, temp_jsonl)
     export_g6(temp_jsonl, temp_g6)
     ok = _call_shortg(temp_g6, mapping_file)
@@ -180,7 +170,7 @@ function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{T
         return path
     end
     canonical_to_original, _ = _parse_shortg_mapping(mapping_file)
-    _write_original_representatives(temp_jsonl, canonical_to_original, original_coords, path)
+    _write_original_representatives(temp_jsonl, canonical_to_original, original_data, path)
     try
         isfile(mapping_file) && rm(mapping_file)
         isfile(temp_jsonl) && rm(temp_jsonl)
@@ -217,15 +207,16 @@ end
 function _write_original_representatives(
     original_file::String,
     canon2orig::Dict{Int, Vector{Int}},
-    orig_coords::Vector{Vector{Tuple{Float64, Float64}}},
+    orig_data::Vector{Tuple{String, Vector{Tuple{Int, Int}}}},
     output_file::String
 )
     original_lines = readlines(original_file)
-    to_be_written = Vector{Tuple{AbstractString, Vector{Tuple{Float64, Float64}}}}()
+    to_be_written = Vector{Tuple{AbstractString, String, Vector{Tuple{Int, Int}}}}()
     for canon_line in sort(collect(keys(canon2orig)))
         orig_line = canon2orig[canon_line][1]
         obj = JSON3.read(original_lines[orig_line])
-        push!(to_be_written, (String(obj[:g6]), orig_coords[orig_line]))
+        shape, int_pos = orig_data[orig_line]
+        push!(to_be_written, (String(obj[:g6]), shape, int_pos))
     end
     save_graph(to_be_written, output_file)
 end
