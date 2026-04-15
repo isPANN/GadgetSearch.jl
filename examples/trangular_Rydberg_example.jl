@@ -24,9 +24,9 @@ truth_tables = [
 
 # Generate Unit Disk Graph dataset on triangular lattice
 # The UDG constraint means only nearby atoms can interact (Rydberg blockade)
-generate_full_grid_udg(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "rydberg_dataset.g6"))
+generate_full_grid_udg(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "rydberg_dataset.jsonl"))
 
-dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "rydberg_dataset.g6"))
+dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "rydberg_dataset.jsonl"))
 
 # Search using RydbergModel explicitly
 # - RydbergModel uses MIS (Maximal Independent Sets) as the state space

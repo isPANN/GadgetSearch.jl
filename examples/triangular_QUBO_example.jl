@@ -25,9 +25,9 @@ constraints = [
 
 # Generate Complete Graph dataset on triangular lattice
 # All vertices are connected (no distance restriction like UDG)
-generate_full_grid_graph(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "qubo_dataset.g6"))
+generate_full_grid_graph(Triangular(), 2, 2; path=pkgdir(GadgetSearch, "examples", "qubo_dataset.jsonl"))
 
-dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "qubo_dataset.g6"))
+dataloader = GraphLoader(pkgdir(GadgetSearch, "examples", "qubo_dataset.jsonl"))
 
 # Search using QUBOModel explicitly
 # - QUBOModel uses ALL 2^n states (not just MIS)
