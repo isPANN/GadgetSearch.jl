@@ -29,3 +29,20 @@ function save_graph(g::Vector{Tuple{S, Vector{Tuple{Float64, Float64}}}}, path::
     end
     return path
 end
+
+"""
+    export_g6(jsonl_path::String, g6_path::String) -> String
+
+Extract pure graph6 lines from a JSONL graph file, for use with
+external tools like `nauty`/`shortg`.
+"""
+function export_g6(jsonl_path::String, g6_path::String)
+    open(g6_path, "w") do out
+        for line in eachline(jsonl_path)
+            isempty(strip(line)) && continue
+            obj = JSON3.read(line)
+            println(out, obj[:g6])
+        end
+    end
+    return g6_path
+end

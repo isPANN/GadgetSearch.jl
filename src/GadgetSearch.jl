@@ -37,6 +37,7 @@ export find_matching_gadget
 export search_by_truth_tables
 export save_cache
 export save_graph
+export export_g6
 
 export Square, Triangular
 export generate_full_grid_udg

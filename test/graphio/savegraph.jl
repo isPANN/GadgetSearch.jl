@@ -71,3 +71,45 @@ end
         isfile(tmp) && rm(tmp; force=true)
     end
 end
+
+@testset "export_g6 - extracts pure g6 lines" begin
+    g = SimpleGraph(3)
+    add_edge!(g, 1, 2); add_edge!(g, 2, 3)
+    pos = [(0.0, 0.0), (1.0, 0.0), (0.5, 1.0)]
+
+    src_file = tempname() * ".jsonl"
+    dst_file = tempname() * ".g6"
+    try
+        save_graph([(g, pos)], src_file)
+        export_g6(src_file, dst_file)
+        lines = readlines(dst_file)
+        @test length(lines) == 1
+        @test !occursin("{", lines[1])
+        @test !occursin("(", lines[1])
+        bv = BitVector(undef, 0)
+        parsed = GadgetSearch._parse_g6_string(lines[1], bv)
+        @test nv(parsed) == 3
+        @test ne(parsed) == 2
+    finally
+        isfile(src_file) && rm(src_file; force=true)
+        isfile(dst_file) && rm(dst_file; force=true)
+    end
+end
+
+@testset "export_g6 - topology-only input" begin
+    g = SimpleGraph(2)
+    add_edge!(g, 1, 2)
+
+    src_file = tempname() * ".jsonl"
+    dst_file = tempname() * ".g6"
+    try
+        save_graph([g], src_file)
+        export_g6(src_file, dst_file)
+        lines = readlines(dst_file)
+        @test length(lines) == 1
+        @test strip(lines[1]) == graph_to_g6(g)
+    finally
+        isfile(src_file) && rm(src_file; force=true)
+        isfile(dst_file) && rm(dst_file; force=true)
+    end
+end
