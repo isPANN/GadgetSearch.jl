@@ -167,7 +167,12 @@ function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{T
     temp_path = tempname()
 
     original_coords = getindex.(results, 2)
-    save_graph(results, temp_path; g6_only=true)
+    # Write plain g6 for shortg (not JSONL)
+    open(temp_path, "w") do io
+        for (graph, _) in results
+            println(io, graph_to_g6(graph))
+        end
+    end
 
     ok = _call_shortg(temp_path, mapping_file)
     if !ok

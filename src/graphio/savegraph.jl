@@ -1,22 +1,19 @@
 function save_graph(g::Vector{SimpleGraph{T}}, path::String) where T
     open(path, "w") do io
         for graph in g
-            println(io, graph_to_g6(graph; include_header=true))
+            JSON3.write(io, Dict("g6" => graph_to_g6(graph)))
+            println(io)
         end
     end
     return path
 end
 
-function save_graph(g::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String; g6_only::Bool=false) where T
+function save_graph(g::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
     open(path, "w") do io
         for (graph, coords) in g
-            g6 = graph_to_g6(graph)
-            if !g6_only
-                coord_str = join(["($(x),$(y))" for (x, y) in coords], ";")
-                println(io, g6, " ", coord_str)
-            else
-                println(io, g6)
-            end
+            obj = Dict("g6" => graph_to_g6(graph), "pos" => [[x, y] for (x, y) in coords])
+            JSON3.write(io, obj)
+            println(io)
         end
     end
     return path
@@ -25,7 +22,9 @@ end
 function save_graph(g::Vector{Tuple{S, Vector{Tuple{Float64, Float64}}}}, path::String) where S<:AbstractString
     open(path, "w") do io
         for (g6, coords) in g
-            println(io, g6, " ", join(["($(x),$(y))" for (x, y) in coords], ";"))
+            obj = Dict("g6" => String(g6), "pos" => [[x, y] for (x, y) in coords])
+            JSON3.write(io, obj)
+            println(io)
         end
     end
     return path
