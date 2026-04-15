@@ -197,7 +197,7 @@ end
         nx, ny = 1, 1
         
         # Create a temporary file for testing
-        temp_file = tempname() * ".g6"
+        temp_file = tempname() * ".jsonl"
         
         # The function should now handle missing shortg gracefully (with a warning)
         # It will either succeed with shortg or save raw graphs without deduplication

@@ -113,7 +113,7 @@ end
     end
 
     @testset "Triangular UDG Integration" begin
-        path = tempname() * ".g6"
+        path = tempname() * ".jsonl"
         try
             generate_full_grid_udg(Triangular(), 1, 1; path=path)
             loader = GraphLoader(path; pinset=[1, 2, 3, 4])

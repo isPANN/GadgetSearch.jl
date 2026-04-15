@@ -68,16 +68,16 @@ function complete_graph(n::Int)
 end
 
 """
-    generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.g6") -> String
+    generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.jsonl") -> String
 
 Generate complete graphs on a grid lattice (without boundary expansion) and save to file.
 All vertices are connected to each other, regardless of distance.
 
-# Arguments  
+# Arguments
 - `lattice`: Type of lattice (Square or Triangular) - determines physical positions
 - `nx`: Number of grid points in x direction
 - `ny`: Number of grid points in y direction
-- `path`: Output file path for saving graphs (default: "grid.g6")
+- `path`: Output file path for saving graphs (default: "grid.jsonl")
 
 # Returns
 - `String`: Path to the saved graph file
@@ -86,7 +86,7 @@ All vertices are connected to each other, regardless of distance.
 Generates a single complete graph on the nx×ny grid. The physical positions
 follow the lattice geometry, but edges connect all pairs of vertices.
 """
-function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.g6")
+function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::String="grid.jsonl")
     # grid points (no boundary expansion)
     grid_points = get_physical_positions(lattice, 
         vec(Tuple{Int, Int}[(x, y) for x in 1:nx, y in 1:ny]))
@@ -102,15 +102,15 @@ function generate_full_grid_graph(lattice::LatticeType, nx::Int, ny::Int; path::
 end
 
 """
-    generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.g6") -> String
+    generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.jsonl") -> String
 
 Generate unit disk graphs on a grid lattice with four boundary pins and save to file.
 
-# Arguments  
+# Arguments
 - `lattice`: Type of lattice (Square or Triangular)
 - `nx`: Number of inner positions in x direction
 - `ny`: Number of inner positions in y direction
-- `path`: Output file path for saving graphs (default: "udg.g6")
+- `path`: Output file path for saving graphs (default: "udg.jsonl")
 
 # Returns
 - `String`: Path to the saved graph file
@@ -119,7 +119,7 @@ Generate unit disk graphs on a grid lattice with four boundary pins and save to 
 Generates all possible UDGs by placing pins on boundary positions and 
 connecting vertices within unit distance on the specified lattice type.
 """
-function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.g6")
+function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::String="udg.jsonl")
     # get possible pin positions on the boundary
     top_candidates, bottom_candidates, left_candidates, right_candidates = get_pin_positions(lattice, nx, ny)
 
@@ -156,44 +156,35 @@ function _call_shortg(temp_path::String, mapping_file::String)
 end
 
 function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
-    # If shortg is unavailable, save directly without dedup/canonicalization.
     if Sys.which("shortg") === nothing
         @warn "`shortg` not found in PATH; saving graphs without deduplication."
         save_graph(results, path)
         return path
     end
-
     mapping_file = tempname()
-    temp_path = tempname()
-
+    temp_jsonl = tempname() * ".jsonl"
+    temp_g6 = tempname() * ".g6"
     original_coords = getindex.(results, 2)
-    # Write plain g6 for shortg (not JSONL)
-    open(temp_path, "w") do io
-        for (graph, _) in results
-            println(io, graph_to_g6(graph))
-        end
-    end
-
-    ok = _call_shortg(temp_path, mapping_file)
+    save_graph(results, temp_jsonl)
+    export_g6(temp_jsonl, temp_g6)
+    ok = _call_shortg(temp_g6, mapping_file)
     if !ok
-        # Fallback path if shortg disappeared between checks or failed early
         @warn "Skipping canonicalization due to `shortg` issue; saving raw graphs."
         try
             isfile(mapping_file) && rm(mapping_file)
-            isfile(temp_path) && rm(temp_path)
+            isfile(temp_jsonl) && rm(temp_jsonl)
+            isfile(temp_g6) && rm(temp_g6)
         catch
         end
         save_graph(results, path)
         return path
     end
-
     canonical_to_original, _ = _parse_shortg_mapping(mapping_file)
-    
-    _write_original_representatives(temp_path, canonical_to_original, original_coords, path)
-
+    _write_original_representatives(temp_jsonl, canonical_to_original, original_coords, path)
     try
         isfile(mapping_file) && rm(mapping_file)
-        isfile(temp_path) && rm(temp_path)
+        isfile(temp_jsonl) && rm(temp_jsonl)
+        isfile(temp_g6) && rm(temp_g6)
     catch
     end
     return path
@@ -231,11 +222,10 @@ function _write_original_representatives(
 )
     original_lines = readlines(original_file)
     to_be_written = Vector{Tuple{AbstractString, Vector{Tuple{Float64, Float64}}}}()
-    open(output_file, "w") do io
-        for canon_line in sort(collect(keys(canon2orig)))
-            orig_line = canon2orig[canon_line][1]
-            push!(to_be_written, (original_lines[orig_line], orig_coords[orig_line]))
-        end
+    for canon_line in sort(collect(keys(canon2orig)))
+        orig_line = canon2orig[canon_line][1]
+        obj = JSON3.read(original_lines[orig_line])
+        push!(to_be_written, (String(obj[:g6]), orig_coords[orig_line]))
     end
     save_graph(to_be_written, output_file)
 end
