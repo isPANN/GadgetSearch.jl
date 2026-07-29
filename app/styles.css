@@ -226,15 +226,15 @@ kbd { color: var(--muted); background: transparent; font: 600 10px var(--font-sa
 .grid-point:hover { fill: var(--blue); r: 5; }
 .edge { stroke: var(--blue); stroke-width: 2.4; opacity: .55; }
 .node-halo { fill: rgba(36, 89, 211, .12); }
-.node { fill: white; stroke: var(--blue); stroke-width: 3; cursor: pointer; }
+.node { fill: white; stroke: var(--blue); stroke-width: var(--node-stroke); cursor: pointer; }
 .node.pin { fill: var(--orange); stroke: white; }
-.node.selected { stroke: var(--ink); stroke-width: 4; }
+.node.selected { stroke: var(--ink); stroke-width: var(--selected-stroke); }
 .node-label {
-  fill: var(--ink); font: 650 10px var(--font-sans);
+  fill: var(--ink); font-weight: 650; font-size: var(--node-label-size); font-family: var(--font-sans);
   text-anchor: middle; pointer-events: none;
 }
 .pin-label {
-  fill: white; font: 700 9px var(--font-sans);
+  fill: white; font-weight: 700; font-size: var(--pin-label-size); font-family: var(--font-sans);
   text-anchor: middle; dominant-baseline: middle; pointer-events: none;
 }
 

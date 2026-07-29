@@ -108,6 +108,13 @@ function renderCanvas() {
   const edgeGroup = element("g");
   const pointGroup = element("g");
   const nodeGroup = element("g");
+  const nodeRadius = Math.min(11, layout.step * 0.34);
+  const haloRadius = Math.min(18, layout.step * 0.48);
+  const labelOffset = nodeRadius + Math.min(7, layout.step * 0.12);
+  const nodeStroke = Math.min(3, nodeRadius * 0.28);
+  const selectedStroke = Math.min(4, nodeRadius * 0.36);
+  const nodeLabelSize = Math.min(10, layout.step * 0.34);
+  const pinLabelSize = Math.min(9, layout.step * 0.32);
 
   for (let r = 0; r < state.rows; r += 1) {
     for (let q = 0; q < state.columns; q += 1) {
@@ -144,11 +151,15 @@ function renderCanvas() {
     const location = point(node.q, node.r, layout);
     const group = element("g");
     const pinIndex = state.pins.indexOf(node.id);
-    group.append(element("circle", { cx: location.x, cy: location.y, r: 18, class: "node-halo" }));
+    group.style.setProperty("--node-stroke", `${nodeStroke}px`);
+    group.style.setProperty("--selected-stroke", `${selectedStroke}px`);
+    group.style.setProperty("--node-label-size", `${nodeLabelSize}px`);
+    group.style.setProperty("--pin-label-size", `${pinLabelSize}px`);
+    group.append(element("circle", { cx: location.x, cy: location.y, r: haloRadius, class: "node-halo" }));
     const circle = element("circle", {
       cx: location.x,
       cy: location.y,
-      r: 11,
+      r: nodeRadius,
       class: `node${pinIndex >= 0 ? " pin" : ""}${state.selected === node.id ? " selected" : ""}`,
       tabindex: "0",
     });
@@ -164,7 +175,7 @@ function renderCanvas() {
       group.append(label);
     }
     if (state.weightMode === "weighted") {
-      const label = element("text", { x: location.x, y: location.y - 18, class: "node-label" });
+      const label = element("text", { x: location.x, y: location.y - labelOffset, class: "node-label" });
       label.textContent = node.weight;
       group.append(label);
     }
