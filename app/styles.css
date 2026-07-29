@@ -39,19 +39,9 @@ button { color: inherit; }
   backdrop-filter: blur(12px);
 }
 
-.brand { display: flex; align-items: center; gap: 13px; }
-.brand-mark {
-  width: 38px; height: 38px; display: grid; place-items: center;
-  color: var(--white); background: var(--ink); border-radius: 50%;
-  font-size: 19px;
-}
 .brand h1 {
-  margin: 0; font: 650 21px/1.05 var(--font-sans);
-  letter-spacing: 0.02em;
-}
-.brand p {
-  margin: 4px 0 0; color: var(--muted); font: 600 10px/1 var(--font-sans);
-  letter-spacing: 0.1em; text-transform: uppercase;
+  margin: 0; font: 650 22px/1 var(--font-sans);
+  letter-spacing: 0.01em;
 }
 
 .header-actions { display: flex; gap: 9px; }
@@ -397,7 +387,6 @@ textarea {
 
 @media (max-width: 540px) {
   .topbar { align-items: stretch; }
-  .brand p { display: none; }
   .header-actions { width: 100%; margin-left: 0; }
   .header-actions .button { flex: 1; padding-inline: 8px; }
   .button-primary span { display: none; }
