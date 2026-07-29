@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gadget Lattice Bench</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">△</span>
+      <div>
+        <h1>Gadget Lattice Bench</h1>
+        <p>Triangular lattice ground-state bench</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="button button-quiet" id="import-button">Import JSON</button>
+      <button class="button button-quiet" id="export-button">Export JSON</button>
+      <input id="file-input" type="file" accept="application/json" hidden>
+      <button class="button button-primary" id="compute-button"><span id="compute-label">Compute Ground States</span><kbd>⌘ ↵</kbd></button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="rail" aria-label="Editor tools">
+      <div class="rail-section">
+        <p class="section-label">Edit</p>
+        <button class="tool active" data-tool="atom" aria-pressed="true">
+          <span class="tool-icon atom-icon"></span>
+          <span>Place atom</span>
+          <kbd>A</kbd>
+        </button>
+        <button class="tool" data-tool="pin" aria-pressed="false">
+          <span class="tool-icon pin-icon">P</span>
+          <span>Mark pin</span>
+          <kbd>P</kbd>
+        </button>
+        <button class="tool" data-tool="erase" aria-pressed="false">
+          <span class="tool-icon erase-icon">×</span>
+          <span>Erase</span>
+          <kbd>E</kbd>
+        </button>
+      </div>
+
+      <div class="rail-section inspector">
+        <p class="section-label">Selected vertex</p>
+        <div id="selection-empty" class="empty-note">Select a placed vertex</div>
+        <div id="selection-fields" hidden>
+          <div class="coordinate-chip" id="selected-coordinate"></div>
+          <div id="weight-field">
+            <label for="weight-input">Vertex weight hᵢ</label>
+            <input id="weight-input" type="number" min="0.1" step="0.1">
+          </div>
+          <p class="fixed-weight-note" id="fixed-weight-note" hidden>Weights are ignored in alpha-tensor mode</p>
+          <button class="text-action" id="toggle-pin-button">Set as next pin</button>
+        </div>
+      </div>
+
+      <div class="rail-section">
+        <p class="section-label">Lattice size</p>
+        <div class="size-controls">
+          <label>
+            <span>Columns</span>
+            <input id="lattice-columns" type="number" min="2" max="20" value="9">
+          </label>
+          <span class="size-times" aria-hidden="true">×</span>
+          <label>
+            <span>Rows</span>
+            <input id="lattice-rows" type="number" min="2" max="20" value="7">
+          </label>
+        </div>
+        <button class="resize-button" id="resize-lattice-button">Resize lattice</button>
+      </div>
+
+      <div class="rail-section">
+        <p class="section-label">Model</p>
+        <div class="mode-switch" role="group" aria-label="Weight mode">
+          <button class="mode-option active" data-weight-mode="weighted" aria-pressed="true">Weighted</button>
+          <button class="mode-option" data-weight-mode="unweighted" aria-pressed="false">Unweighted</button>
+        </div>
+        <div class="model-card">
+          <span class="status-dot"></span>
+          <div><strong>Rydberg</strong><small id="model-description">Weighted MIS · UDG</small></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="canvas-panel">
+      <div class="canvas-heading">
+        <div>
+          <p class="eyebrow" id="lattice-dimensions">LATTICE / 09 × 07</p>
+          <h2>Build your Gadget on the lattice</h2>
+        </div>
+        <div class="legend">
+          <span><i class="legend-atom"></i>Atom</span>
+          <span><i class="legend-pin"></i>pin</span>
+          <span><i class="legend-edge"></i>Blockade</span>
+        </div>
+      </div>
+      <div class="canvas-wrap">
+        <svg id="lattice" role="application" aria-label="Triangular-lattice Gadget editor"></svg>
+        <div class="canvas-tip" id="canvas-tip">Click an empty site to place an atom · Click an atom to select it</div>
+      </div>
+      <div class="canvas-footer">
+        <span id="graph-summary">3 vertices · 2 edges · 2 pins · Weighted</span>
+        <button class="text-action" id="clear-button">Clear lattice</button>
+      </div>
+    </section>
+
+    <aside class="results-panel">
+      <section class="constraint-section computation-note">
+        <p class="section-label" id="computation-label">Ground-state computation</p>
+        <h3 id="computation-title">Direct MIS solver</h3>
+        <p class="helper" id="computation-helper">Computes weighted ground states. Pin projections are reported in P1 → Pn order.</p>
+        <div class="pin-order" id="pin-order"></div>
+      </section>
+
+      <section class="result-section" id="result-section" aria-live="polite">
+        <div class="result-idle">
+          <div class="orbital" aria-hidden="true"><i></i><i></i><b></b></div>
+          <h3>Ready to compute</h3>
+          <p>The solver enumerates maximal independent sets and returns the maximum-energy states.</p>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -31,6 +31,21 @@ Here, $\boldsymbol{\sigma} = (\sigma_1, \sigma_2, \ldots, \sigma_n)$ is the bina
 
 ## Quick Start
 
+### Visual editor
+
+Install the project dependencies and launch the local triangular-lattice editor:
+
+```bash
+make deploy
+```
+
+Then open [http://127.0.0.1:8080](http://127.0.0.1:8080). Place atoms on
+the lattice and mark ordered pins. The editor builds the unit-disk graph from
+the lattice positions. Weighted mode uses editable vertex weights and computes
+the ground states; Unweighted mode ignores vertex weights, treats the pins as
+open vertices, and computes the reduced alpha tensor. The lattice dimensions
+can be adjusted from 2×2 to 20×20 and are preserved in exported JSON.
+
 ### Rydberg Model (MIS-based)
 
 ```julia
