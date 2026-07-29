@@ -80,13 +80,14 @@
 
       <div class="rail-section">
         <p class="section-label">Model</p>
+        <div class="mode-switch" role="group" aria-label="Energy model">
+          <button class="mode-option active" aria-pressed="true">Rydberg</button>
+          <button class="mode-option" aria-pressed="false" title="QUBO backend coming soon" disabled>QUBO</button>
+        </div>
+        <p class="control-label">Weight mode</p>
         <div class="mode-switch" role="group" aria-label="Weight mode">
           <button class="mode-option active" data-weight-mode="weighted" aria-pressed="true">Weighted</button>
           <button class="mode-option" data-weight-mode="unweighted" aria-pressed="false">Unweighted</button>
-        </div>
-        <div class="model-card">
-          <span class="status-dot"></span>
-          <div><strong>Rydberg</strong><small id="model-description">Weighted MIS · UDG</small></div>
         </div>
       </div>
     </aside>

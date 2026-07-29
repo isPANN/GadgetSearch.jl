@@ -128,7 +128,6 @@ kbd { color: var(--muted); background: transparent; font: 600 10px var(--font-sa
   font-size: 12px; cursor: pointer;
 }
 .inspector .text-action { margin-top: 12px; }
-.model-card { display: flex; align-items: center; gap: 9px; }
 .size-controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -192,10 +191,15 @@ kbd { color: var(--muted); background: transparent; font: 600 10px var(--font-sa
   background: var(--white);
   box-shadow: 0 2px 7px rgba(24, 50, 56, .09);
 }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(22, 132, 103, .11); }
-.model-card strong, .model-card small { display: block; }
-.model-card strong { font-size: 12px; }
-.model-card small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.mode-option:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+.control-label {
+  margin: 0 0 7px;
+  color: var(--muted);
+  font-size: 9px;
+}
 
 .canvas-heading {
   display: flex; align-items: flex-end; justify-content: space-between;

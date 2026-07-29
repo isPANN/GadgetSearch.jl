@@ -242,8 +242,6 @@ function setWeightMode(weightMode) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", active);
   });
-  document.querySelector("#model-description").textContent =
-    weightMode === "weighted" ? "Weighted MIS · UDG" : "Reduced alpha tensor · UDG";
   computeLabel.textContent =
     weightMode === "weighted" ? "Compute Ground States" : "Compute Reduced Alpha Tensor";
   document.querySelector("#computation-label").textContent =
