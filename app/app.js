@@ -383,10 +383,6 @@ async function compute() {
 function renderResult(data) {
   if (data.operation === "reduced_alpha_tensor") {
     resultSection.innerHTML = `
-      <div class="verdict valid">
-        <strong>Reduced alpha tensor computed</strong>
-        <span>${data.boundary_count} open vertices · ${data.tensor.length} boundary configurations</span>
-      </div>
       <div class="metric-grid">
         <div class="metric"><span>Vertices</span><strong>${data.vertex_count}</strong></div>
         <div class="metric"><span>Edges</span><strong>${data.edge_count}</strong></div>
@@ -410,9 +406,6 @@ function renderResult(data) {
     ? `Pin projections: ${data.observed.join(", ")}`
     : "No pins marked";
   resultSection.innerHTML = `
-    <div class="verdict valid">
-      <strong>Ground states computed</strong><span>${pinProjection}</span>
-    </div>
     <div class="metric-grid">
       <div class="metric"><span>Maximum energy</span><strong>${formatNumber(data.max_energy)}</strong></div>
       <div class="metric"><span>State space</span><strong>${data.state_count}</strong></div>
@@ -420,6 +413,7 @@ function renderResult(data) {
       <div class="metric"><span>Degeneracy</span><strong>${data.ground_states.length}</strong></div>
     </div>
     <p class="state-heading">Ground states</p>
+    <p class="pin-projection">${pinProjection}</p>
     ${data.ground_states.map((item) => `
       <div class="state-card">
         <strong>pins · ${item.pins || "—"}</strong>

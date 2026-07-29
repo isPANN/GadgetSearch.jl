@@ -281,18 +281,12 @@ textarea {
 .solver-mark .solver-mark-focus { fill: rgba(239, 106, 58, .12); stroke: var(--orange); stroke-width: 2.5; }
 .solver-mark .solver-mark-core { fill: var(--orange); stroke: var(--paper); stroke-width: 1.5; }
 
-.verdict {
-  padding: 14px; border-radius: 9px; border: 1px solid; margin-bottom: 17px;
-}
-.verdict.valid { color: #0f6852; background: #e4f4ef; border-color: #a9d8cb; }
-.verdict.invalid { color: #923526; background: #fbe9e5; border-color: #ebbbb1; }
-.verdict strong { display: block; font-size: 15px; }
-.verdict span { display: block; margin-top: 3px; font-size: 11px; opacity: .8; }
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .metric { padding: 10px; background: var(--mist); border-radius: 7px; }
 .metric span { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 .metric strong { display: block; margin-top: 4px; font: 650 15px var(--font-sans); font-variant-numeric: tabular-nums; }
 .state-heading { margin: 18px 0 8px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.pin-projection { margin: -2px 0 10px; color: var(--muted); font-size: 10px; }
 .state-card { padding: 10px 11px; border-left: 3px solid var(--blue); background: white; box-shadow: 0 4px 14px rgba(24,50,56,.06); }
 .state-card + .state-card { margin-top: 7px; }
 .state-card strong { font: 650 13px var(--font-sans); }
