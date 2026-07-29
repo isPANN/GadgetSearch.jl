@@ -36,3 +36,7 @@ end
 @testset "Gadget Utilities" begin
     include("utils/gadget.jl")
 end
+
+@testset "Gadget Editor API" begin
+    include("app/gadget_editor.jl")
+end

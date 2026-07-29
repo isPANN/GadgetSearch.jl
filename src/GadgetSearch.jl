@@ -63,7 +63,7 @@ export plot_gadget
 # Utilities
 export clear_cache!
 export get_cache_stats
-export check_gadget, check_gadget_rydberg, check_gadget_qubo
+export analyze_gadget, check_gadget, check_gadget_rydberg, check_gadget_qubo
 # Alpha tensor
 export calculate_alpha_tensor
 export calculate_reduced_alpha_tensor

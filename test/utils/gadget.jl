@@ -22,6 +22,19 @@ end
     @test occursin("Ground states", info)
 end
 
+@testset "analyze_gadget returns structured ground states" begin
+    gadget = _make_rydberg_gadget()
+    report = analyze_gadget(gadget)
+    @test report.model == "Rydberg (MIS)"
+    @test report.state_count == 2
+    @test report.max_energy == 3.0
+    @test length(report.ground_states) == 2
+    @test Set(state.configuration for state in report.ground_states) ==
+        Set(([0, 1, 1], [1, 0, 1]))
+    @test Set(state.pins for state in report.ground_states) ==
+        Set(([0, 1], [1, 0]))
+end
+
 @testset "check_gadget_rydberg and check_gadget_qubo" begin
     gadget = _make_rydberg_gadget()
     rydberg_info = check_gadget_rydberg(gadget; _return_info=true)
