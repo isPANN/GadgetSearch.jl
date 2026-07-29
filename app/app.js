@@ -32,23 +32,26 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 function latticeLayout() {
   const width = svg.clientWidth || 680;
   const height = svg.clientHeight || 500;
-  const padding = 44;
+  const horizontalPadding = 44;
+  const topPadding = 36;
+  const bottomPadding = 72;
   const horizontalUnits = state.latticeShape === "KSG"
     ? state.columns - 1
     : state.columns - 0.5;
   const verticalUnits = state.latticeShape === "KSG"
     ? state.rows - 1
     : (state.rows - 1) * Math.sqrt(3) / 2;
+  const availableHeight = height - topPadding - bottomPadding;
   const step = Math.min(
-    (width - padding * 2) / horizontalUnits,
-    (height - padding * 2) / verticalUnits,
+    (width - horizontalPadding * 2) / horizontalUnits,
+    availableHeight / verticalUnits,
   );
   const latticeWidth = horizontalUnits * step;
   const latticeHeight = verticalUnits * step;
   return {
     step,
     originX: (width - latticeWidth) / 2,
-    originY: (height - latticeHeight) / 2,
+    originY: topPadding + (availableHeight - latticeHeight) / 2,
   };
 }
 
@@ -159,7 +162,8 @@ function renderCanvas() {
       const label = element("text", { x: location.x, y: location.y + 0.5, class: "pin-label" });
       label.textContent = `P${pinIndex + 1}`;
       group.append(label);
-    } else if (state.weightMode === "weighted") {
+    }
+    if (state.weightMode === "weighted") {
       const label = element("text", { x: location.x, y: location.y - 18, class: "node-label" });
       label.textContent = node.weight;
       group.append(label);
@@ -297,7 +301,17 @@ function renderIdle() {
     : "The solver contracts the independent-set tensor network and compactifies α(R).";
   resultSection.innerHTML = `
     <div class="result-idle">
-      <div class="orbital" aria-hidden="true"><i></i><i></i><b></b></div>
+      <svg class="solver-mark" viewBox="0 0 96 64" aria-hidden="true">
+        <path d="M18 32 33 14h30l15 18-15 18H33Z M18 32h60 M33 14l30 36 M63 14 33 50"/>
+        <circle cx="18" cy="32" r="4"/>
+        <circle cx="33" cy="14" r="4"/>
+        <circle cx="63" cy="14" r="4"/>
+        <circle cx="78" cy="32" r="4"/>
+        <circle cx="63" cy="50" r="4"/>
+        <circle cx="33" cy="50" r="4"/>
+        <circle class="solver-mark-focus" cx="48" cy="32" r="8"/>
+        <circle class="solver-mark-core" cx="48" cy="32" r="3"/>
+      </svg>
       <h3>Ready to compute</h3>
       <p>${description}</p>
     </div>

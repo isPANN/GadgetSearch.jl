@@ -256,15 +256,25 @@ textarea {
 }
 .result-section { padding-top: 20px; }
 .result-idle { padding: 34px 16px; text-align: center; color: var(--muted); }
-.result-idle h3 { margin: 18px 0 6px; color: var(--ink); font: 650 18px var(--font-sans); }
+.result-idle h3 { margin: 13px 0 6px; color: var(--ink); font: 650 18px var(--font-sans); }
 .result-idle p { margin: 0; font-size: 11px; line-height: 1.6; }
-.orbital { position: relative; width: 58px; height: 58px; margin: auto; }
-.orbital i {
-  position: absolute; inset: 12px 0; border: 1px solid var(--grid); border-radius: 50%;
-  transform: rotate(60deg);
+.solver-mark {
+  display: block;
+  width: 86px;
+  height: 58px;
+  margin: auto;
+  overflow: visible;
 }
-.orbital i:nth-child(2) { transform: rotate(-60deg); }
-.orbital b { position: absolute; width: 10px; height: 10px; left: 24px; top: 24px; border-radius: 50%; background: var(--blue); }
+.solver-mark path {
+  fill: none;
+  stroke: var(--grid);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.solver-mark circle { fill: var(--paper); stroke: var(--blue); stroke-width: 2; }
+.solver-mark .solver-mark-focus { fill: rgba(239, 106, 58, .12); stroke: var(--orange); stroke-width: 2.5; }
+.solver-mark .solver-mark-core { fill: var(--orange); stroke: var(--paper); stroke-width: 1.5; }
 
 .verdict {
   padding: 14px; border-radius: 9px; border: 1px solid; margin-bottom: 17px;
