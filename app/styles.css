@@ -245,6 +245,11 @@ kbd { color: var(--muted); background: transparent; font: 600 10px var(--font-sa
   font: 650 18px/1.2 var(--font-sans);
 }
 .helper { margin: -4px 0 10px; }
+.inline-math {
+  color: inherit;
+  font-size: 1.08em;
+  vertical-align: -0.12em;
+}
 textarea {
   resize: vertical; min-height: 92px; padding: 10px 12px;
   font: 500 13px/1.65 var(--font-sans);

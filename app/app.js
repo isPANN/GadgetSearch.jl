@@ -263,10 +263,15 @@ function setWeightMode(weightMode) {
     weightMode === "weighted" ? "Ground-state computation" : "Alpha-tensor computation";
   document.querySelector("#computation-title").textContent =
     weightMode === "weighted" ? "Direct MIS solver" : "Reduced alpha tensor";
-  document.querySelector("#computation-helper").textContent =
-    weightMode === "weighted"
-      ? "Computes weighted ground states. Pin projections are reported in P1 → Pn order."
-      : "Treats pins as open vertices and computes α̃(R). Vertex weights are ignored.";
+  const computationHelper = document.querySelector("#computation-helper");
+  if (weightMode === "weighted") {
+    computationHelper.textContent = "Computes weighted ground states. Pin projections are reported in P1 → Pn order.";
+  } else {
+    computationHelper.innerHTML = `Treats pins as open vertices and computes
+      <math class="inline-math" aria-label="alpha tilde of R">
+        <mover accent="true"><mi>α</mi><mo>~</mo></mover><mo>(</mo><mi>R</mi><mo>)</mo>
+      </math>. Vertex weights are ignored.`;
+  }
   state.result = null;
   renderIdle();
   renderCanvas();
@@ -309,7 +314,10 @@ function setLatticeSize() {
 function renderIdle() {
   const description = state.weightMode === "weighted"
     ? "The solver enumerates maximal independent sets and returns the maximum-energy states."
-    : "The solver contracts the independent-set tensor network and compactifies α(R).";
+    : `The solver contracts the independent-set tensor network and compactifies
+      <math class="inline-math" aria-label="alpha tilde of R">
+        <mover accent="true"><mi>α</mi><mo>~</mo></mover><mo>(</mo><mi>R</mi><mo>)</mo>
+      </math>.`;
   resultSection.innerHTML = `
     <div class="result-idle">
       <svg class="solver-mark" viewBox="0 0 96 64" aria-hidden="true">
@@ -383,7 +391,11 @@ function renderResult(data) {
         <div class="metric"><span>Vertices</span><strong>${data.vertex_count}</strong></div>
         <div class="metric"><span>Edges</span><strong>${data.edge_count}</strong></div>
       </div>
-      <p class="state-heading">α̃(R)</p>
+      <p class="state-heading">
+        <math class="inline-math" aria-label="alpha tilde of R">
+          <mover accent="true"><mi>α</mi><mo>~</mo></mover><mo>(</mo><mi>R</mi><mo>)</mo>
+        </math>
+      </p>
       <table class="tensor-table">
         <thead><tr><th>Boundary state</th><th>Value</th></tr></thead>
         <tbody>${data.tensor.map((entry) => `
