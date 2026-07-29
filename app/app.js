@@ -1,6 +1,7 @@
 const state = {
   tool: "atom",
   weightMode: "weighted",
+  latticeShape: "TLSG",
   columns: 9,
   rows: 7,
   nodes: new Map([
@@ -32,8 +33,12 @@ function latticeLayout() {
   const width = svg.clientWidth || 680;
   const height = svg.clientHeight || 500;
   const padding = 44;
-  const horizontalUnits = state.columns - 0.5;
-  const verticalUnits = (state.rows - 1) * Math.sqrt(3) / 2;
+  const horizontalUnits = state.latticeShape === "KSG"
+    ? state.columns - 1
+    : state.columns - 0.5;
+  const verticalUnits = state.latticeShape === "KSG"
+    ? state.rows - 1
+    : (state.rows - 1) * Math.sqrt(3) / 2;
   const step = Math.min(
     (width - padding * 2) / horizontalUnits,
     (height - padding * 2) / verticalUnits,
@@ -48,10 +53,16 @@ function latticeLayout() {
 }
 
 function point(q, r, layout) {
+  const physical = physicalPoint(q, r);
   return {
-    x: layout.originX + q * layout.step + (r % 2 ? layout.step / 2 : 0),
-    y: layout.originY + r * layout.step * Math.sqrt(3) / 2,
+    x: layout.originX + physical.x * layout.step,
+    y: layout.originY + physical.y * layout.step,
   };
+}
+
+function physicalPoint(q, r) {
+  if (state.latticeShape === "KSG") return { x: q, y: r };
+  return { x: q + (r % 2 ? 0.5 : 0), y: r * Math.sqrt(3) / 2 };
 }
 
 function element(name, attributes = {}) {
@@ -61,9 +72,10 @@ function element(name, attributes = {}) {
 }
 
 function neighbors(a, b) {
-  const pa = { x: a.q + (a.r % 2 ? 0.5 : 0), y: a.r * Math.sqrt(3) / 2 };
-  const pb = { x: b.q + (b.r % 2 ? 0.5 : 0), y: b.r * Math.sqrt(3) / 2 };
-  return (pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2 < 1.01;
+  const pa = physicalPoint(a.q, a.r);
+  const pb = physicalPoint(b.q, b.r);
+  const radiusSquared = state.latticeShape === "KSG" ? 1.5 ** 2 : 1.1 ** 2;
+  return (pa.x - pb.x) ** 2 + (pa.y - pb.y) ** 2 < radiusSquared;
 }
 
 function edges() {
@@ -97,7 +109,10 @@ function renderCanvas() {
   for (let r = 0; r < state.rows; r += 1) {
     for (let q = 0; q < state.columns; q += 1) {
       const current = { q, r };
-      [[q + 1, r], [q, r + 1], [q + (r % 2 ? 1 : -1), r + 1]].forEach(([nq, nr]) => {
+      const forwardNeighbors = state.latticeShape === "KSG"
+        ? [[q + 1, r], [q - 1, r + 1], [q, r + 1], [q + 1, r + 1]]
+        : [[q + 1, r], [q, r + 1], [q + (r % 2 ? 1 : -1), r + 1]];
+      forwardNeighbors.forEach(([nq, nr]) => {
         if (nq >= 0 && nq < state.columns && nr < state.rows) {
           drawLine(gridGroup, current, { q: nq, r: nr }, "grid-line", layout);
         }
@@ -154,9 +169,9 @@ function renderCanvas() {
 
   svg.append(gridGroup, edgeGroup, pointGroup, nodeGroup);
   document.querySelector("#graph-summary").textContent =
-    `${state.nodes.size} vertices · ${graphEdges.length} edges · ${state.pins.length} pins · ${state.weightMode === "weighted" ? "Weighted" : "Unweighted"}`;
+    `${state.nodes.size} vertices · ${graphEdges.length} edges · ${state.pins.length} pins · ${state.latticeShape} · ${state.weightMode === "weighted" ? "Weighted" : "Unweighted"}`;
   document.querySelector("#lattice-dimensions").textContent =
-    `LATTICE / ${String(state.columns).padStart(2, "0")} × ${String(state.rows).padStart(2, "0")}`;
+    `${state.latticeShape} / ${String(state.columns).padStart(2, "0")} × ${String(state.rows).padStart(2, "0")}`;
   renderPins();
   renderInspector();
 }
@@ -222,7 +237,7 @@ function setTool(tool) {
 
 function setWeightMode(weightMode) {
   state.weightMode = weightMode;
-  document.querySelectorAll(".mode-option").forEach((button) => {
+  document.querySelectorAll("[data-weight-mode]").forEach((button) => {
     const active = button.dataset.weightMode === weightMode;
     button.classList.toggle("active", active);
     button.setAttribute("aria-pressed", active);
@@ -241,6 +256,17 @@ function setWeightMode(weightMode) {
       : "Treats pins as open vertices and computes α̃(R). Vertex weights are ignored.";
   state.result = null;
   renderIdle();
+  renderCanvas();
+}
+
+function setLatticeShape(latticeShape) {
+  state.latticeShape = latticeShape;
+  document.querySelectorAll("[data-lattice-shape]").forEach((button) => {
+    const active = button.dataset.latticeShape === latticeShape;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", active);
+  });
+  invalidateResult();
   renderCanvas();
 }
 
@@ -289,7 +315,11 @@ function payload() {
   return {
     model: "rydberg",
     weight_mode: state.weightMode,
-    lattice: { columns: state.columns, rows: state.rows },
+    lattice: {
+      shape: state.latticeShape,
+      columns: state.columns,
+      rows: state.rows,
+    },
     nodes: [...state.nodes.values()],
     pins: state.pins,
   };
@@ -385,7 +415,7 @@ function exportJson() {
   const blob = new Blob([JSON.stringify(payload(), null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = "triangular-gadget.json";
+  link.download = `${state.latticeShape.toLowerCase()}-gadget.json`;
   link.click();
   URL.revokeObjectURL(link.href);
   showToast("Gadget exported");
@@ -402,6 +432,7 @@ function importJson(file) {
     state.nodes = new Map(data.nodes.map((node) => [node.id, node]));
     state.pins = data.pins;
     state.selected = null;
+    setLatticeShape(data.lattice.shape);
     setWeightMode(data.weight_mode);
     showToast("Gadget imported");
   });
@@ -411,8 +442,11 @@ function importJson(file) {
 document.querySelectorAll(".tool").forEach((button) => {
   button.addEventListener("click", () => setTool(button.dataset.tool));
 });
-document.querySelectorAll(".mode-option").forEach((button) => {
+document.querySelectorAll("[data-weight-mode]").forEach((button) => {
   button.addEventListener("click", () => setWeightMode(button.dataset.weightMode));
+});
+document.querySelectorAll("[data-lattice-shape]").forEach((button) => {
+  button.addEventListener("click", () => setLatticeShape(button.dataset.latticeShape));
 });
 resizeLatticeButton.addEventListener("click", setLatticeSize);
 weightInput.addEventListener("change", () => {

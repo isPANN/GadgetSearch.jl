@@ -24,15 +24,23 @@ function gadget_from_payload(payload)
     length(unique(ids)) == length(ids) || throw(ArgumentError("Vertex IDs must be unique"))
     id_to_index = Dict(id => index for (index, id) in enumerate(ids))
 
+    lattice_shape = String(payload.lattice.shape)
+    lattice = if lattice_shape == "TLSG"
+        Triangular()
+    elseif lattice_shape == "KSG"
+        Square()
+    else
+        throw(ArgumentError("lattice.shape must be TLSG or KSG"))
+    end
     lattice_coordinates = Tuple{Int, Int}[(Int(node.q), Int(node.r)) for node in nodes]
-    positions = GadgetSearch.get_physical_positions(Triangular(), lattice_coordinates)
+    positions = GadgetSearch.get_physical_positions(lattice, lattice_coordinates)
     weights = weight_mode == "weighted" ?
         Float64[Float64(node.weight) for node in nodes] :
         ones(Float64, length(nodes))
     weight_mode == "weighted" && !all(>(0), weights) &&
         throw(ArgumentError("Weighted mode requires positive vertex weights"))
 
-    graph = GadgetSearch.unit_disk_graph(positions, get_radius(Triangular()))
+    graph = GadgetSearch.unit_disk_graph(positions, get_radius(lattice))
 
     pin_ids = String[String(id) for id in payload.pins]
     all(id -> haskey(id_to_index, id), pin_ids) ||
@@ -46,6 +54,7 @@ function gadget_from_payload(payload)
         Gadget(RydbergModel, constraint, graph, pins, weights, positions),
         ids,
         weight_mode,
+        lattice_shape,
     )
 end
 
@@ -53,7 +62,7 @@ function compute_payload(payload)
     String(payload.model) == "rydberg" ||
         throw(ArgumentError("The editor currently supports the Rydberg / MIS model"))
 
-    gadget, ids, weight_mode = gadget_from_payload(payload)
+    gadget, ids, weight_mode, lattice_shape = gadget_from_payload(payload)
     edge_data = [
         (source=ids[src(edge)], target=ids[dst(edge)]) for edge in edges(gadget.graph)
     ]
@@ -75,6 +84,7 @@ function compute_payload(payload)
             operation="reduced_alpha_tensor",
             model="Unweighted MIS",
             weight_mode=weight_mode,
+            lattice_shape=lattice_shape,
             vertex_count=nv(gadget.graph),
             edge_count=ne(gadget.graph),
             boundary_count=boundary_count,
@@ -99,6 +109,7 @@ function compute_payload(payload)
         operation="ground_states",
         model=report.model,
         weight_mode=weight_mode,
+        lattice_shape=lattice_shape,
         vertex_count=nv(gadget.graph),
         edge_count=ne(gadget.graph),
         state_count=report.state_count,

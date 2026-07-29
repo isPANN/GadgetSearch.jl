@@ -12,7 +12,7 @@
       <span class="brand-mark" aria-hidden="true">△</span>
       <div>
         <h1>Gadget Lattice Bench</h1>
-        <p>Triangular lattice ground-state bench</p>
+        <p>TLSG + KSG ground-state bench</p>
       </div>
     </div>
     <div class="header-actions">
@@ -59,7 +59,11 @@
       </div>
 
       <div class="rail-section">
-        <p class="section-label">Lattice size</p>
+        <p class="section-label">Lattice</p>
+        <div class="mode-switch lattice-switch" role="group" aria-label="Lattice geometry">
+          <button class="mode-option active" data-lattice-shape="TLSG" aria-pressed="true">Triangular</button>
+          <button class="mode-option" data-lattice-shape="KSG" aria-pressed="false">KSG</button>
+        </div>
         <div class="size-controls">
           <label>
             <span>Columns</span>
@@ -100,7 +104,7 @@
         </div>
       </div>
       <div class="canvas-wrap">
-        <svg id="lattice" role="application" aria-label="Triangular-lattice Gadget editor"></svg>
+        <svg id="lattice" role="application" aria-label="Lattice Gadget editor"></svg>
         <div class="canvas-tip" id="canvas-tip">Click an empty site to place an atom · Click an atom to select it</div>
       </div>
       <div class="canvas-footer">
