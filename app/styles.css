@@ -263,23 +263,7 @@ textarea {
 .result-idle { padding: 34px 16px; text-align: center; color: var(--muted); }
 .result-idle h3 { margin: 13px 0 6px; color: var(--ink); font: 650 18px var(--font-sans); }
 .result-idle p { margin: 0; font-size: 11px; line-height: 1.6; }
-.solver-mark {
-  display: block;
-  width: 86px;
-  height: 58px;
-  margin: auto;
-  overflow: visible;
-}
-.solver-mark path {
-  fill: none;
-  stroke: var(--grid);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.solver-mark circle { fill: var(--paper); stroke: var(--blue); stroke-width: 2; }
-.solver-mark .solver-mark-focus { fill: rgba(239, 106, 58, .12); stroke: var(--orange); stroke-width: 2.5; }
-.solver-mark .solver-mark-core { fill: var(--orange); stroke: var(--paper); stroke-width: 1.5; }
+.ready-symbol { color: var(--blue); font-size: 30px; line-height: 1; }
 
 .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .metric { padding: 10px; background: var(--mist); border-radius: 7px; }

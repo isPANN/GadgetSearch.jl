@@ -320,17 +320,7 @@ function renderIdle() {
       </math>.`;
   resultSection.innerHTML = `
     <div class="result-idle">
-      <svg class="solver-mark" viewBox="0 0 96 64" aria-hidden="true">
-        <path d="M18 32 33 14h30l15 18-15 18H33Z M18 32h60 M33 14l30 36 M63 14 33 50"/>
-        <circle cx="18" cy="32" r="4"/>
-        <circle cx="33" cy="14" r="4"/>
-        <circle cx="63" cy="14" r="4"/>
-        <circle cx="78" cy="32" r="4"/>
-        <circle cx="63" cy="50" r="4"/>
-        <circle cx="33" cy="50" r="4"/>
-        <circle class="solver-mark-focus" cx="48" cy="32" r="8"/>
-        <circle class="solver-mark-core" cx="48" cy="32" r="3"/>
-      </svg>
+      <span class="ready-symbol" aria-hidden="true">▶</span>
       <h3>Ready to compute</h3>
       <p>${description}</p>
     </div>
