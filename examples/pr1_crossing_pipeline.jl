@@ -1,15 +1,13 @@
 # # PR1 Crossing Pipeline (line-by-line runnable)
 #
-# This script demonstrates two parts of the unweighted crossing workflow:
-# 1) logical flip utilities
-# 2) search_unweighted_gadgets
+# This script demonstrates the unweighted crossing search workflow.
 #
 # It is intentionally organized into small, single-purpose functions so users can
 # execute each section line by line in the REPL and inspect output immediately.
 
 using GadgetSearch
 using Graphs
-using GenericTensorNetworks: content
+using Random
 
 const OUTPUT_DIR = pkgdir(GadgetSearch, "examples", "pr1_pipeline_output")
 
@@ -43,40 +41,30 @@ function plot_found_replacement(g::SimpleGraph{Int})
     return path
 end
 
-function run_flip_demo(target_graph::SimpleGraph{Int}, target_boundary::Vector{Int})
-    println("\n=== Module: flip ===")
-    reduced = Float64.(content.(calculate_reduced_alpha_tensor(target_graph, target_boundary)))
-    patterns = generate_flip_patterns(length(target_boundary))
-    println("Flip patterns: $(length(patterns))")
-    for (mask, desc) in patterns
-        flipped = apply_flip_to_tensor(reduced, mask)
-        finite_deltas = [f - b for (f, b) in zip(vec(flipped), vec(reduced)) if isfinite(f) && isfinite(b)]
-        example_delta = isempty(finite_deltas) ? "n/a" : string(first(finite_deltas))
-        println("  $desc, mask=$mask, finite_delta_example=$example_delta")
-    end
-end
-
-function build_loader_from_candidates(candidate_graphs::Vector{SimpleGraph{Int}}, target_boundary::Vector{Int})
-    isempty(candidate_graphs) && throw(ArgumentError("candidate_graphs must be non-empty"))
-    dataset = GraphDataset(graph_to_g6.(candidate_graphs))
-    return GraphLoader(dataset, pinset=target_boundary)
-end
-
-function run_search_demo(target_graph::SimpleGraph{Int}, target_boundary::Vector{Int}, candidate_graphs::Vector{SimpleGraph{Int}})
+function run_search_demo(target_graph::SimpleGraph{Int}, target_boundary::Vector{Int})
     println("\n=== Module: search ===")
-    loader = build_loader_from_candidates(candidate_graphs, target_boundary)
-    results = search_unweighted_gadgets(
+    report = search_unweighted_gadgets(
         target_graph,
         target_boundary,
-        loader;
-        include_logical_flips=true,
-        max_results=10,
+        Triangular();
+        min_vertices=5,
+        max_vertices=11,
+        max_evaluations=2_000,
+        beam_width=48,
+        mutations_per_candidate=10,
+        random_candidates_per_generation=16,
+        max_results=4,
+        rng=MersenneTwister(2026),
     )
-    println("Search hits: $(length(results))")
-    for (i, result) in enumerate(results)
-        println("  hit[$i]: boundary=$(result.boundary_vertices), offset=$(result.constant_offset), vertices=$(nv(result.replacement_graph))")
+    println("Evaluated: $(report.evaluated) candidates in $(report.generations) generations")
+    println("Termination: $(report.termination_reason)")
+    println("Best distance: mask mismatches=$(report.best_mask_mismatches), offset spread=$(report.best_offset_spread)")
+    println("Search hits: $(length(report.gadgets))")
+    for (i, result) in enumerate(report.gadgets)
+        println("  hit[$i]: lattice=$(result.lattice), coordinates=$(result.lattice_coordinates)")
+        println("          boundary=$(result.boundary_vertices), offset=$(result.constant_offset), vertices=$(nv(result.replacement_graph))")
     end
-    return results
+    return report
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
@@ -90,12 +78,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
     print_graph_summary("canonical", target_graph)
     plot_canonical_crossing(target_graph)
 
-    run_flip_demo(target_graph, target_boundary)
-    candidates = [target_graph]
-    results = run_search_demo(target_graph, target_boundary, candidates)
+    report = run_search_demo(target_graph, target_boundary)
 
-    if !isempty(results)
-        plot_found_replacement(results[1].replacement_graph)
+    if !isempty(report.gadgets)
+        plot_found_replacement(report.gadgets[1].replacement_graph)
     end
 
     println("\nDone. You can now inspect outputs in: $OUTPUT_DIR")

@@ -1,0 +1,82 @@
+# Unweighted gadget search
+
+The unweighted search dynamically constructs concrete induced lattice patches.
+Call it with `Square()` for KSG or `Triangular()` for the triangular lattice. It
+does not enumerate subsets of a fixed rectangular canvas, and it never reports
+an abstract graph without an embedding.
+
+## Search state
+
+A state consists of:
+
+- a finite set of integer lattice coordinates;
+- an ordered list of pin coordinates.
+
+The induced graph and boundary vertex indices are derived from those coordinates.
+The boundary order is part of the state, so two patches with the same pins in a
+different logical order are evaluated separately.
+
+## Search loop
+
+`search_unweighted_gadgets` starts from small connected lattice animals and
+repeats four steps until it exhausts the evaluation budget:
+
+1. Propose geometric edits: add, remove, or relocate a site; move or swap pins;
+   extend an arm by two sites; or locally split a crowded non-pin site.
+2. Add fresh small lattice patches so the search does not depend on one lineage.
+3. Rebuild the induced lattice graph and compute its reduced alpha tensor.
+4. Keep the best-scoring states plus a random exploration fraction for the next
+   beam.
+
+The coordinate plane is unbounded. The patch grows only where an action adds a
+site, so increasing the allowed vertex count does not create a rectangular
+combinatorial search space.
+
+The ranking score is lexicographic:
+
+1. number of positions where only one tensor is infinite;
+2. spread of the finite entry-wise offsets;
+3. for four-pin states, whether the straight 1-3 and 2-4 pin segments cross;
+4. vertex count;
+5. edge count.
+
+The first two terms guide candidates toward the verifier contract. Port crossing
+is only a preference among equal tensor scores, not an additional validity rule.
+The last two terms prefer smaller candidates when the earlier terms tie. A score
+of zero on the first two terms is still checked by `is_diff_by_constant`; the
+ranking score never replaces the verifier.
+
+The default budget is 2,000 distinct tensor evaluations. Increase it only in a
+controlled compute environment. Accepted candidates do not stop the run early:
+the search keeps the best `max_results` embeddings so later mutations can improve
+their port geometry.
+
+## Search trace
+
+The returned `UnweightedSearchResult.trace` contains one
+`UnweightedSearchRecord` per distinct tensor evaluation. Each record stores:
+
+- the lattice type, occupied coordinates, ordered pin coordinates, graph6 state,
+  and derived boundary indices;
+- the target graph6 state and target boundary in JSONL exports;
+- its parent state and graph edit action;
+- tensor-distance components;
+- whether the state survived beam selection;
+- whether the final verifier accepted it and, if so, the constant offset.
+
+This is a direct transition dataset for a later learned proposal or ranking
+policy: the model can consume `(parent patch, geometric action, next patch,
+score, selected, is_solution)` while the exact verifier remains unchanged. The
+current implementation does not contain a machine-learning dependency.
+
+`save_unweighted_trace(path, result)` writes the same records as JSON Lines. This
+keeps large future runs streamable and makes the trajectory directly consumable
+from Python without serializing Julia graph objects.
+
+`UnweightedSearchResult.termination_reason` is `:solution`, `:budget`, or
+`:search_space_exhausted`, so an empty result does not hide whether the configured
+budget or the reachable candidate space ended the run.
+
+Every returned `UnweightedGadget` includes `lattice`, `lattice_coordinates`, and
+physical `pos`. Rebuilding a unit-disk graph from `pos` reproduces the verified
+replacement graph exactly.

@@ -1,128 +1,171 @@
 using GadgetSearch
 using Graphs
+using JSON3
+using Random
 using Test
 
 function _cross_graph()
-    g = SimpleGraph(4)
-    add_edge!(g, 1, 3)
-    add_edge!(g, 2, 4)
-    return g
+    graph = SimpleGraph(4)
+    add_edge!(graph, 1, 3)
+    add_edge!(graph, 2, 4)
+    return graph
 end
 
-function _batoidea_graph()
-    g = SimpleGraph(11)
-    add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
-    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 7)
-    add_edge!(g, 3, 8)
-    add_edge!(g, 4, 9);  add_edge!(g, 4, 10); add_edge!(g, 4, 11)
-    add_edge!(g, 5, 6);  add_edge!(g, 5, 9);  add_edge!(g, 5, 10)
-    add_edge!(g, 6, 7);  add_edge!(g, 6, 9);  add_edge!(g, 6, 10); add_edge!(g, 6, 11)
-    add_edge!(g, 7, 8);  add_edge!(g, 7, 10); add_edge!(g, 7, 11)
-    add_edge!(g, 8, 11)
-    add_edge!(g, 9, 10)
-    add_edge!(g, 10, 11)
-    return g
-end
-
-function _edge_graph()
-    g = SimpleGraph(2)
-    add_edge!(g, 1, 2)
-    return g
-end
-
-function _connected_graph()
-    g = SimpleGraph(4)
-    add_edge!(g, 1, 3)
-    add_edge!(g, 1, 4)
-    add_edge!(g, 2, 4)
-    add_edge!(g, 3, 4)
-    return g
-end
-
-function _isolated_graph()
-    g = SimpleGraph(3)
-    add_edge!(g, 1, 2)
-    return g
-end
-
-function _to_g6(g)
-    return graph_to_g6(g)
+function _reconstruct_record(lattice, record)
+    positions = GadgetSearch.get_physical_positions(lattice, record.lattice_coordinates)
+    graph = GadgetSearch.unit_disk_graph(positions, get_radius(lattice))
+    indices = Dict(coordinate => index for (index, coordinate) in enumerate(record.lattice_coordinates))
+    boundary = [indices[pin] for pin in record.pin_coordinates]
+    return graph, boundary
 end
 
 @testset "Unweighted Search" begin
-    @testset "search_unweighted_gadgets: basic" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-        loader = GraphLoader(
-            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-            pinset=[1, 2, 3, 4],
+    @testset "every state is a concrete induced lattice patch" begin
+        for lattice in (Square(), Triangular())
+            target = SimpleGraph(1)
+            report = search_unweighted_gadgets(
+                target,
+                [1],
+                lattice;
+                min_vertices=3,
+                max_vertices=5,
+                max_evaluations=50,
+                beam_width=4,
+                mutations_per_candidate=3,
+                random_candidates_per_generation=2,
+                rng=MersenneTwister(12),
+            )
+
+            @test report isa UnweightedSearchResult
+            @test report.lattice == (lattice isa Square ? :KSG : :triangular)
+            @test report.target_graph == target
+            @test report.target_boundary == [1]
+            @test !isempty(report.gadgets)
+            @test report.evaluated <= 50
+            @test length(report.trace) == report.evaluated
+
+            for record in report.trace
+                graph, boundary = _reconstruct_record(lattice, record)
+                @test graph_to_g6(graph) == record.graph6
+                @test boundary == record.boundary_vertices
+                @test is_connected(graph)
+            end
+
+            gadget = only(report.gadgets)
+            reconstructed = GadgetSearch.unit_disk_graph(gadget.pos, get_radius(lattice))
+            @test reconstructed == gadget.replacement_graph
+            @test any(record ->
+                record.lattice_coordinates == gadget.lattice_coordinates &&
+                record.boundary_vertices == gadget.boundary_vertices,
+                report.trace,
+            )
+            @test is_gadget_replacement(
+                target,
+                gadget.replacement_graph,
+                [1],
+                gadget.boundary_vertices,
+            ) == (true, gadget.constant_offset)
+        end
+    end
+
+    @testset "dynamically finds embedded crossing-equivalent patches" begin
+        target = _cross_graph()
+        for (lattice, seed) in ((Square(), 2026), (Triangular(), 2027))
+            report = search_unweighted_gadgets(
+                target,
+                [1, 2, 3, 4],
+                lattice;
+                min_vertices=5,
+                max_vertices=17,
+                max_evaluations=1_000,
+                beam_width=32,
+                mutations_per_candidate=8,
+                random_candidates_per_generation=8,
+                rng=MersenneTwister(seed),
+            )
+
+            @test !isempty(report.gadgets)
+            @test report.termination_reason == :solution
+            gadget = only(report.gadgets)
+            @test nv(gadget.replacement_graph) > nv(target)
+            @test is_connected(gadget.replacement_graph)
+            @test length(unique(gadget.boundary_vertices)) == 4
+            @test gadget.port_crossing_penalty in (0, 1)
+            @test is_gadget_replacement(
+                target,
+                gadget.replacement_graph,
+                [1, 2, 3, 4],
+                gadget.boundary_vertices,
+            ) == (true, gadget.constant_offset)
+            @test any(record -> record.parent_key !== nothing, report.trace)
+            @test all(record -> record.lattice == report.lattice, report.trace)
+        end
+    end
+
+    @testset "records self-contained dynamic transitions" begin
+        report = search_unweighted_gadgets(
+            _cross_graph(),
+            [1, 2, 3, 4],
+            Triangular();
+            min_vertices=5,
+            max_vertices=9,
+            max_evaluations=80,
+            beam_width=6,
+            mutations_per_candidate=6,
+            random_candidates_per_generation=3,
+            max_results=4,
+            rng=MersenneTwister(8),
         )
-        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
-        @test results isa Vector{UnweightedGadget}
-        @test any(r -> r.constant_offset == 0.0, results)
-        @test any(r -> r.constant_offset == 2.0, results)
-        @test all(r -> r.pattern_graph == cross, results)
-        @test !hasproperty(UnweightedGadget, :target_index)
-    end
 
-    @testset "search_unweighted_gadgets: limit and max_results" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-        loader = GraphLoader(
-            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-            pinset=[1, 2, 3, 4],
+        @test any(record -> record.action == :extend_arm, report.trace)
+        @test any(record -> record.action == :split_crowded_site, report.trace)
+        evaluated_keys = Set(record.key for record in report.trace)
+        @test all(
+            record.parent_key === nothing || record.parent_key in evaluated_keys
+            for record in report.trace
         )
-        limited = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; limit=1)
-        @test length(limited) == 1
-        @test limited[1].constant_offset == 0.0
-        capped = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; max_results=1)
-        @test length(capped) == 1
+
+        path = tempname()
+        try
+            @test save_unweighted_trace(path, report) == path
+            rows = JSON3.read.(readlines(path))
+            @test length(rows) == report.evaluated
+            @test rows[1].target_graph6 == graph_to_g6(report.target_graph)
+            @test rows[1].lattice == "triangular"
+            @test Tuple.(rows[1].lattice_coordinates) == report.trace[1].lattice_coordinates
+            @test Tuple.(rows[1].pin_coordinates) == report.trace[1].pin_coordinates
+        finally
+            isfile(path) && rm(path)
+        end
     end
 
-    @testset "search_unweighted_gadgets: prefilter rejects disconnected pin coverage" begin
-        loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
-        edge = _edge_graph()
-        results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
-        results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
-        @test isempty(results_on)
-        @test length(results_off) == 1
+    @testset "validates the explicit search budget" begin
+        target = SimpleGraph(1)
+        @test_throws ArgumentError search_unweighted_gadgets(
+            target,
+            [1],
+            Square();
+            min_vertices=2,
+            max_vertices=1,
+        )
+        @test_throws ArgumentError search_unweighted_gadgets(
+            target,
+            [1],
+            Square();
+            max_evaluations=0,
+        )
+        @test_throws ArgumentError search_unweighted_gadgets(
+            target,
+            [1],
+            Square();
+            exploration_fraction=1.0,
+        )
     end
 
-    @testset "UnweightedGadget has no target_index" begin
-        @test !(:target_index in fieldnames(UnweightedGadget))
-    end
-
-    @testset "inf_mask (internal)" begin
+    @testset "verifier behavior remains covered" begin
         @test GadgetSearch.inf_mask([0.0, -Inf, 3.0, -Inf]) == BigInt(10)
         @test GadgetSearch.inf_mask(fill(-Inf, 4)) == BigInt(15)
         reduced = calculate_reduced_alpha_tensor(_cross_graph(), [1, 2, 3, 4])
         @test GadgetSearch.inf_mask(reduced) == BigInt(60576)
-    end
-
-    @testset "pins_prefilter (internal)" begin
-        connected = _connected_graph()
-        disconnected = _cross_graph()
-        isolated = _isolated_graph()
-        @test GadgetSearch.pins_prefilter(connected, [1])
-        @test GadgetSearch.pins_prefilter(disconnected, [1, 2])
-        @test !GadgetSearch.pins_prefilter(disconnected, [1])
-        @test !GadgetSearch.pins_prefilter(isolated, [1])
-        @test GadgetSearch.pins_prefilter(isolated, [1, 3])
-        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [1, 1])
-        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [0])
-    end
-
-    @testset "Triangular UDG Integration" begin
-        path = tempname() * ".g6"
-        try
-            generate_full_grid_udg(Triangular(), 1, 1; path=path)
-            loader = GraphLoader(path; pinset=[1, 2, 3, 4])
-            target = loader[1]
-            results = search_unweighted_gadgets(target, [1, 2, 3, 4], loader; limit=1, max_results=1)
-            @test length(results) == 1
-            @test results[1].constant_offset == 0.0
-        finally
-            isfile(path) && rm(path)
-        end
     end
 end

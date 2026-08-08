@@ -72,6 +72,9 @@ export is_gadget_replacement
 
 # Unweighted search
 export UnweightedGadget
+export UnweightedSearchResult
+export UnweightedSearchRecord
 export search_unweighted_gadgets
+export save_unweighted_trace
 
 end # module
