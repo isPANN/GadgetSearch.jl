@@ -10,7 +10,8 @@ an abstract graph without an embedding.
 A state consists of:
 
 - a finite set of integer lattice coordinates;
-- an ordered list of pin coordinates.
+- an ordered list of pin coordinates;
+- one outward lattice ray for each pin.
 
 The induced graph and boundary vertex indices are derived from those coordinates.
 The boundary order is part of the state, so two patches with the same pins in a
@@ -22,7 +23,8 @@ different logical order are evaluated separately.
 repeats four steps until it exhausts the evaluation budget:
 
 1. Propose geometric edits: add, remove, or relocate a site; move or swap pins;
-   extend an arm by two sites; or locally split a crowded non-pin site.
+   change a pin ray; extend an arm by two sites; or locally split a crowded
+   non-pin site.
 2. Add fresh small lattice patches so the search does not depend on one lineage.
 3. Rebuild the induced lattice graph and compute its reduced alpha tensor.
 4. Keep the best-scoring states plus a random exploration fraction for the next
@@ -36,28 +38,29 @@ The ranking score is lexicographic:
 
 1. number of positions where only one tensor is infinite;
 2. spread of the finite entry-wise offsets;
-3. for four-pin states, whether the straight 1-3 and 2-4 pin segments cross;
+3. number of failed crossing-frame conditions G1-G4;
 4. vertex count;
 5. edge count.
 
-The first two terms guide candidates toward the verifier contract. Port crossing
-is only a preference among equal tensor scores, not an additional validity rule.
-The last two terms prefer smaller candidates when the earlier terms tie. A score
-of zero on the first two terms is still checked by `is_diff_by_constant`; the
-ranking score never replaces the verifier.
+The first two terms guide candidates toward the verifier contract. For a four-pin
+search, a result is returned only when all four geometric conditions also pass:
+the interfaces are strict convex-hull vertices (G1), the two channels alternate
+around the hull (G2), every ray points outward (G3), and the infinite exterior
+corridors are empty, touch only their own pin, and are pairwise non-adjacent
+(G4). The last two terms prefer smaller candidates when the earlier terms tie.
+The reduced-alpha score never replaces `is_diff_by_constant`.
 
 The default budget is 2,000 distinct tensor evaluations. Increase it only in a
-controlled compute environment. Accepted candidates do not stop the run early:
-the search keeps the best `max_results` embeddings so later mutations can improve
-their port geometry.
+controlled compute environment. Accepted candidates do not stop the run early;
+the search keeps the best `max_results` complete crossing frames.
 
 ## Search trace
 
 The returned `UnweightedSearchResult.trace` contains one
 `UnweightedSearchRecord` per distinct tensor evaluation. Each record stores:
 
-- the lattice type, occupied coordinates, ordered pin coordinates, graph6 state,
-  and derived boundary indices;
+- the lattice type, occupied coordinates, ordered pin coordinates and rays,
+  graph6 state, and derived boundary indices;
 - the target graph6 state and target boundary in JSONL exports;
 - its parent state and graph edit action;
 - tensor-distance components;

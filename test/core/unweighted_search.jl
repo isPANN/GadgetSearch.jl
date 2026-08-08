@@ -54,6 +54,7 @@ end
             gadget = only(report.gadgets)
             reconstructed = GadgetSearch.unit_disk_graph(gadget.pos, get_radius(lattice))
             @test reconstructed == gadget.replacement_graph
+            @test length(gadget.pin_rays) == 1
             @test any(record ->
                 record.lattice_coordinates == gadget.lattice_coordinates &&
                 record.boundary_vertices == gadget.boundary_vertices,
@@ -68,7 +69,7 @@ end
         end
     end
 
-    @testset "dynamically finds embedded crossing-equivalent patches" begin
+    @testset "four-pin results require the complete crossing frame" begin
         target = _cross_graph()
         for (lattice, seed) in ((Square(), 2026), (Triangular(), 2027))
             report = search_unweighted_gadgets(
@@ -84,22 +85,49 @@ end
                 rng=MersenneTwister(seed),
             )
 
-            @test !isempty(report.gadgets)
-            @test report.termination_reason == :solution
-            gadget = only(report.gadgets)
-            @test nv(gadget.replacement_graph) > nv(target)
-            @test is_connected(gadget.replacement_graph)
-            @test length(unique(gadget.boundary_vertices)) == 4
-            @test gadget.port_crossing_penalty in (0, 1)
-            @test is_gadget_replacement(
-                target,
-                gadget.replacement_graph,
-                [1, 2, 3, 4],
-                gadget.boundary_vertices,
-            ) == (true, gadget.constant_offset)
+            @test report.evaluated == 1_000
+            @test all(record -> 0 <= record.frame_violations <= 4, report.trace)
+            @test any(record -> record.frame_violations > 0, report.trace)
+            for gadget in report.gadgets
+                checks = check_crossing_frame(
+                    lattice,
+                    gadget.lattice_coordinates,
+                    gadget.lattice_coordinates[gadget.boundary_vertices],
+                    gadget.pin_rays,
+                )
+                @test all(checks)
+                @test is_gadget_replacement(
+                    target,
+                    gadget.replacement_graph,
+                    [1, 2, 3, 4],
+                    gadget.boundary_vertices,
+                ) == (true, gadget.constant_offset)
+            end
             @test any(record -> record.parent_key !== nothing, report.trace)
             @test all(record -> record.lattice == report.lattice, report.trace)
         end
+    end
+
+    @testset "checks G1-G4 exactly" begin
+        square_coordinates = [(0, 0), (-1, 0), (0, 1), (1, 0), (0, -1)]
+        square_pins = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        square_rays = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        @test all(check_crossing_frame(Square(), square_coordinates, square_pins, square_rays))
+
+        triangular_coordinates = [(0, 0), (-1, 0), (0, 1), (1, 0), (-1, -1)]
+        triangular_pins = [(-1, 0), (0, 1), (1, 0), (-1, -1)]
+        triangular_rays = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        @test all(check_crossing_frame(
+            Triangular(), triangular_coordinates, triangular_pins, triangular_rays,
+        ))
+
+        blocked_coordinates = [square_coordinates; (-2, 1)]
+        blocked = check_crossing_frame(Square(), blocked_coordinates, square_pins, square_rays)
+        @test !blocked.G4
+        @test_throws ArgumentError check_crossing_frame(
+            Triangular(), triangular_coordinates, triangular_pins,
+            [(2, 0); triangular_rays[2:4]],
+        )
     end
 
     @testset "records self-contained dynamic transitions" begin
@@ -134,6 +162,7 @@ end
             @test rows[1].lattice == "triangular"
             @test Tuple.(rows[1].lattice_coordinates) == report.trace[1].lattice_coordinates
             @test Tuple.(rows[1].pin_coordinates) == report.trace[1].pin_coordinates
+            @test Tuple.(rows[1].pin_rays) == report.trace[1].pin_rays
         finally
             isfile(path) && rm(path)
         end

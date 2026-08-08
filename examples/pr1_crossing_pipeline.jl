@@ -62,7 +62,8 @@ function run_search_demo(target_graph::SimpleGraph{Int}, target_boundary::Vector
     println("Search hits: $(length(report.gadgets))")
     for (i, result) in enumerate(report.gadgets)
         println("  hit[$i]: lattice=$(result.lattice), coordinates=$(result.lattice_coordinates)")
-        println("          boundary=$(result.boundary_vertices), offset=$(result.constant_offset), vertices=$(nv(result.replacement_graph))")
+        println("          boundary=$(result.boundary_vertices), rays=$(result.pin_rays)")
+        println("          offset=$(result.constant_offset), vertices=$(nv(result.replacement_graph))")
     end
     return report
 end
