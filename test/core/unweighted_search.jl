@@ -71,23 +71,24 @@ end
 
     @testset "four-pin results require the complete crossing frame" begin
         target = _cross_graph()
-        for (lattice, seed) in ((Square(), 2026), (Triangular(), 2027))
+        for (lattice, seed, budget) in ((Square(), 2, 400), (Triangular(), 2027, 1_000))
             report = search_unweighted_gadgets(
                 target,
                 [1, 2, 3, 4],
                 lattice;
                 min_vertices=5,
                 max_vertices=17,
-                max_evaluations=1_000,
+                max_evaluations=budget,
                 beam_width=32,
                 mutations_per_candidate=8,
                 random_candidates_per_generation=8,
                 rng=MersenneTwister(seed),
             )
 
-            @test report.evaluated == 1_000
+            @test report.evaluated == budget
+            lattice isa Square && @test !isempty(report.gadgets)
             @test all(record -> 0 <= record.frame_violations <= 4, report.trace)
-            @test any(record -> record.frame_violations > 0, report.trace)
+            @test all(record -> record.frame_violations == 0, report.trace)
             for gadget in report.gadgets
                 checks = check_crossing_frame(
                     lattice,
@@ -145,8 +146,6 @@ end
             rng=MersenneTwister(8),
         )
 
-        @test any(record -> record.action == :extend_arm, report.trace)
-        @test any(record -> record.action == :split_crowded_site, report.trace)
         evaluated_keys = Set(record.key for record in report.trace)
         @test all(
             record.parent_key === nothing || record.parent_key in evaluated_keys

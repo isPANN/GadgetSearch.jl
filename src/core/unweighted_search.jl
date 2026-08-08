@@ -111,8 +111,10 @@ function search_unweighted_gadgets(
 
     target_reduced = vec(calculate_reduced_alpha_tensor(target_graph, target_boundary))
     all(isinf, target_reduced) && error("target graph has an entirely -Inf reduced alpha tensor")
+    mutation_floor = boundary_count == 4 ? max(min_vertices, 9) : min_vertices
+    max_vertices >= mutation_floor || throw(ArgumentError("four-port dynamic search requires room for a nine-site frame"))
 
-    initial_max = min(max_vertices, min_vertices + 2)
+    initial_max = min(max_vertices, mutation_floor + 2)
     beam = [_random_lattice_patch(rng, lattice, boundary_count, min_vertices, initial_max) for _ in 1:beam_width]
     cache = Dict{String, Tuple{Tuple{Int, Float64, Int, Int, Int}, Float64, Bool}}()
     gadgets = UnweightedGadget[]
@@ -127,7 +129,7 @@ function search_unweighted_gadgets(
         evaluated_before_generation = evaluated
         pool = [_UnweightedProposal(patch, nothing, generations == 1 ? :seed : :retained) for patch in beam]
         for patch in beam, _ in 1:mutations_per_candidate
-            mutated, action = _mutate_lattice_patch(rng, lattice, patch, min_vertices, max_vertices)
+            mutated, action = _mutate_lattice_patch(rng, lattice, patch, mutation_floor, max_vertices)
             push!(pool, _UnweightedProposal(mutated, _lattice_patch_key(lattice, patch), action))
         end
         for _ in 1:random_candidates_per_generation
@@ -259,6 +261,7 @@ function _random_lattice_patch(
     min_vertices::Int,
     max_vertices::Int,
 )
+    boundary_count == 4 && return _random_cross_frame(rng, lattice, min_vertices, max_vertices)
     target_size = rand(rng, min_vertices:max_vertices)
     occupied = Set{_LatticeCoordinate}([(0, 0)])
     while length(occupied) < target_size
@@ -268,6 +271,36 @@ function _random_lattice_patch(
     pins = coordinates[randperm(rng, length(coordinates))[1:boundary_count]]
     rays = rand(rng, eachindex(_lattice_directions(lattice)), boundary_count)
     return _normalize_lattice_patch(lattice, coordinates, pins, rays)
+end
+
+function _random_cross_frame(rng, lattice, min_vertices, max_vertices)
+    max_vertices >= 5 || throw(ArgumentError("four-port search requires at least five vertices"))
+    cyclic = lattice isa Square ? _LatticeCoordinate[
+        (-1, 0), (0, 1), (1, 0), (0, -1),
+    ] : _LatticeCoordinate[
+        (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1),
+    ]
+    for _ in 1:100
+        directions = lattice isa Square ? cyclic : cyclic[sort(randperm(rng, 6)[1:4])]
+        minimum_arm = max_vertices >= 9 ? 2 : 1
+        arms = fill(minimum_arm, 4)
+        while sum(arms) + 1 < min_vertices
+            arms[rand(rng, 1:4)] += 1
+        end
+        while sum(arms) + 1 < max_vertices && rand(rng, Bool)
+            arms[rand(rng, 1:4)] += 1
+        end
+        sum(arms) + 1 <= max_vertices || continue
+        coordinates = _LatticeCoordinate[(0, 0)]
+        for (direction, arm) in zip(directions, arms), distance in 1:arm
+            push!(coordinates, _lattice_step(lattice, (0, 0), direction, distance))
+        end
+        pins = [_lattice_step(lattice, (0, 0), direction, arm) for (direction, arm) in zip(directions, arms)]
+        ray_indices = [_lattice_direction_index(_lattice_directions(lattice), direction) for direction in directions]
+        patch = _normalize_lattice_patch(lattice, unique(coordinates), pins, ray_indices)
+        all(_check_crossing_frame(lattice, patch)) && return patch
+    end
+    error("could not construct a legal four-port frame within the vertex bounds")
 end
 
 function _mutate_lattice_patch(
@@ -292,6 +325,7 @@ function _mutate_lattice_patch(
         mutated = _apply_lattice_action(rng, lattice, patch, action, removable)
         mutated === nothing && continue
         normalized = _normalize_lattice_patch(lattice, mutated.coordinates, mutated.pins, mutated.rays)
+        length(normalized.pins) == 4 && !all(_check_crossing_frame(lattice, normalized)) && continue
         _lattice_patch_key(lattice, normalized) != _lattice_patch_key(lattice, patch) &&
             return normalized, action
     end

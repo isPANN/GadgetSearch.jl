@@ -46,15 +46,15 @@ function run_search_demo(target_graph::SimpleGraph{Int}, target_boundary::Vector
     report = search_unweighted_gadgets(
         target_graph,
         target_boundary,
-        Triangular();
+        Square();
         min_vertices=5,
-        max_vertices=11,
-        max_evaluations=2_000,
-        beam_width=48,
-        mutations_per_candidate=10,
-        random_candidates_per_generation=16,
+        max_vertices=17,
+        max_evaluations=400,
+        beam_width=32,
+        mutations_per_candidate=8,
+        random_candidates_per_generation=8,
         max_results=4,
-        rng=MersenneTwister(2026),
+        rng=MersenneTwister(2),
     )
     println("Evaluated: $(report.evaluated) candidates in $(report.generations) generations")
     println("Termination: $(report.termination_reason)")
