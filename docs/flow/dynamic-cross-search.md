@@ -1,48 +1,49 @@
 # Flow journal — dynamic-cross-search
 
-**GOAL:** Build a dynamic lattice-native search that reproducibly finds a usable unweighted CROSS on KSG or the triangular lattice without modifying the existing reduced-alpha verifier.
-**Success test:** With a recorded random seed and bounded evaluation budget, the public search returns a concrete lattice coordinate witness that passes `is_gadget_replacement` and all required four-port connection checks.
+**GOAL:** Reproducibly find concrete unweighted CROSS embeddings on KSG and the triangular lattice without modifying the reduced-alpha verifier.
+**Success test:** A recorded seed and bounded public search return lattice coordinates that pass `is_gadget_replacement` and G1-G4.
 **Started:** 2026-08-08
-**KB:** none
 
-## Levers & facts (initial)
+## Levers & facts
 
-- Facts: the verifier is fixed; arbitrary-graph search is out of scope; fixed-grid subset enumeration is too large; random patches and rays waste most evaluations before topology matters.
-- Initial distance estimate: high — correctness checks exist, but the proposal distribution does not construct useful frames and no valid CROSS has been rediscovered.
+- The verifier is fixed; outputs must be induced lattice patches; random frames and fixed-canvas subsets waste most evaluations.
+- KSG has a compact solution; the triangular positive control has 37 sites and a non-radial track-swap frame.
 
 ## Trail
 
 ### Trial 1 — analyze — level 0
-- **Action:** Analyze the current random patch + random pin + random ray state.
-- **Outcome:** Conflict: geometry variables dominate the state count while most combinations are immediately unusable; tensor work is spent on candidates that cannot become a connected crossing tile.
-- **Distance:** high (was high) → no_progress = 1
-- **Note (learned clause):** `{random pins, random rays, post-hoc frame filtering} ⇒ excessive redundant states and no reproducible CROSS`.
+- **Action/outcome:** Random pins and rays were rejected post hoc; almost all tensor work went to unusable geometry. `{random frame + post-filter} ⇒ redundant dead states`.
 
-### Trial 2 — simulate — level 1
-- **Action:** Hold a legal four-arm KSG frame fixed and dynamically add/remove only interior sites.
-- **Outcome:** The regular frame starts with zero finite-offset spread, but the span-2 run exhausts 866 distinct legal connected patches at six mask mismatches and then cycles.
-- **Distance:** high (was high) → no_progress = 2
-- **Note (learned clause):** `{one fixed symmetric frame, single-site add/remove, elite-only retention} ⇒ a small closed basin; legal geometry alone does not provide enough topology or escape moves`.
+### Trial 2 — simulate/what-if — level 1
+- **Action/outcome:** One symmetric KSG frame cycled through 866 states; independent legal arm lengths plus frame-preserving edits found CROSS for 5/5 seeds. `{one symmetric frame} ⇒ basin`; `{independent legal arms} ⇒ escape`.
 
-### Trial 3 — what-if — level 1
-- **Action:** Let the four legal KSG arms vary independently, then evolve only frame-preserving lattice edits.
-- **Outcome:** Strong progress: all five tested seeds found a complete KSG CROSS within 1,000 evaluations; seed 2 first succeeds at evaluation 250 and returns a 13-site witness.
-- **Distance:** low (was high) → no_progress = 0
-- **Note (learned clause):** `{legal frame first, independent arm lengths, frame-preserving edits} ⇒ reproducible CROSS discovery without a fixed-grid subset scan`.
+### Trial 3 — final-check — level 0
+- **Action/outcome:** KSG seed 2 succeeds at evaluation 250 with 13 sites, 24 edges, offset 3; verifier and G1-G4 pass, as does the full test suite.
 
-### Trial 4 — final-check — level 0
-- **Action:** Run the public KSG search with seed 2 and a 400-evaluation budget, then reconstruct and independently check the returned graph.
-- **Outcome:** Evaluation 250 yields a 13-site, 24-edge lattice patch; `is_gadget_replacement` returns `(true, 3.0)` and G1–G4 are all true. The full test suite passes.
-- **Distance:** solved (was low)
+### Trial 4 — analyze — level 0
+- **Action/outcome:** Recovered the paper's coordinate-drawn 37-site triangular witness; verifier returns `(true, 15.0)` and G1-G4 pass. Rays 180°, 60°, 60°, 0° prove `{radial-only frames} ⇒ excludes known solutions`.
 
-## Notes store (learned clauses, deduplicated)
+### Trial 5 — simulate — level 1
+- **Action/outcome:** Three 5,000-evaluation triangular runs with 45-site capacity retained only 16-18 sites. Removing early size pressure and seeding 25-40-site track-swap interiors reached one mask mismatch but never exact. `{compactness before correctness} ⇒ premature collapse`.
 
-- `{random pins, random rays, post-hoc frame filtering} ⇒ excessive redundant states and no reproducible CROSS`.
-- `{one fixed symmetric frame, single-site add/remove, elite-only retention} ⇒ a small closed basin; legal geometry alone does not provide enough topology or escape moves`.
-- `{legal frame first, independent arm lengths, frame-preserving edits} ⇒ reproducible CROSS discovery without a fixed-grid subset scan`.
+### Trial 6 — what-if — level 1
+- **Action/outcome:** Raw-alpha dominance margins distinguished which state was one unit short; multi-site region rewrites moved the error to other states but did not remove it in 20,000 evaluations. `{local lattice rewrites} ⇒ one-bit plateau`.
+
+### Trial 7 — analyze/backjump — level 1
+- **Action/outcome:** Reducing the 37-site witness to an abstract core discarded lattice coordinates, pin geometry, and immediate embeddability. Subsequent work became specific to one topology. `{abstract core first} ⇒ wrong state representation`; reject this branch.
+
+### Trial 8 — simulate/backjump — level 2
+- **Action/outcome:** Abstract topology search could satisfy the tensor while failing to produce a concrete triangular or KSG embedding. Encoding those states as opaque graph strings made the trajectory unreadable. The experiments and search-facing encoding were deleted.
+
+### Trial 9 — simulate — level 1
+- **Action/outcome:** Lattice-native cluster rewrites and aligned parent crossover preserved concrete pin frames but still stopped one boundary state short. The next move must combine lattice regions while keeping every intermediate state embedded; it must not reintroduce an abstract-graph stage.
+
+## Notes store
+
+- Keep coordinates, ordered pins, and rays as the complete search state; construct legal geometry rather than filtering it; retain non-radial frames; treat repeated one-bit plateaus as a move-set conflict, not non-existence.
 
 ## Outcome
 
-- **Status:** SOLVED
-- **Result:** A bounded, reproducible KSG CROSS search now succeeds without changing the verifier.
-- **Reasoning trail (clean):** Random port geometry wasted the budget; one symmetric frame trapped the search; independent legal arms plus frame-preserving edits exposed a short path to a compact verified crossing.
+- **Status:** in progress
+- **Result:** KSG is solved. The triangular positive control is independently verified. The abstract-core detour was rejected and removed; triangular search remains one boundary state short.
+- **Next lever:** add lattice-native region recombination that never leaves concrete KSG or triangular coordinates.

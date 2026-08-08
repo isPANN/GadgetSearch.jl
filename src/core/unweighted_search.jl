@@ -24,7 +24,6 @@ struct UnweightedSearchRecord
     lattice_coordinates::Vector{_LatticeCoordinate}
     pin_coordinates::Vector{_LatticeCoordinate}
     pin_rays::Vector{_LatticeCoordinate}
-    graph6::String
     boundary_vertices::Vector{Int}
     parent_key::Union{Nothing, String}
     action::Symbol
@@ -196,7 +195,6 @@ function search_unweighted_gadgets(
                 copy(patch.coordinates),
                 copy(patch.pins),
                 _patch_ray_directions(lattice, patch),
-                graph_to_g6(item.graph),
                 copy(item.boundary),
                 item.proposal.parent_key,
                 item.proposal.action,
@@ -666,11 +664,11 @@ end
 
 """Write the self-contained lattice search trajectory as JSON Lines."""
 function save_unweighted_trace(path::AbstractString, result::UnweightedSearchResult)
-    target_graph6 = graph_to_g6(result.target_graph)
     open(path, "w") do io
         for record in result.trace
             JSON3.write(io, (
-                target_graph6=target_graph6,
+                target_vertices=nv(result.target_graph),
+                target_edges=[(src(edge), dst(edge)) for edge in edges(result.target_graph)],
                 target_boundary=result.target_boundary,
                 lattice=String(record.lattice),
                 generation=record.generation,
@@ -678,7 +676,6 @@ function save_unweighted_trace(path::AbstractString, result::UnweightedSearchRes
                 lattice_coordinates=record.lattice_coordinates,
                 pin_coordinates=record.pin_coordinates,
                 pin_rays=record.pin_rays,
-                graph6=record.graph6,
                 boundary_vertices=record.boundary_vertices,
                 parent_key=record.parent_key,
                 action=String(record.action),

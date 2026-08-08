@@ -46,7 +46,8 @@ end
 
             for record in report.trace
                 graph, boundary = _reconstruct_record(lattice, record)
-                @test graph_to_g6(graph) == record.graph6
+                @test nv(graph) == record.vertices
+                @test ne(graph) == record.edges
                 @test boundary == record.boundary_vertices
                 @test is_connected(graph)
             end
@@ -157,7 +158,8 @@ end
             @test save_unweighted_trace(path, report) == path
             rows = JSON3.read.(readlines(path))
             @test length(rows) == report.evaluated
-            @test rows[1].target_graph6 == graph_to_g6(report.target_graph)
+            @test rows[1].target_vertices == nv(report.target_graph)
+            @test Tuple.(rows[1].target_edges) == [(1, 3), (2, 4)]
             @test rows[1].lattice == "triangular"
             @test Tuple.(rows[1].lattice_coordinates) == report.trace[1].lattice_coordinates
             @test Tuple.(rows[1].pin_coordinates) == report.trace[1].pin_coordinates

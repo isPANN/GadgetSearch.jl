@@ -63,8 +63,8 @@ The returned `UnweightedSearchResult.trace` contains one
 `UnweightedSearchRecord` per distinct tensor evaluation. Each record stores:
 
 - the lattice type, occupied coordinates, ordered pin coordinates and rays,
-  graph6 state, and derived boundary indices;
-- the target graph6 state and target boundary in JSONL exports;
+  and derived boundary indices;
+- the target's vertex count, explicit edge list, and boundary in JSONL exports;
 - its parent state and graph edit action;
 - tensor-distance components;
 - whether the state survived beam selection;
