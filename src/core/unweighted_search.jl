@@ -19,10 +19,12 @@ end
 """One evaluated transition of the dynamically constructed lattice patch."""
 struct UnweightedSearchRecord
     generation::Int
+    stage::Symbol
     key::String
     lattice::Symbol
-    lattice_coordinates::Vector{_LatticeCoordinate}
-    pin_coordinates::Vector{_LatticeCoordinate}
+    graph_edges::Vector{Tuple{Int, Int}}
+    lattice_coordinates::Union{Nothing, Vector{_LatticeCoordinate}}
+    pin_coordinates::Union{Nothing, Vector{_LatticeCoordinate}}
     pin_rays::Vector{_LatticeCoordinate}
     boundary_vertices::Vector{Int}
     parent_key::Union{Nothing, String}
@@ -31,7 +33,9 @@ struct UnweightedSearchRecord
     edges::Int
     mask_mismatches::Int
     offset_spread::Float64
-    frame_violations::Int
+    constraint_defects::Int
+    embedding_placed::Int
+    rewrite_steps::Int
     is_solution::Bool
     constant_offset::Union{Nothing, Float64}
     selected::Bool
@@ -57,33 +61,15 @@ struct _LatticePatch
     rays::Vector{Int}
 end
 
-struct _UnweightedProposal
-    patch::_LatticePatch
-    parent_key::Union{Nothing, String}
-    action::Symbol
-end
-
-struct _UnweightedEvaluation
-    proposal::_UnweightedProposal
-    key::String
+struct _GraphState
     graph::SimpleGraph{Int}
     boundary::Vector{Int}
-    score::Tuple{Int, Float64, Int, Int, Int}
-    valid::Bool
-    constant_offset::Float64
+    parent_key::Union{Nothing, String}
+    action::Symbol
+    rewrite_steps::Int
 end
 
-"""
-    search_unweighted_gadgets(target_graph, target_boundary, lattice; kwargs...)
-
-Dynamically grow and reshape an induced patch of `Square()` (KSG) or
-`Triangular()`. There is no fixed canvas and no abstract-graph stage: every
-evaluated state is an explicit lattice coordinate set, and its edges are derived
-from the selected lattice sites. Two-site arm extension and crowded-site split
-are proposal moves, while the existing reduced-alpha-tensor verifier remains the
-only logical acceptance criterion. Four-pin searches additionally require the
-complete G1-G4 crossing-frame geometry.
-"""
+"""Search logical skeletons, rewrite them exactly, then embed them on `lattice`."""
 function search_unweighted_gadgets(
     target_graph::SimpleGraph{Int},
     target_boundary::Vector{Int},
@@ -110,287 +96,580 @@ function search_unweighted_gadgets(
 
     target_reduced = vec(calculate_reduced_alpha_tensor(target_graph, target_boundary))
     all(isinf, target_reduced) && error("target graph has an entirely -Inf reduced alpha tensor")
-    mutation_floor = boundary_count == 4 ? max(min_vertices, 9) : min_vertices
-    max_vertices >= mutation_floor || throw(ArgumentError("four-port dynamic search requires room for a nine-site frame"))
-
-    initial_max = min(max_vertices, mutation_floor + 2)
-    beam = [_random_lattice_patch(rng, lattice, boundary_count, min_vertices, initial_max) for _ in 1:beam_width]
-    cache = Dict{String, Tuple{Tuple{Int, Float64, Int, Int, Int}, Float64, Bool}}()
-    gadgets = UnweightedGadget[]
-    gadget_keys = Set{String}()
-    evaluated = 0
-    generations = 0
-    best_score = (typemax(Int), Inf, typemax(Int), typemax(Int), typemax(Int))
-    trace = UnweightedSearchRecord[]
-
-    while evaluated < max_evaluations
-        generations += 1
-        evaluated_before_generation = evaluated
-        pool = [_UnweightedProposal(patch, nothing, generations == 1 ? :seed : :retained) for patch in beam]
-        for patch in beam, _ in 1:mutations_per_candidate
-            mutated, action = _mutate_lattice_patch(rng, lattice, patch, mutation_floor, max_vertices)
-            push!(pool, _UnweightedProposal(mutated, _lattice_patch_key(lattice, patch), action))
-        end
-        for _ in 1:random_candidates_per_generation
-            restart = _random_lattice_patch(rng, lattice, boundary_count, min_vertices, initial_max)
-            push!(pool, _UnweightedProposal(restart, nothing, :restart))
-        end
-
-        ranked = Tuple{_LatticePatch, Tuple{Int, Float64, Int, Int, Int}}[]
-        ranked_keys = Set{String}()
-        generation_evaluations = _UnweightedEvaluation[]
-        for proposal in pool
-            key = _lattice_patch_key(lattice, proposal.patch)
-            key in ranked_keys && continue
-            push!(ranked_keys, key)
-            graph, boundary, positions = _materialize_lattice_patch(lattice, proposal.patch)
-            if !haskey(cache, key)
-                evaluated == max_evaluations && break
-                candidate_reduced = vec(calculate_reduced_alpha_tensor(graph, boundary))
-                valid, constant_offset = is_diff_by_constant(candidate_reduced, target_reduced)
-                frame = _check_crossing_frame(lattice, proposal.patch)
-                frame_violations = count(!, frame)
-                score = _unweighted_tensor_distance(
-                    candidate_reduced, target_reduced, graph, frame_violations,
-                )
-                cache[key] = (score, Float64(constant_offset), valid)
-                push!(generation_evaluations, _UnweightedEvaluation(
-                    proposal, key, graph, boundary, score, valid, Float64(constant_offset),
-                ))
-                evaluated += 1
-            end
-
-            score, constant_offset, valid = cache[key]
-            best_score = min(best_score, score)
-            push!(ranked, (proposal.patch, score))
-            if valid && score[3] == 0 && !(key in gadget_keys)
-                push!(gadget_keys, key)
-                push!(gadgets, UnweightedGadget(
-                    target_graph,
-                    graph,
-                    boundary,
-                    constant_offset,
-                    _lattice_symbol(lattice),
-                    copy(proposal.patch.coordinates),
-                    positions,
-                    _patch_ray_directions(lattice, proposal.patch),
-                ))
-                sort!(gadgets; by=gadget -> (
-                    nv(gadget.replacement_graph),
-                    ne(gadget.replacement_graph),
-                ))
-                resize!(gadgets, min(length(gadgets), max_results))
-            end
-        end
-
-        sort!(ranked; by=last)
-        beam = _select_unweighted_beam(rng, ranked, beam_width, exploration_fraction)
-        selected_keys = Set(_lattice_patch_key(lattice, patch) for patch in beam)
-        for item in generation_evaluations
-            patch = item.proposal.patch
-            push!(trace, UnweightedSearchRecord(
-                generations,
-                item.key,
-                _lattice_symbol(lattice),
-                copy(patch.coordinates),
-                copy(patch.pins),
-                _patch_ray_directions(lattice, patch),
-                copy(item.boundary),
-                item.proposal.parent_key,
-                item.proposal.action,
-                nv(item.graph),
-                ne(item.graph),
-                item.score[1],
-                item.score[2],
-                item.score[3],
-                item.valid && item.score[3] == 0,
-                item.valid && item.score[3] == 0 ? item.constant_offset : nothing,
-                item.key in selected_keys,
-            ))
-        end
-        evaluated == evaluated_before_generation && break
-    end
-
-    termination_reason = if !isempty(gadgets)
-        :solution
-    elseif evaluated == max_evaluations
-        :budget
-    else
-        :search_space_exhausted
-    end
-
+    logical_budget = max(1, max_evaluations ÷ 2)
+    skeletons, evaluated, generations, best_score, trace = _search_logical_skeletons(
+        target_graph, target_boundary, target_reduced, lattice;
+        min_vertices, max_vertices, max_evaluations=logical_budget, beam_width,
+        mutations_per_candidate, random_candidates_per_generation,
+        exploration_fraction, rng,
+    )
+    gadgets, rewrite_evaluations, rewrite_generations = _rewrite_and_embed_skeletons(
+        target_graph, target_boundary, skeletons, lattice;
+        max_vertices, max_evaluations=max_evaluations - evaluated, beam_width,
+        mutations_per_candidate, exploration_fraction, max_results, rng, trace,
+    )
+    evaluated += rewrite_evaluations
+    generations += rewrite_generations
+    reason = !isempty(gadgets) ? :solution : evaluated == max_evaluations ? :budget : :search_space_exhausted
     return UnweightedSearchResult(
-        target_graph,
-        copy(target_boundary),
-        _lattice_symbol(lattice),
-        gadgets,
-        evaluated,
-        generations,
-        best_score[1],
-        best_score[2],
-        termination_reason,
-        trace,
+        target_graph, copy(target_boundary), _lattice_symbol(lattice), gadgets,
+        evaluated, generations, best_score[1], best_score[2], reason, trace,
     )
 end
 
-function _select_unweighted_beam(
-    rng::AbstractRNG,
-    ranked::Vector{Tuple{_LatticePatch, Tuple{Int, Float64, Int, Int, Int}}},
-    beam_width::Int,
-    exploration_fraction::Float64,
+_graph_edges(graph) = [(src(edge), dst(edge)) for edge in edges(graph)]
+function _graph_state_key(state::_GraphState)
+    return "n=$(nv(state.graph));pins=$(join(state.boundary,','));edges=$(join(("$a-$b" for (a, b) in _graph_edges(state.graph)),','))"
+end
+
+function _random_logical_state(rng, boundary_count, min_vertices, max_vertices)
+    while true
+        vertex_count = rand(rng, min_vertices:min(max_vertices, min_vertices + 8))
+        graph = SimpleGraph(vertex_count)
+        for vertex in 2:vertex_count
+            add_edge!(graph, vertex, rand(rng, 1:vertex-1))
+        end
+        for first in 1:vertex_count-1, second in first+1:vertex_count
+            rand(rng) < 0.16 && add_edge!(graph, first, second)
+        end
+        boundary_count == 4 && !_has_alternating_planar_frame(graph, 1:4) && continue
+        return _GraphState(graph, collect(1:boundary_count), nothing, :logical_seed, 0)
+    end
+end
+
+function _mutate_logical_state(rng, state, min_vertices, max_vertices)
+    boundary_count = length(state.boundary)
+    for _ in 1:32
+        graph = deepcopy(state.graph)
+        actions = Symbol[]
+        nv(graph) >= 2 && push!(actions, :toggle_edges)
+        nv(graph) < max_vertices && push!(actions, :add_vertex)
+        nv(graph) > max(min_vertices, boundary_count) && push!(actions, :remove_vertex)
+        action = rand(rng, actions)
+        if action == :add_vertex
+            add_vertex!(graph)
+            degree = rand(rng, 1:min(4, nv(graph) - 1))
+            for neighbor in randperm(rng, nv(graph) - 1)[1:degree]
+                add_edge!(graph, nv(graph), neighbor)
+            end
+        elseif action == :remove_vertex
+            rem_vertex!(graph, rand(rng, boundary_count+1:nv(graph)))
+        else
+            for _ in 1:rand(rng, 1:8)
+                first, second = randperm(rng, nv(graph))[1:2]
+                has_edge(graph, first, second) ? rem_edge!(graph, first, second) : add_edge!(graph, first, second)
+            end
+        end
+        boundary_count == 4 && !_has_alternating_planar_frame(graph, state.boundary) && continue
+        return _GraphState(graph, copy(state.boundary), _graph_state_key(state), action, state.rewrite_steps)
+    end
+    return state
+end
+
+function _has_alternating_planar_frame(graph, boundary)
+    augmented = deepcopy(graph)
+    for index in eachindex(boundary)
+        add_edge!(augmented, boundary[index], boundary[mod1(index + 1, 4)])
+    end
+    add_vertex!(augmented)
+    center = nv(augmented)
+    for pin in boundary
+        add_edge!(augmented, pin, center)
+    end
+    return is_planar(augmented)
+end
+
+function _evaluate_graph_state(state, target_reduced)
+    raw, reduced, optimum_counts, near_counts = _search_alpha_tensors(state.graph, state.boundary)
+    valid, offset = is_diff_by_constant(reduced, target_reduced)
+    differences = [candidate - target for (candidate, target) in zip(reduced, target_reduced)
+        if isfinite(candidate) && isfinite(target)]
+    score = (
+        count(isinf(candidate) != isinf(target) for (candidate, target) in zip(reduced, target_reduced)),
+        Float64(maximum(differences) - minimum(differences)),
+        length(connected_components(state.graph)) - 1,
+        _tensor_plateau_signal(optimum_counts, near_counts, reduced, target_reduced),
+        maximum(degree(state.graph)),
+    )
+    signature = raw .- raw[1]
+    return score, signature, valid, Float64(offset), raw, reduced
+end
+
+function _tensor_plateau_signal(optimum_counts, near_counts, reduced, target)
+    unwanted = sum((optimum_counts[index] for index in eachindex(reduced)
+        if isfinite(reduced[index]) && !isfinite(target[index])); init=0)
+    missing = sum((near_counts[index] for index in eachindex(reduced)
+        if !isfinite(reduced[index]) && isfinite(target[index])); init=0)
+    return unwanted - missing
+end
+
+function _search_alpha_tensors(graph, boundary)
+    vertex_count = nv(graph)
+    vertex_count <= 20 || error("logical skeleton search supports at most 20 vertices")
+    adjacency = fill(UInt64(0), vertex_count)
+    for edge in edges(graph)
+        adjacency[src(edge)] |= UInt64(1) << (dst(edge) - 1)
+        adjacency[dst(edge)] |= UInt64(1) << (src(edge) - 1)
+    end
+    raw = fill(-Inf, 1 << length(boundary))
+    optimum_counts = zeros(Int, length(raw))
+    one_conflict_counts = zeros(Int, length(raw), vertex_count + 1)
+    for occupied in UInt64(0):(UInt64(1) << vertex_count)-1
+        remaining = occupied
+        conflicts = 0
+        while remaining != 0
+            vertex = trailing_zeros(remaining) + 1
+            remaining &= remaining - 1
+            conflicts += count_ones(adjacency[vertex] & remaining)
+            conflicts > 1 && break
+        end
+        state = sum(((occupied >> (vertex - 1)) & 1) << (slot - 1) for (slot, vertex) in enumerate(boundary))
+        size = count_ones(occupied)
+        if conflicts == 0 && size > raw[state+1]
+            raw[state+1] = size
+            optimum_counts[state+1] = 1
+        elseif conflicts == 0 && size == raw[state+1]
+            optimum_counts[state+1] += 1
+        elseif conflicts == 1
+            one_conflict_counts[state+1, size+1] += 1
+        end
+    end
+    tensor = reshape(Tropical.(raw), ntuple(_ -> 2, length(boundary)))
+    reduced = vec(Float64.(content.(mis_compactify!(tensor))))
+    near_counts = [isfinite(raw[state]) && raw[state] < vertex_count ?
+        one_conflict_counts[state, Int(raw[state]) + 2] : 0 for state in eachindex(raw)]
+    return raw, reduced, optimum_counts, near_counts
+end
+
+function _tensor_repair_states(rng, state, target_reduced, raw, reduced, limit)
+    wrong = Set(index for index in eachindex(reduced)
+        if isinf(reduced[index]) != isinf(target_reduced[index]))
+    isempty(wrong) && return _GraphState[]
+    toggles = Set{Tuple{Symbol, Tuple{Int, Int}}}()
+    for occupied in UInt64(0):(UInt64(1) << nv(state.graph))-1
+        index = _boundary_state(occupied, state.boundary) + 1
+        index in wrong || continue
+        if isfinite(target_reduced[index])
+            wanted_size = isfinite(raw[index]) ? Int(raw[index]) + 1 : count_ones(index - 1)
+            count_ones(occupied) == wanted_size || continue
+            conflicts = [(src(edge), dst(edge)) for edge in edges(state.graph)
+                if occupied & (UInt64(1) << (src(edge) - 1)) != 0 &&
+                    occupied & (UInt64(1) << (dst(edge) - 1)) != 0]
+            length(conflicts) == 1 && push!(toggles, (:remove_edge, only(conflicts)))
+        else
+            count_ones(occupied) == raw[index] || continue
+            _is_independent_mask(state.graph, occupied) || continue
+            selected = [vertex for vertex in vertices(state.graph)
+                if occupied & (UInt64(1) << (vertex - 1)) != 0]
+            for first in 1:length(selected)-1, second in first+1:length(selected)
+                edge = minmax(selected[first], selected[second])
+                !has_edge(state.graph, edge...) && push!(toggles, (:add_edge, edge))
+            end
+        end
+    end
+    ordered_toggles = shuffle!(rng, collect(toggles))
+    children = _GraphState[]
+    for (action, edge) in ordered_toggles[1:min(length(ordered_toggles), cld(limit, 2))]
+        graph = deepcopy(state.graph)
+        action == :add_edge ? add_edge!(graph, edge...) : rem_edge!(graph, edge...)
+        length(state.boundary) == 4 && !_has_alternating_planar_frame(graph, state.boundary) && continue
+        push!(children, _GraphState(
+            graph, copy(state.boundary), _graph_state_key(state), action, state.rewrite_steps,
+        ))
+    end
+    for _ in 1:8limit
+        (length(children) == limit || length(ordered_toggles) < 2) && break
+        graph = deepcopy(state.graph)
+        count = rand(rng, 2:min(6, length(ordered_toggles)))
+        for (action, edge) in ordered_toggles[randperm(rng, length(ordered_toggles))[1:count]]
+            action == :add_edge ? add_edge!(graph, edge...) : rem_edge!(graph, edge...)
+        end
+        length(state.boundary) == 4 && !_has_alternating_planar_frame(graph, state.boundary) && continue
+        push!(children, _GraphState(
+            graph, copy(state.boundary), _graph_state_key(state), :repair_batch, state.rewrite_steps,
+        ))
+    end
+    return children
+end
+
+function _boundary_state(occupied, boundary)
+    return sum(Int((occupied >> (vertex - 1)) & 1) << (slot - 1)
+        for (slot, vertex) in enumerate(boundary))
+end
+
+function _is_independent_mask(graph, occupied)
+    return all(occupied & (UInt64(1) << (src(edge) - 1)) == 0 ||
+        occupied & (UInt64(1) << (dst(edge) - 1)) == 0 for edge in edges(graph))
+end
+
+function _search_logical_skeletons(
+    target_graph, target_boundary, target_reduced, lattice;
+    min_vertices, max_vertices, max_evaluations, beam_width,
+    mutations_per_candidate, random_candidates_per_generation,
+    exploration_fraction, rng,
 )
+    boundary_count = length(target_boundary)
+    logical_max = min(max_vertices, max(min_vertices, boundary_count + 12))
+    beam = [_random_logical_state(rng, boundary_count, min_vertices, logical_max) for _ in 1:beam_width]
+    if nv(target_graph) <= logical_max &&
+        (boundary_count != 4 || _has_alternating_planar_frame(target_graph, target_boundary))
+        push!(beam, _GraphState(deepcopy(target_graph), copy(target_boundary), nothing, :target_seed, 0))
+    end
+    cache = Dict{String, Tuple}()
+    skeletons = _GraphState[]
+    skeleton_keys = Set{String}()
+    trace = UnweightedSearchRecord[]
+    evaluated = 0
+    generation = 0
+    best_score = (typemax(Int), Inf, typemax(Int), typemax(Int), typemax(Int))
+    while evaluated < max_evaluations
+        generation += 1
+        pool = [_GraphState(state.graph, state.boundary, state.parent_key, :retained, 0) for state in beam]
+        for state in beam, _ in 1:mutations_per_candidate
+            push!(pool, _mutate_logical_state(rng, state, min_vertices, logical_max))
+        end
+        for state in beam
+            analysis = get(cache, _graph_state_key(state), nothing)
+            analysis === nothing && continue
+            append!(pool, _tensor_repair_states(
+                rng, state, target_reduced, analysis[5], analysis[6], mutations_per_candidate,
+            ))
+        end
+        append!(pool, [_random_logical_state(rng, boundary_count, min_vertices, logical_max) for _ in 1:random_candidates_per_generation])
+        ranked = Tuple{_GraphState, Tuple{Int, Float64, Int, Int, Int}, Vector{Float64}}[]
+        generation_records = Tuple{_GraphState, String, Tuple{Int, Float64, Int, Int, Int}, Bool, Float64}[]
+        seen = Set{String}()
+        for state in pool
+            key = _graph_state_key(state)
+            key in seen && continue
+            push!(seen, key)
+            if !haskey(cache, key)
+                evaluated == max_evaluations && break
+                cache[key] = _evaluate_graph_state(state, target_reduced)
+                evaluated += 1
+                score, _, valid, offset, _, _ = cache[key]
+                push!(generation_records, (state, key, score, valid, offset))
+            end
+            score, signature, valid, offset, _, _ = cache[key]
+            best_score = min(best_score, score)
+            push!(ranked, (state, score, signature))
+            if valid && is_connected(state.graph) && !(key in skeleton_keys)
+                push!(skeleton_keys, key)
+                push!(skeletons, state)
+            end
+        end
+        sort!(ranked; by=item -> item[2])
+        beam = _select_graph_beam(rng, ranked, beam_width, exploration_fraction)
+        selected = Set(_graph_state_key(state) for state in beam)
+        for (state, key, score, valid, offset) in generation_records
+            push!(trace, _search_record(
+                generation, :logical, key, lattice, state, score;
+                is_solution=false, constant_offset=valid ? offset : nothing,
+                embedding_placed=0, selected=key in selected,
+            ))
+        end
+        isempty(generation_records) && break
+        isempty(ranked) && break
+    end
+    return skeletons, evaluated, generation, best_score, trace
+end
+
+function _select_graph_beam(rng, ranked, beam_width, exploration_fraction)
     selected_count = min(beam_width, length(ranked))
-    selected_count == 0 && return _LatticePatch[]
-    exploration_count = min(floor(Int, selected_count * exploration_fraction), selected_count - 1)
-    elite_count = selected_count - exploration_count
-    selected = collect(Iterators.take(ranked, elite_count))
-    if exploration_count > 0
-        remaining = @view ranked[elite_count+1:end]
-        chosen = randperm(rng, length(remaining))[1:exploration_count]
-        append!(selected, remaining[chosen])
+    selected_count == 0 && return _GraphState[]
+    random_count = min(floor(Int, selected_count * exploration_fraction), selected_count - 1)
+    elite_count = selected_count - random_count
+    selected = eltype(ranked)[]
+    connected_quota = min(cld(elite_count, 3), count(item -> is_connected(item[1].graph), ranked))
+    for item in ranked
+        is_connected(item[1].graph) || continue
+        push!(selected, item)
+        length(selected) == connected_quota && break
     end
-    return [patch for (patch, _) in selected]
+    profiles = Vector{Float64}[]
+    selected_keys = Set(_graph_state_key(item[1]) for item in selected)
+    for item in ranked
+        _graph_state_key(item[1]) in selected_keys && continue
+        item[3] in profiles && continue
+        push!(selected, item)
+        push!(selected_keys, _graph_state_key(item[1]))
+        push!(profiles, item[3])
+        length(selected) == min(elite_count, cld(selected_count, 2)) && break
+    end
+    for item in ranked
+        key = _graph_state_key(item[1])
+        key in selected_keys && continue
+        push!(selected, item)
+        push!(selected_keys, key)
+        length(selected) == elite_count && break
+    end
+    remaining = [item for item in ranked if !(_graph_state_key(item[1]) in selected_keys)]
+    if random_count > 0
+        append!(selected, remaining[randperm(rng, length(remaining))[1:random_count]])
+    end
+    return [item[1] for item in selected]
 end
 
-function _random_lattice_patch(
-    rng::AbstractRNG,
-    lattice::LatticeType,
-    boundary_count::Int,
-    min_vertices::Int,
-    max_vertices::Int,
+function _search_record(
+    generation, stage, key, lattice, state, score;
+    patch=nothing, is_solution, constant_offset, embedding_placed, selected,
 )
-    boundary_count == 4 && return _random_cross_frame(rng, lattice, min_vertices, max_vertices)
-    target_size = rand(rng, min_vertices:max_vertices)
-    occupied = Set{_LatticeCoordinate}([(0, 0)])
-    while length(occupied) < target_size
-        push!(occupied, rand(rng, _lattice_frontier(lattice, occupied)))
-    end
-    coordinates = sort!(collect(occupied))
-    pins = coordinates[randperm(rng, length(coordinates))[1:boundary_count]]
-    rays = rand(rng, eachindex(_lattice_directions(lattice)), boundary_count)
-    return _normalize_lattice_patch(lattice, coordinates, pins, rays)
+    pin_coordinates = patch === nothing ? nothing : copy(patch.pins)
+    return UnweightedSearchRecord(
+        generation, stage, key, _lattice_symbol(lattice), _graph_edges(state.graph),
+        patch === nothing ? nothing : copy(patch.coordinates), pin_coordinates,
+        patch === nothing ? _LatticeCoordinate[] : _patch_ray_directions(lattice, patch),
+        copy(state.boundary), state.parent_key, state.action, nv(state.graph), ne(state.graph),
+        score[1], score[2], score[3], embedding_placed, state.rewrite_steps,
+        is_solution, constant_offset, selected,
+    )
 end
 
-function _random_cross_frame(rng, lattice, min_vertices, max_vertices)
-    max_vertices >= 5 || throw(ArgumentError("four-port search requires at least five vertices"))
-    cyclic = lattice isa Square ? _LatticeCoordinate[
-        (-1, 0), (0, 1), (1, 0), (0, -1),
-    ] : _LatticeCoordinate[
-        (1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1),
+function _rewrite_and_embed_skeletons(
+    target_graph, target_boundary, skeletons, lattice;
+    max_vertices, max_evaluations, beam_width, mutations_per_candidate,
+    exploration_fraction, max_results, rng, trace,
+)
+    isempty(skeletons) && return UnweightedGadget[], 0, 0
+    beam = unique(_graph_state_key, skeletons)
+    seen = Set(_graph_state_key(state) for state in beam)
+    gadgets = UnweightedGadget[]
+    evaluated = 0
+    generation = 0
+    while evaluated < max_evaluations && !isempty(beam)
+        generation += 1
+        ranked = Tuple{_GraphState, Tuple{Int, Int, Int, Int}, Vector{Tuple{Int, Int}}}[]
+        for state in beam
+            evaluated == max_evaluations && break
+            defects = _local_geometry_defects(state.graph, state.boundary, lattice)
+            patch, placed, conflicts = defects == 0 ? _embed_induced_graph(
+                state.graph, state.boundary, lattice; node_limit=5_000,
+            ) : (nothing, 0, Tuple{Int, Int}[])
+            evaluated += 1
+            score = (defects, -placed, nv(state.graph) - placed, nv(state.graph))
+            key = _graph_state_key(state)
+            solved = patch !== nothing
+            push!(trace, _search_record(
+                generation, :rewrite, key, lattice, state, (0, 0.0, defects, nv(state.graph), ne(state.graph));
+                patch, is_solution=solved, constant_offset=nothing,
+                embedding_placed=placed, selected=true,
+            ))
+            if solved
+                graph, boundary, positions = _materialize_lattice_patch(lattice, patch)
+                accepted, lattice_offset = is_gadget_replacement(
+                    target_graph, graph, target_boundary, boundary,
+                )
+                accepted || error("embedded rewrite failed the fixed verifier")
+                push!(gadgets, UnweightedGadget(
+                    target_graph, graph, boundary, Float64(lattice_offset), _lattice_symbol(lattice),
+                    copy(patch.coordinates), positions, _patch_ray_directions(lattice, patch),
+                ))
+                length(gadgets) == max_results && break
+            end
+            push!(ranked, (state, score, conflicts))
+        end
+        length(gadgets) == max_results && break
+        sort!(ranked; by=item -> item[2])
+        parents = ranked[1:min(beam_width, length(ranked))]
+        proposals = _GraphState[]
+        for (state, _, conflicts) in parents
+            append!(proposals, _rewrite_proposals(
+                rng, state, lattice, conflicts, max_vertices, mutations_per_candidate,
+            ))
+        end
+        next_beam = _GraphState[]
+        for state in proposals
+            key = _graph_state_key(state)
+            key in seen && continue
+            push!(seen, key)
+            push!(next_beam, state)
+        end
+        shuffle!(rng, next_beam)
+        beam = next_beam[1:min(length(next_beam), max(beam_width, floor(Int, beam_width / (1 - exploration_fraction))))]
+    end
+    sort!(gadgets; by=gadget -> (nv(gadget.replacement_graph), ne(gadget.replacement_graph)))
+    return gadgets, evaluated, generation
+end
+
+function _rewrite_proposals(rng, state, lattice, conflicts, max_vertices, proposal_count)
+    room = max_vertices - nv(state.graph)
+    room < 2 && return _GraphState[]
+    defects = [
+        vertex for vertex in vertices(state.graph)
+        if !_ring_is_realizable(state.graph, vertex, lattice)
     ]
-    for _ in 1:100
-        directions = lattice isa Square ? cyclic : cyclic[sort(randperm(rng, 6)[1:4])]
-        minimum_arm = max_vertices >= 9 ? 2 : 1
-        arms = fill(minimum_arm, 4)
-        while sum(arms) + 1 < min_vertices
-            arms[rand(rng, 1:4)] += 1
+    proposals = _GraphState[]
+    for _ in 1:proposal_count
+        if !isempty(defects) && rand(rng) < 0.75
+            vertex = rand(rng, defects)
+            if vertex in state.boundary
+                graph, boundary = _extend_boundary_pin(state.graph, state.boundary, vertex)
+                action = :extend_pin
+            else
+                neighbors = Graphs.neighbors(state.graph, vertex)
+                length(neighbors) >= 2 || continue
+                shuffled = shuffle(rng, neighbors)
+                split = rand(rng, 1:length(shuffled)-1)
+                graph = _split_vertex(state.graph, vertex, shuffled[1:split])
+                boundary = copy(state.boundary)
+                action = :split_vertex
+            end
+        else
+            edges_to_try = isempty(conflicts) ? _graph_edges(state.graph) :
+                unique([conflicts[1:min(8, length(conflicts))]; _graph_edges(state.graph)])
+            count = rand(rng, 1:min(6, room ÷ 2, length(edges_to_try)))
+            chosen = edges_to_try[randperm(rng, length(edges_to_try))[1:count]]
+            graph = _even_subdivide_edges(state.graph, chosen)
+            boundary = copy(state.boundary)
+            action = :subdivide_edges
         end
-        while sum(arms) + 1 < max_vertices && rand(rng, Bool)
-            arms[rand(rng, 1:4)] += 1
-        end
-        sum(arms) + 1 <= max_vertices || continue
-        coordinates = _LatticeCoordinate[(0, 0)]
-        for (direction, arm) in zip(directions, arms), distance in 1:arm
-            push!(coordinates, _lattice_step(lattice, (0, 0), direction, distance))
-        end
-        pins = [_lattice_step(lattice, (0, 0), direction, arm) for (direction, arm) in zip(directions, arms)]
-        ray_indices = [_lattice_direction_index(_lattice_directions(lattice), direction) for direction in directions]
-        patch = _normalize_lattice_patch(lattice, unique(coordinates), pins, ray_indices)
-        all(_check_crossing_frame(lattice, patch)) && return patch
+        nv(graph) <= max_vertices || continue
+        push!(proposals, _GraphState(
+            graph, boundary, _graph_state_key(state), action, state.rewrite_steps + 1,
+        ))
     end
-    error("could not construct a legal four-port frame within the vertex bounds")
+    return proposals
 end
 
-function _mutate_lattice_patch(
-    rng::AbstractRNG,
-    lattice::LatticeType,
-    patch::_LatticePatch,
-    min_vertices::Int,
-    max_vertices::Int,
-)
-    operations = Symbol[:move_pin, :swap_pins, :change_ray]
-    length(patch.coordinates) < max_vertices && push!(operations, :add_site)
-    length(patch.coordinates) + 2 <= max_vertices && push!(operations, :extend_arm)
-    removable = setdiff(patch.coordinates, patch.pins)
-    if !isempty(removable)
-        length(patch.coordinates) > min_vertices && push!(operations, :remove_site)
-        push!(operations, :relocate_site)
-        length(patch.coordinates) < max_vertices && push!(operations, :split_crowded_site)
+function _split_vertex(graph, vertex, first_neighbors)
+    result = deepcopy(graph)
+    second_neighbors = setdiff(Graphs.neighbors(graph, vertex), first_neighbors)
+    add_vertex!(result)
+    bridge = nv(result)
+    add_vertex!(result)
+    second = nv(result)
+    for neighbor in second_neighbors
+        rem_edge!(result, vertex, neighbor)
+        add_edge!(result, second, neighbor)
     end
-
-    for _ in 1:16
-        action = rand(rng, operations)
-        mutated = _apply_lattice_action(rng, lattice, patch, action, removable)
-        mutated === nothing && continue
-        normalized = _normalize_lattice_patch(lattice, mutated.coordinates, mutated.pins, mutated.rays)
-        length(normalized.pins) == 4 && !all(_check_crossing_frame(lattice, normalized)) && continue
-        _lattice_patch_key(lattice, normalized) != _lattice_patch_key(lattice, patch) &&
-            return normalized, action
-    end
-    return patch, :rejected_edit
+    add_edge!(result, vertex, bridge)
+    add_edge!(result, bridge, second)
+    return result
 end
 
-function _apply_lattice_action(
-    rng::AbstractRNG,
-    lattice::LatticeType,
-    patch::_LatticePatch,
-    action::Symbol,
-    removable::Vector{_LatticeCoordinate},
-)
-    occupied = Set(patch.coordinates)
-    if action == :add_site
-        coordinates = [patch.coordinates; rand(rng, _lattice_frontier(lattice, occupied))]
-        return _LatticePatch(coordinates, copy(patch.pins), copy(patch.rays))
-    elseif action == :remove_site
-        removed = rand(rng, removable)
-        coordinates = setdiff(patch.coordinates, [removed])
-        return _connected_lattice_patch(lattice, coordinates) ? _LatticePatch(coordinates, copy(patch.pins), copy(patch.rays)) : nothing
-    elseif action == :relocate_site
-        removed = rand(rng, removable)
-        coordinates = setdiff(patch.coordinates, [removed])
-        isempty(coordinates) && return nothing
-        moved = rand(rng, _lattice_frontier(lattice, Set(coordinates)))
-        relocated = [coordinates; moved]
-        return _connected_lattice_patch(lattice, relocated) ? _LatticePatch(relocated, copy(patch.pins), copy(patch.rays)) : nothing
-    elseif action == :extend_arm
-        base = rand(rng, patch.coordinates)
-        direction = rand(rng, _lattice_directions(lattice))
-        first = _lattice_step(lattice, base, direction, 1)
-        second = _lattice_step(lattice, base, direction, 2)
-        (first in occupied || second in occupied) && return nothing
-        return _LatticePatch([patch.coordinates; first; second], copy(patch.pins), copy(patch.rays))
-    elseif action == :split_crowded_site
-        graph, _, _ = _materialize_lattice_patch(lattice, patch)
-        coordinate_index = Dict(coordinate => index for (index, coordinate) in enumerate(patch.coordinates))
-        crowded = [coordinate for coordinate in removable if degree(graph, coordinate_index[coordinate]) >= 3]
-        isempty(crowded) && return nothing
-        removed = rand(rng, crowded)
-        empty_neighbors = setdiff(_lattice_neighbors(lattice, removed), patch.coordinates)
-        length(empty_neighbors) < 2 && return nothing
-        chosen = empty_neighbors[randperm(rng, length(empty_neighbors))[1:2]]
-        coordinates = [setdiff(patch.coordinates, [removed]); chosen]
-        return _connected_lattice_patch(lattice, coordinates) ? _LatticePatch(coordinates, copy(patch.pins), copy(patch.rays)) : nothing
-    elseif action == :move_pin
-        choices = setdiff(patch.coordinates, patch.pins)
-        isempty(choices) && return nothing
-        pins = copy(patch.pins)
-        pins[rand(rng, eachindex(pins))] = rand(rng, choices)
-        return _LatticePatch(copy(patch.coordinates), pins, copy(patch.rays))
-    elseif action == :swap_pins
-        length(patch.pins) < 2 && return nothing
-        first, second = randperm(rng, length(patch.pins))[1:2]
-        pins = copy(patch.pins)
-        pins[first], pins[second] = pins[second], pins[first]
-        rays = copy(patch.rays)
-        rays[first], rays[second] = rays[second], rays[first]
-        return _LatticePatch(copy(patch.coordinates), pins, rays)
-    else
-        rays = copy(patch.rays)
-        slot = rand(rng, eachindex(rays))
-        choices = setdiff(eachindex(_lattice_directions(lattice)), [rays[slot]])
-        rays[slot] = rand(rng, choices)
-        return _LatticePatch(copy(patch.coordinates), copy(patch.pins), rays)
+function _extend_boundary_pin(graph, boundary, pin)
+    result = deepcopy(graph)
+    add_vertex!(result)
+    middle = nv(result)
+    add_vertex!(result)
+    endpoint = nv(result)
+    add_edge!(result, pin, middle)
+    add_edge!(result, middle, endpoint)
+    new_boundary = copy(boundary)
+    new_boundary[findfirst(==(pin), boundary)] = endpoint
+    return result, new_boundary
+end
+
+function _even_subdivide_edges(graph, selected_edges)
+    result = deepcopy(graph)
+    for (first, second) in selected_edges
+        has_edge(result, first, second) || continue
+        rem_edge!(result, first, second)
+        add_vertex!(result)
+        middle_first = nv(result)
+        add_vertex!(result)
+        middle_second = nv(result)
+        add_edge!(result, first, middle_first)
+        add_edge!(result, middle_first, middle_second)
+        add_edge!(result, middle_second, second)
     end
+    return result
+end
+
+function _local_geometry_defects(graph, boundary, lattice)
+    defects = count(vertex -> !_ring_is_realizable(graph, vertex, lattice), vertices(graph))
+    return defects + count(pin -> degree(graph, pin) >= length(_lattice_directions(lattice)), boundary)
+end
+
+function _ring_is_realizable(graph, vertex, lattice)
+    neighbors = Graphs.neighbors(graph, vertex)
+    directions = _lattice_directions(lattice)
+    length(neighbors) <= length(directions) || return false
+    length(neighbors) <= 1 && return true
+    for slots in permutations(eachindex(directions), length(neighbors))
+        all(
+            has_edge(graph, neighbors[first], neighbors[second]) ==
+                (_lattice_distance(lattice, directions[slots[first]], directions[slots[second]]) == 1)
+            for first in 1:length(neighbors)-1 for second in first+1:length(neighbors)
+        ) && return true
+    end
+    return false
+end
+
+function _embed_induced_graph(graph, boundary, lattice; node_limit=100_000)
+    is_connected(graph) || return nothing, 0, Tuple{Int, Int}[]
+    directions = _lattice_directions(lattice)
+    conflicts = Dict{Tuple{Int, Int}, Int}()
+    best_placed = 0
+    roots = sort!(collect(vertices(graph)); by=vertex -> (
+        degree(graph, vertex),
+        count(edge -> src(edge) in Graphs.neighbors(graph, vertex) &&
+            dst(edge) in Graphs.neighbors(graph, vertex), edges(graph)),
+    ), rev=true)
+    for root in roots, first_neighbor in Graphs.neighbors(graph, root)
+        placed = Dict(root => (0, 0), first_neighbor => directions[1])
+        occupied = Set(values(placed))
+        nodes = Ref(0)
+        solution = Ref{Union{Nothing, _LatticePatch}}(nothing)
+        function visit()
+            nodes[] += 1
+            nodes[] > node_limit && return false
+            best_placed = max(best_placed, length(placed))
+            if length(placed) == nv(graph)
+                canonical = [placed[vertex] for vertex in vertices(graph)]
+                coordinates = _from_canonical.(Ref(lattice), canonical)
+                pins = coordinates[boundary]
+                normalized = _normalize_lattice_patch(
+                    lattice, coordinates, pins, fill(1, length(boundary)),
+                )
+                ray_choices = length(boundary) == 4 ? Iterators.product(ntuple(_ -> eachindex(directions), 4)...) : (ntuple(_ -> 1, length(boundary)),)
+                for rays in ray_choices
+                    patch = _LatticePatch(normalized.coordinates, normalized.pins, collect(rays))
+                    all(_check_crossing_frame(lattice, patch)) && (solution[] = patch; return true)
+                end
+                return false
+            end
+            unplaced = [vertex for vertex in vertices(graph) if !haskey(placed, vertex)]
+            vertex = argmax(candidate -> (
+                count(neighbor -> haskey(placed, neighbor), Graphs.neighbors(graph, candidate)),
+                degree(graph, candidate),
+            ), unplaced)
+            placed_neighbors = [neighbor for neighbor in Graphs.neighbors(graph, vertex) if haskey(placed, neighbor)]
+            isempty(placed_neighbors) && return false
+            candidates = Set(
+                (placed[placed_neighbors[1]][1] + direction[1], placed[placed_neighbors[1]][2] + direction[2])
+                for direction in directions
+            )
+            for neighbor in placed_neighbors[2:end]
+                intersect!(candidates, Set(
+                    (placed[neighbor][1] + direction[1], placed[neighbor][2] + direction[2])
+                    for direction in directions
+                ))
+            end
+            filter!(candidate -> !(candidate in occupied) && all(
+                (_lattice_distance(lattice, candidate, coordinate) == 1) == has_edge(graph, vertex, other)
+                for (other, coordinate) in placed
+            ), candidates)
+            if isempty(candidates)
+                for neighbor in placed_neighbors
+                    edge = minmax(vertex, neighbor)
+                    conflicts[edge] = get(conflicts, edge, 0) + 1
+                end
+            end
+            for candidate in candidates
+                placed[vertex] = candidate
+                push!(occupied, candidate)
+                visit() && return true
+                delete!(placed, vertex)
+                delete!(occupied, candidate)
+            end
+            return false
+        end
+        visit()
+        solution[] !== nothing && return solution[], best_placed, Tuple{Int, Int}[]
+    end
+    ordered_conflicts = sort!(collect(keys(conflicts)); by=edge -> conflicts[edge], rev=true)
+    return nothing, best_placed, ordered_conflicts
 end
 
 function _materialize_lattice_patch(lattice::LatticeType, patch::_LatticePatch)
@@ -399,11 +678,6 @@ function _materialize_lattice_patch(lattice::LatticeType, patch::_LatticePatch)
     coordinate_index = Dict(coordinate => index for (index, coordinate) in enumerate(patch.coordinates))
     boundary = [coordinate_index[pin] for pin in patch.pins]
     return graph, boundary, positions
-end
-
-function _connected_lattice_patch(lattice::LatticeType, coordinates::Vector{_LatticeCoordinate})
-    positions = get_physical_positions(lattice, sort(coordinates))
-    return is_connected(unit_disk_graph(positions, get_radius(lattice)))
 end
 
 function _normalize_lattice_patch(
@@ -453,25 +727,8 @@ function _lattice_step(::Triangular, point::_LatticeCoordinate, direction::_Latt
     return _axial_to_offset((q + distance * direction[1], r + distance * direction[2]))
 end
 
-_lattice_neighbors(lattice::LatticeType, point::_LatticeCoordinate) =
-    [_lattice_step(lattice, point, direction, 1) for direction in _lattice_directions(lattice)]
-
-function _lattice_frontier(lattice::LatticeType, occupied::Set{_LatticeCoordinate})
-    frontier = Set{_LatticeCoordinate}()
-    for point in occupied, neighbor in _lattice_neighbors(lattice, point)
-        neighbor in occupied || push!(frontier, neighbor)
-    end
-    return collect(frontier)
-end
-
 _lattice_symbol(::Square) = :KSG
 _lattice_symbol(::Triangular) = :triangular
-
-function _lattice_patch_key(lattice::LatticeType, patch::_LatticePatch)
-    coordinates = join(("$(x),$(y)" for (x, y) in patch.coordinates), ';')
-    pins = join(("$(x),$(y)" for (x, y) in patch.pins), ';')
-    return string(_lattice_symbol(lattice), ':', coordinates, '|', pins, '|', join(patch.rays, ','))
-end
 
 _patch_ray_directions(lattice::LatticeType, patch::_LatticePatch) =
     _lattice_directions(lattice)[patch.rays]
@@ -525,6 +782,10 @@ end
 
 _canonical_coordinate(::Square, point::_LatticeCoordinate) = point
 _canonical_coordinate(::Triangular, point::_LatticeCoordinate) = _offset_to_axial(point)
+_from_canonical(::Square, point::_LatticeCoordinate) = point
+_from_canonical(::Triangular, point::_LatticeCoordinate) = _axial_to_offset(point)
+_lattice_distance(::Square, first, second) = max(abs(first[1] - second[1]), abs(first[2] - second[2]))
+_lattice_distance(::Triangular, first, second) = max(abs(first[1] - second[1]), abs(first[2] - second[2]), abs(sum(first) - sum(second)))
 _geometry_coordinate(::Square, point::_LatticeCoordinate) = point
 function _geometry_coordinate(::Triangular, point::_LatticeCoordinate)
     q, r = _offset_to_axial(point)
@@ -648,50 +909,6 @@ function _rays_touch(start1, direction1, start2, direction2, offset)
     end
     multiple = _direction_multiple(right, direction1)
     return multiple !== nothing && multiple >= 0
-end
-
-function _unweighted_tensor_distance(
-    candidate::AbstractArray,
-    target::AbstractArray,
-    graph::SimpleGraph,
-    frame_violations::Int,
-)
-    mask_mismatches = count(isinf(a) != isinf(b) for (a, b) in zip(candidate, target))
-    differences = [a - b for (a, b) in zip(candidate, target) if isfinite(a) && isfinite(b)]
-    offset_spread = Float64(maximum(differences) - minimum(differences))
-    return mask_mismatches, offset_spread, frame_violations, nv(graph), ne(graph)
-end
-
-"""Write the self-contained lattice search trajectory as JSON Lines."""
-function save_unweighted_trace(path::AbstractString, result::UnweightedSearchResult)
-    open(path, "w") do io
-        for record in result.trace
-            JSON3.write(io, (
-                target_vertices=nv(result.target_graph),
-                target_edges=[(src(edge), dst(edge)) for edge in edges(result.target_graph)],
-                target_boundary=result.target_boundary,
-                lattice=String(record.lattice),
-                generation=record.generation,
-                key=record.key,
-                lattice_coordinates=record.lattice_coordinates,
-                pin_coordinates=record.pin_coordinates,
-                pin_rays=record.pin_rays,
-                boundary_vertices=record.boundary_vertices,
-                parent_key=record.parent_key,
-                action=String(record.action),
-                vertices=record.vertices,
-                edges=record.edges,
-                mask_mismatches=record.mask_mismatches,
-                offset_spread=record.offset_spread,
-                frame_violations=record.frame_violations,
-                is_solution=record.is_solution,
-                constant_offset=record.constant_offset,
-                selected=record.selected,
-            ))
-            write(io, '\n')
-        end
-    end
-    return String(path)
 end
 
 # ============================================================================

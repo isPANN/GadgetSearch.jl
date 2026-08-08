@@ -75,7 +75,6 @@ export UnweightedGadget
 export UnweightedSearchResult
 export UnweightedSearchRecord
 export search_unweighted_gadgets
-export save_unweighted_trace
 export check_crossing_frame
 
 end # module
