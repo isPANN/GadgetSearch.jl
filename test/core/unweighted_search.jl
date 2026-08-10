@@ -133,5 +133,37 @@ end
         @test exhausted.evaluated == 1
         @test isempty(exhausted.gadgets)
         @test exhausted.termination_reason in (:budget, :frame_budget)
+
+        ksg_target = complete_graph(4)
+        solved = search_unweighted_gadgets(
+            ksg_target, collect(1:4), Square();
+            min_vertices=4, max_vertices=4, max_evaluations=50,
+            max_frame_evaluations=100_000, max_results=1, window_side=2,
+        )
+        @test solved.termination_reason == :solution
+        @test length(solved.gadgets) == 1
+        @test is_gadget_replacement(
+            ksg_target, solved.gadgets[1].replacement_graph, collect(1:4),
+            solved.gadgets[1].boundary_vertices,
+        )[1]
+
+        fully_enumerated = search_unweighted_gadgets(
+            ksg_target, collect(1:4), Square();
+            min_vertices=4, max_vertices=4, max_evaluations=50,
+            max_frame_evaluations=100_000, max_results=2, window_side=2,
+        )
+        @test fully_enumerated.termination_reason == :search_space_exhausted
+        @test length(fully_enumerated.gadgets) == 1
+        @test fully_enumerated.evaluated > solved.evaluated
+    end
+
+    @testset "lattice coordinate helpers" begin
+        point = (3, 4)
+        @test GadgetSearch._from_canonical(Square(), point) == point
+        @test GadgetSearch._from_canonical(
+            Triangular(), GadgetSearch._canonical_coordinate(Triangular(), point),
+        ) == point
+        @test GadgetSearch._lattice_distance(Square(), (0, 0), (2, -1)) == 2
+        @test GadgetSearch._lattice_distance(Triangular(), (0, 0), (2, -1)) == 2
     end
 end

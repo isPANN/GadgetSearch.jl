@@ -25,6 +25,9 @@ solver is called again until that case is unsatisfiable. Every returned
 candidate is independently checked by both `is_gadget_replacement` and
 `check_crossing_frame`.
 
+The implementation uses CryptoMiniSat as an incremental solver for ordinary
+CNF clauses. The encoding does not use its optional XOR-clause extension.
+
 `max_frame_evaluations` separately bounds pin-and-ray geometry checks. Increase
 it together with `window_side` for exhaustive searches in larger windows.
 
