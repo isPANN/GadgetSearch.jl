@@ -190,8 +190,9 @@ function _lattice_step(::Triangular, point::_LatticeCoordinate, direction::_Latt
     return _axial_to_offset((q + distance * direction[1], r + distance * direction[2]))
 end
 
-_lattice_symbol(::Square) = :KSG
-_lattice_symbol(::Triangular) = :triangular
+function _lattice_symbol(lattice::LatticeType)
+    return lattice isa Square ? :KSG : :triangular
+end
 
 _patch_ray_directions(lattice::LatticeType, patch::_LatticePatch) =
     _lattice_directions(lattice)[patch.rays]
