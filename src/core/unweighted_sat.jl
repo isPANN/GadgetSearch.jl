@@ -250,11 +250,7 @@ function _fixed_crossing_sat_problem(target, context, atom_count, offset)
     _add_selected_connectivity!(
         cnf, selected, context.adjacent, pins[1], atom_count,
     )
-    solver = CryptoMiniSat.CMS(cnf.variables; num_threads=1)
-    for clause in cnf.clauses
-        CryptoMiniSat.add_clause(solver, clause)
-    end
-    return solver, selected
+    return _new_sat_solver(cnf), selected
 end
 
 function _solve_next_fixed_crossing_sat!(
@@ -272,18 +268,58 @@ function _solve_next_fixed_crossing_sat!(
     return analysis
 end
 
-function _next_selected_assignment!(solver, selected)
-    status = CryptoMiniSat.solve(solver)
-    status === false && return nothing
-    status === true || error("SAT solver returned an undefined result")
-    model = CryptoMiniSat.get_model(solver)
-    assignment = Bool[model[variable] for variable in selected]
-    blocking_clause = [
-        assignment[index] ? -variable : variable
-        for (index, variable) in enumerate(selected)
-    ]
-    CryptoMiniSat.add_clause(solver, blocking_clause)
-    return assignment
+@static if Sys.iswindows()
+    function _new_sat_solver(cnf::_SatCnf)
+        solver = CryptoMiniSat.CMS(cnf.variables; num_threads=1)
+        foreach(clause -> CryptoMiniSat.add_clause(solver, clause), cnf.clauses)
+        return solver
+    end
+
+    function _next_selected_assignment!(solver, selected)
+        status = CryptoMiniSat.solve(solver)
+        status === false && return nothing
+        status === true || error("SAT solver returned an undefined result")
+        model = CryptoMiniSat.get_model(solver)
+        assignment = Bool[model[variable] for variable in selected]
+        blocking_clause = [
+            assignment[index] ? -variable : variable
+            for (index, variable) in enumerate(selected)
+        ]
+        CryptoMiniSat.add_clause(solver, blocking_clause)
+        return assignment
+    end
+else
+    mutable struct _KissatEnumerator
+        clauses::Vector{Vector{Int}}
+    end
+
+    _new_sat_solver(cnf::_SatCnf) = _KissatEnumerator(copy(cnf.clauses))
+    _kissat_init() = ccall((:kissat_init, Kissat_jll.libkissat), Ptr{Cvoid}, ())
+    _kissat_add(solver, literal) = ccall((:kissat_add, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid}, Cint), solver, literal)
+    _kissat_solve(solver) = ccall((:kissat_solve, Kissat_jll.libkissat), Cint, (Ptr{Cvoid},), solver)
+    _kissat_value(solver, variable) = ccall((:kissat_value, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cint), solver, variable)
+    _kissat_release(solver) = ccall((:kissat_release, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid},), solver)
+    _kissat_quiet(solver) = ccall((:kissat_set_option, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cstring, Cint), solver, "quiet", 1)
+
+    function _next_selected_assignment!(enumerator::_KissatEnumerator, selected)
+        solver = _kissat_init()
+        _kissat_quiet(solver)
+        for clause in enumerator.clauses
+            foreach(literal -> _kissat_add(solver, literal), clause)
+            _kissat_add(solver, 0)
+        end
+        status = _kissat_solve(solver)
+        assignment = status == 10 ?
+            Bool[_kissat_value(solver, variable) > 0 for variable in selected] : nothing
+        _kissat_release(solver)
+        status == 20 && return nothing
+        status == 10 || error("SAT solver returned an undefined result")
+        push!(enumerator.clauses, [
+            assignment[index] ? -variable : variable
+            for (index, variable) in enumerate(selected)
+        ])
+        return assignment
+    end
 end
 
 function _search_crossing_sat(
