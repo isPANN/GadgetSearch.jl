@@ -2,127 +2,123 @@ using GadgetSearch
 using Graphs
 using Test
 
-function _cross_graph()
-    g = SimpleGraph(4)
-    add_edge!(g, 1, 3)
-    add_edge!(g, 2, 4)
-    return g
+function cross_graph()
+    graph = SimpleGraph(4)
+    add_edge!(graph, 1, 3)
+    add_edge!(graph, 2, 4)
+    return graph
 end
-
-function _batoidea_graph()
-    g = SimpleGraph(11)
-    add_edge!(g, 1, 5);  add_edge!(g, 1, 9)
-    add_edge!(g, 2, 5);  add_edge!(g, 2, 6);  add_edge!(g, 2, 7)
-    add_edge!(g, 3, 8)
-    add_edge!(g, 4, 9);  add_edge!(g, 4, 10); add_edge!(g, 4, 11)
-    add_edge!(g, 5, 6);  add_edge!(g, 5, 9);  add_edge!(g, 5, 10)
-    add_edge!(g, 6, 7);  add_edge!(g, 6, 9);  add_edge!(g, 6, 10); add_edge!(g, 6, 11)
-    add_edge!(g, 7, 8);  add_edge!(g, 7, 10); add_edge!(g, 7, 11)
-    add_edge!(g, 8, 11)
-    add_edge!(g, 9, 10)
-    add_edge!(g, 10, 11)
-    return g
-end
-
-function _edge_graph()
-    g = SimpleGraph(2)
-    add_edge!(g, 1, 2)
-    return g
-end
-
-function _connected_graph()
-    g = SimpleGraph(4)
-    add_edge!(g, 1, 3)
-    add_edge!(g, 1, 4)
-    add_edge!(g, 2, 4)
-    add_edge!(g, 3, 4)
-    return g
-end
-
-function _isolated_graph()
-    g = SimpleGraph(3)
-    add_edge!(g, 1, 2)
-    return g
-end
-
-function _to_g6(g)
-    return graph_to_g6(g)
-end
-
-@testset "Unweighted Search" begin
-    @testset "search_unweighted_gadgets: basic" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-        loader = GraphLoader(
-            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-            pinset=[1, 2, 3, 4],
-        )
-        results = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader)
-        @test results isa Vector{UnweightedGadget}
-        @test any(r -> r.constant_offset == 0.0, results)
-        @test any(r -> r.constant_offset == 2.0, results)
-        @test all(r -> r.pattern_graph == cross, results)
-        @test !hasproperty(UnweightedGadget, :target_index)
-    end
-
-    @testset "search_unweighted_gadgets: limit and max_results" begin
-        cross = _cross_graph()
-        batoidea = _batoidea_graph()
-        loader = GraphLoader(
-            GraphDataset([_to_g6(cross), _to_g6(batoidea)]),
-            pinset=[1, 2, 3, 4],
-        )
-        limited = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; limit=1)
-        @test length(limited) == 1
-        @test limited[1].constant_offset == 0.0
-        capped = search_unweighted_gadgets(cross, [1, 2, 3, 4], loader; max_results=1)
-        @test length(capped) == 1
-    end
-
-    @testset "search_unweighted_gadgets: prefilter rejects disconnected pin coverage" begin
-        loader = GraphLoader(GraphDataset([_to_g6(_cross_graph())]), pinset=[1, 3])
-        edge = _edge_graph()
-        results_on = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=true)
-        results_off = search_unweighted_gadgets(edge, [1, 2], loader; prefilter=false)
-        @test isempty(results_on)
-        @test length(results_off) == 1
-    end
-
-    @testset "UnweightedGadget has no target_index" begin
-        @test !(:target_index in fieldnames(UnweightedGadget))
-    end
-
-    @testset "inf_mask (internal)" begin
-        @test GadgetSearch.inf_mask([0.0, -Inf, 3.0, -Inf]) == BigInt(10)
-        @test GadgetSearch.inf_mask(fill(-Inf, 4)) == BigInt(15)
-        reduced = calculate_reduced_alpha_tensor(_cross_graph(), [1, 2, 3, 4])
+@testset "Unweighted search" begin
+    @testset "fixed verifier" begin
+        reduced = calculate_reduced_alpha_tensor(cross_graph(), [1, 2, 3, 4])
         @test GadgetSearch.inf_mask(reduced) == BigInt(60576)
+        @test is_diff_by_constant(reduced .+ 3, reduced) == (true, 3.0)
     end
 
-    @testset "pins_prefilter (internal)" begin
-        connected = _connected_graph()
-        disconnected = _cross_graph()
-        isolated = _isolated_graph()
-        @test GadgetSearch.pins_prefilter(connected, [1])
-        @test GadgetSearch.pins_prefilter(disconnected, [1, 2])
-        @test !GadgetSearch.pins_prefilter(disconnected, [1])
-        @test !GadgetSearch.pins_prefilter(isolated, [1])
-        @test GadgetSearch.pins_prefilter(isolated, [1, 3])
-        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [1, 1])
-        @test_throws ErrorException GadgetSearch.pins_prefilter(connected, [0])
+    @testset "crossing frame" begin
+        square = [(0, 0), (-1, 0), (0, 1), (1, 0), (0, -1)]
+        pins = square[2:5]
+        rays = [(-1, 0), (0, 1), (1, 0), (0, -1)]
+        @test all(check_crossing_frame(Square(), square, pins, rays))
+        @test !check_crossing_frame(Square(), [square; (-2, 1)], pins, rays).G4
+        @test_throws ArgumentError check_crossing_frame(
+            Square(), [(0, 0)], pins, rays,
+        )
+        @test_throws ArgumentError check_crossing_frame(
+            Square(), [square; square[1]], pins, rays,
+        )
+        @test_throws ArgumentError check_crossing_frame(
+            Square(), square, [pins[1], pins[1], pins[3], pins[4]], rays,
+        )
+        triangular = [(0, 0), (-1, 0), (0, 1), (1, 0), (-1, -1)]
+        triangular_pins = triangular[2:5]
+        @test all(check_crossing_frame(
+            Triangular(), triangular, triangular_pins, rays,
+        ))
     end
 
-    @testset "Triangular UDG Integration" begin
-        path = tempname() * ".g6"
-        try
-            generate_full_grid_udg(Triangular(), 1, 1; path=path)
-            loader = GraphLoader(path; pinset=[1, 2, 3, 4])
-            target = loader[1]
-            results = search_unweighted_gadgets(target, [1, 2, 3, 4], loader; limit=1, max_results=1)
-            @test length(results) == 1
-            @test results[1].constant_offset == 0.0
-        finally
-            isfile(path) && rm(path)
-        end
+    @testset "fixed SAT positive control" begin
+        coordinates = [
+            (0,3),(6,6),(1,3),(2,1),(2,2),(2,3),(3,1),(3,3),
+            (3,4),(3,5),(4,1),(4,2),(4,4),(4,5),(5,1),(5,2),
+            (5,3),(5,4),(5,5),(6,2),(6,3),(6,5),(7,4),
+        ]
+        frame = (
+            pins=[(5,1),(0,3),(3,5),(6,6)],
+            rays=[6,3,3,2],
+            allowed=coordinates,
+        )
+        target_reduced = vec(calculate_reduced_alpha_tensor(
+            cross_graph(), [1,2,3,4],
+        ))
+        analysis = GadgetSearch._solve_fixed_crossing_sat(
+            target_reduced, Triangular(), frame, 23, 7,
+        )
+        @test analysis !== nothing
+        @test analysis.offset == 7
+        @test nv(analysis.graph) == 23
+        @test is_gadget_replacement(
+            cross_graph(), analysis.graph, [1,2,3,4], analysis.boundary,
+        ) == (true, 7.0)
+        @test all(check_crossing_frame(
+            Triangular(), analysis.patch.coordinates, analysis.patch.pins,
+            GadgetSearch._patch_ray_directions(Triangular(), analysis.patch),
+        ))
+        shifted_target = map(value -> isfinite(value) ? value + 8 : value, target_reduced)
+        negative_offset = GadgetSearch._solve_fixed_crossing_sat(
+            shifted_target, Triangular(), frame, 23, -1,
+        )
+        @test negative_offset !== nothing
+        @test negative_offset.offset == -1
+
+        ksg_coordinates = [(0, 0), (-1, 0), (0, 1), (1, 0), (0, -1)]
+        ksg_frame = (
+            pins=ksg_coordinates[2:5],
+            rays=[4, 7, 5, 2],
+            allowed=ksg_coordinates,
+        )
+        ksg_patch = GadgetSearch._LatticePatch(
+            ksg_coordinates, ksg_frame.pins, ksg_frame.rays,
+        )
+        ksg_graph, ksg_boundary, _ = GadgetSearch._materialize_lattice_patch(
+            Square(), ksg_patch,
+        )
+        ksg_target = vec(calculate_reduced_alpha_tensor(ksg_graph, ksg_boundary))
+        ksg_analysis = GadgetSearch._solve_fixed_crossing_sat(
+            ksg_target, Square(), ksg_frame, 5, 0,
+        )
+        @test ksg_analysis !== nothing
+        @test nv(ksg_analysis.graph) == 5
+        @test all(check_crossing_frame(
+            Square(), ksg_analysis.patch.coordinates, ksg_analysis.patch.pins,
+            GadgetSearch._patch_ray_directions(Square(), ksg_analysis.patch),
+        ))
+        @test isnothing(GadgetSearch._solve_fixed_crossing_sat(
+            ksg_target, Square(), ksg_frame, 6, 0,
+        ))
+    end
+
+    @testset "public bounded search" begin
+        @test_throws ArgumentError search_unweighted_gadgets(
+            path_graph(3), [1,2,3], Triangular(),
+        )
+        @test_throws ArgumentError search_unweighted_gadgets(
+            path_graph(4), [1,2,3,4]; window_side=1,
+        )
+        ksg = search_unweighted_gadgets(
+            cross_graph(), [1,2,3,4], Square();
+            min_vertices=4, max_vertices=4, max_evaluations=1,
+        )
+        @test ksg.lattice == :KSG
+        @test ksg.evaluated <= 1
+        @test ksg.termination_reason in (:budget, :frame_budget)
+
+        exhausted = search_unweighted_gadgets(
+            cross_graph(), [1,2,3,4], Triangular();
+            min_vertices=4, max_vertices=4, max_evaluations=1,
+        )
+        @test exhausted.evaluated == 1
+        @test isempty(exhausted.gadgets)
+        @test exhausted.termination_reason in (:budget, :frame_budget)
     end
 end
