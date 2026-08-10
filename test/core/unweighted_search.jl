@@ -98,6 +98,19 @@ end
         ))
     end
 
+    @testset "SAT model enumeration" begin
+        solver = GadgetSearch.CryptoMiniSat.CMS(3; num_threads=1)
+        assignments = Set{Tuple{Bool, Bool}}()
+        while true
+            assignment = GadgetSearch._next_selected_assignment!(solver, [1, 2])
+            assignment === nothing && break
+            push!(assignments, Tuple(assignment))
+        end
+        @test assignments == Set([
+            (false, false), (false, true), (true, false), (true, true),
+        ])
+    end
+
     @testset "public bounded search" begin
         @test_throws ArgumentError search_unweighted_gadgets(
             path_graph(3), [1,2,3], Triangular(),

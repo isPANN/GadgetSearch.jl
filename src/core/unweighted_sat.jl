@@ -204,7 +204,15 @@ end
 function _solve_fixed_crossing_sat(
     target, lattice, context::_SatFrameContext, atom_count, offset,
 )
-    frame = context.frame
+    solver, selected = _fixed_crossing_sat_problem(
+        target, context, atom_count, offset,
+    )
+    return _solve_next_fixed_crossing_sat!(
+        solver, selected, target, lattice, context,
+    )
+end
+
+function _fixed_crossing_sat_problem(target, context, atom_count, offset)
     coordinates = context.coordinates
     pins = context.boundary
     edge_list = context.edge_list
@@ -242,19 +250,40 @@ function _solve_fixed_crossing_sat(
     _add_selected_connectivity!(
         cnf, selected, context.adjacent, pins[1], atom_count,
     )
+    solver = CryptoMiniSat.CMS(cnf.variables; num_threads=1)
+    for clause in cnf.clauses
+        CryptoMiniSat.add_clause(solver, clause)
+    end
+    return solver, selected
+end
 
-    solver = Kissat.init()
-    Kissat.set_option(solver, "quiet", 1)
-    append!(solver, cnf.clauses)
-    Kissat.solve(solver) == :satisfiable || return nothing
-    values = Base.values(solver, 1:length(selected))
-    chosen = findall(>(0), values)
-    sites = coordinates[chosen]
+function _solve_next_fixed_crossing_sat!(
+    solver, selected, target, lattice, context,
+)
+    assignment = _next_selected_assignment!(solver, selected)
+    assignment === nothing && return nothing
+    chosen = findall(identity, assignment)
+    sites = context.coordinates[chosen]
+    frame = context.frame
     analysis = _analyze_crossing_candidate(
         target, lattice, sites, frame.pins, frame.rays,
     )
     analysis.solved || error("SAT candidate failed its encoded constraints")
     return analysis
+end
+
+function _next_selected_assignment!(solver, selected)
+    status = CryptoMiniSat.solve(solver)
+    status === false && return nothing
+    status === true || error("SAT solver returned an undefined result")
+    model = CryptoMiniSat.get_model(solver)
+    assignment = Bool[model[variable] for variable in selected]
+    blocking_clause = [
+        assignment[index] ? -variable : variable
+        for (index, variable) in enumerate(selected)
+    ]
+    CryptoMiniSat.add_clause(solver, blocking_clause)
+    return assignment
 end
 
 function _search_crossing_sat(
@@ -266,6 +295,7 @@ function _search_crossing_sat(
         error("the reduced alpha tensor must contain integers or -Inf")
     completion = _target_completion(target_reduced)
     gadgets = UnweightedGadget[]
+    seen_gadgets = Set{Tuple}()
     evaluated = 0
     frame_evaluated = Ref(0)
     for atom_count in min_vertices:max_vertices
@@ -280,20 +310,36 @@ function _search_crossing_sat(
             context = _prepare_sat_frame(lattice, frame)
             for offset in offsets
                 evaluated == max_evaluations && return :budget
-                evaluated += 1
-                analysis = _solve_fixed_crossing_sat(
-                    target_reduced, lattice, context, atom_count, offset,
+                solver, selected = _fixed_crossing_sat_problem(
+                    target_reduced, context, atom_count, offset,
                 )
-                analysis === nothing && continue
-                valid, verified_offset = is_gadget_replacement(
-                    target_graph, analysis.graph, target_boundary, analysis.boundary,
-                )
-                valid || error("SAT candidate failed the fixed verifier")
-                analysis.offset == verified_offset ||
-                    error("SAT candidate offset mismatch")
-                push!(gadgets, _unweighted_gadget(target_graph, lattice, analysis))
-                length(gadgets) == max_results &&
-                    return :solution
+                while true
+                    evaluated == max_evaluations && return :budget
+                    evaluated += 1
+                    analysis = _solve_next_fixed_crossing_sat!(
+                        solver, selected, target_reduced, lattice, context,
+                    )
+                    analysis === nothing && break
+                    valid, verified_offset = is_gadget_replacement(
+                        target_graph, analysis.graph, target_boundary,
+                        analysis.boundary,
+                    )
+                    valid || error("SAT candidate failed the fixed verifier")
+                    analysis.offset == verified_offset ||
+                        error("SAT candidate offset mismatch")
+                    key = _canonical_crossing_frame_key(lattice, (
+                        allowed=analysis.patch.coordinates,
+                        pins=analysis.patch.pins,
+                        rays=analysis.patch.rays,
+                    ))
+                    key in seen_gadgets && continue
+                    push!(seen_gadgets, key)
+                    push!(
+                        gadgets,
+                        _unweighted_gadget(target_graph, lattice, analysis),
+                    )
+                    length(gadgets) == max_results && return :solution
+                end
             end
             return nothing
         end

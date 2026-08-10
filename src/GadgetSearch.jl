@@ -9,7 +9,7 @@ using IterTools
 using Combinatorics
 using Random
 using Serialization
-import Kissat
+import CryptoMiniSat
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve

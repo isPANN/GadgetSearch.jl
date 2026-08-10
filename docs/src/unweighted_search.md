@@ -19,7 +19,9 @@ rewrite path.
 
 `min_vertices:max_vertices` is examined in increasing order, so reaching a
 larger atom count means all scheduled smaller cases have already been rejected.
-`max_evaluations` bounds SAT instances, not graph mutations. Every returned
+`max_evaluations` bounds SAT solver calls, not graph mutations. For each fixed
+layout, atom count, and offset, satisfying site selections are blocked and the
+solver is called again until that case is unsatisfiable. Every returned
 candidate is independently checked by both `is_gadget_replacement` and
 `check_crossing_frame`.
 
@@ -47,6 +49,6 @@ result = search_unweighted_gadgets(
 The keyword defaults are `min_vertices=5`, `max_vertices=13`,
 `max_evaluations=2_000`, `max_frame_evaluations=1_000_000`, `max_results=1`,
 and `window_side=4` for a four-pin target. The result contains the target,
-ordered boundary, lattice name, accepted gadgets, number of SAT instances, and
+ordered boundary, lattice name, accepted gadgets, number of SAT solver calls, and
 one of four termination reasons: `:solution`, `:budget`, `:frame_budget`, or
 `:search_space_exhausted`.
