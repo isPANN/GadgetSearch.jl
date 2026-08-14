@@ -38,6 +38,7 @@ struct UnweightedOptimizationResult
     gadget::UnweightedGadget
     steps::Vector{UnweightedRewriteStep}
     sat_evaluations::Int
+    unresolved_sat_evaluations::Int
     termination_reason::Symbol
 end
 
@@ -162,6 +163,7 @@ function optimize_unweighted_gadget(
     target_boundary::Vector{Int};
     min_vertices::Int=length(target_boundary),
     max_sat_evaluations::Int=256,
+    max_sat_conflicts::Int=100_000,
     host_radius::Int=1,
 )
     length(target_boundary) == 4 ||
@@ -172,6 +174,8 @@ function optimize_unweighted_gadget(
         throw(ArgumentError("min_vertices exceeds the current gadget size"))
     max_sat_evaluations >= 0 ||
         throw(ArgumentError("max_sat_evaluations must be nonnegative"))
+    max_sat_conflicts >= 0 ||
+        throw(ArgumentError("max_sat_conflicts must be nonnegative"))
     host_radius >= 0 || throw(ArgumentError("host_radius must be nonnegative"))
 
     lattice = _gadget_lattice(gadget)
@@ -188,9 +192,13 @@ function optimize_unweighted_gadget(
     current = gadget
     steps = UnweightedRewriteStep[]
     sat_evaluations = 0
+    unresolved_sat_evaluations = 0
     while true
         nv(current.replacement_graph) == min_vertices &&
-            return UnweightedOptimizationResult(current, steps, sat_evaluations, :minimum_vertices)
+            return UnweightedOptimizationResult(
+                current, steps, sat_evaluations, unresolved_sat_evaluations,
+                :minimum_vertices,
+            )
 
         current_key = _rewrite_state_key(current)
         direct_states = [(gadget=current, steps=steps)]
@@ -208,6 +216,7 @@ function optimize_unweighted_gadget(
                 nv(candidate.gadget.replacement_graph) == min_vertices &&
                     return UnweightedOptimizationResult(
                         candidate.gadget, candidate_steps, sat_evaluations,
+                        unresolved_sat_evaluations,
                         :minimum_vertices,
                     )
                 candidate_key = _rewrite_state_key(candidate.gadget)
@@ -228,11 +237,13 @@ function optimize_unweighted_gadget(
         ]
         resumed = false
         for source in sources
-            candidate, used, status = _resynthesized_unweighted_rewrite(
+            candidate, used, unresolved, status = _resynthesized_unweighted_rewrite(
                 source.gadget, target_boundary, target_reduced, lattice, min_vertices,
-                max_sat_evaluations - sat_evaluations, host_radius,
+                max_sat_evaluations - sat_evaluations, max_sat_conflicts,
+                host_radius,
             )
             sat_evaluations += used
+            unresolved_sat_evaluations += unresolved
             if candidate !== nothing
                 current = candidate.gadget
                 steps = [
@@ -245,11 +256,15 @@ function optimize_unweighted_gadget(
                 break
             end
             status == :budget && return UnweightedOptimizationResult(
-                best.gadget, best.steps, sat_evaluations, :sat_budget,
+                best.gadget, best.steps, sat_evaluations,
+                unresolved_sat_evaluations, :sat_budget,
             )
         end
         resumed || return UnweightedOptimizationResult(
-            best.gadget, best.steps, sat_evaluations, :rewrite_fixed_point,
+            best.gadget, best.steps, sat_evaluations,
+            unresolved_sat_evaluations,
+            iszero(unresolved_sat_evaluations) ?
+                :rewrite_fixed_point : :sat_unknown,
         )
     end
 end
@@ -401,9 +416,9 @@ end
 
 function _resynthesized_unweighted_rewrite(
     gadget, target_boundary, target_reduced, lattice, min_vertices,
-    sat_budget, host_radius,
+    sat_budget, max_sat_conflicts, host_radius,
 )
-    iszero(sat_budget) && return nothing, 0, :budget
+    iszero(sat_budget) && return nothing, 0, 0, :budget
     patch = _gadget_patch(gadget, lattice)
     window = _expanded_lattice_host(lattice, patch.coordinates, host_radius)
     rewritten_frames = _one_step_frame_rewrites(lattice, patch)
@@ -422,6 +437,7 @@ function _resynthesized_unweighted_rewrite(
     contexts = Dict{Int, _SatFrameContext}()
     completion = _target_completion(target_reduced)
     evaluated = 0
+    unresolved = 0
     for atom_count in nv(gadget.replacement_graph)-1:-1:min_vertices
         expected_offset = Int(gadget.constant_offset) -
             (nv(gadget.replacement_graph) - atom_count)
@@ -431,7 +447,8 @@ function _resynthesized_unweighted_rewrite(
         )
         for offset in offsets
             for (frame_index, frame_host) in enumerate(frame_hosts)
-                evaluated == sat_budget && return nothing, evaluated, :budget
+                evaluated == sat_budget &&
+                    return nothing, evaluated, unresolved, :budget
                 length(frame_host.allowed) >= atom_count || continue
                 frame = (;
                     pins=frame_host.frame.pins,
@@ -442,10 +459,24 @@ function _resynthesized_unweighted_rewrite(
                     _prepare_sat_frame(lattice, frame)
                 end
                 evaluated += 1
-                analysis = _solve_fixed_crossing_sat(
-                    target_reduced, lattice, context, atom_count, offset,
+                solver, selected = _fixed_crossing_sat_problem(
+                    target_reduced, context, atom_count, offset,
                 )
-                analysis === nothing && continue
+                status, assignment = _next_selected_assignment_limited!(
+                    solver, selected, max_sat_conflicts; seed=evaluated,
+                )
+                if status == :unknown
+                    unresolved += 1
+                    continue
+                end
+                status == :unsat && continue
+                chosen = findall(identity, assignment)
+                sites = context.coordinates[chosen]
+                analysis = _analyze_crossing_candidate(
+                    target_reduced, lattice, sites, frame.pins, frame.rays,
+                )
+                analysis.solved ||
+                    error("SAT candidate failed its encoded constraints")
                 rewritten = _certified_rewrite_gadget(
                     gadget, target_boundary, lattice, analysis,
                 )
@@ -454,11 +485,11 @@ function _resynthesized_unweighted_rewrite(
                 return (;
                     rule=:frame_rewrite_resynthesis,
                     gadget=rewritten,
-                ), evaluated, :found
+                ), evaluated, unresolved, :found
             end
         end
     end
-    return nothing, evaluated, :exhausted
+    return nothing, evaluated, unresolved, :exhausted
 end
 
 function _analyze_crossing_candidate(target_reduced, lattice, sites, pins, rays)

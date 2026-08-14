@@ -101,13 +101,18 @@ from the direct descendants, so a smaller direct dead end does not hide a
 rewrite-and-resynthesize path. The result includes the best gadget reached in
 the selected one-step frame neighborhood, a replayable before/after rewrite
 trace, the number of fixed-frame SAT calls, and its termination reason. A fixed
-point under these rules and budgets is not a global minimum certificate.
+point under these rules and budgets is not a global minimum certificate. Each
+fixed-frame solve is capped by `max_sat_conflicts`; capped calls are counted in
+`unresolved_sat_evaluations`. If the neighborhood is exhausted while any such
+call remains unresolved, the termination reason is `:sat_unknown`, not
+`:rewrite_fixed_point`.
 
 ```julia
 optimized = optimize_unweighted_gadget(
     gadget, [1, 2, 3, 4];
     min_vertices=17,
     max_sat_evaluations=256,
+    max_sat_conflicts=100_000,
     host_radius=1,
 )
 ```

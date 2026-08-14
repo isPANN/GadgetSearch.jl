@@ -293,10 +293,12 @@ end
         )
         rewritten = optimize_unweighted_gadget(
             rewrite_start, [1,2,3,4];
-            min_vertices=23, max_sat_evaluations=8, host_radius=1,
+            min_vertices=23, max_sat_evaluations=8,
+            max_sat_conflicts=100_000, host_radius=1,
         )
         @test rewritten.termination_reason == :minimum_vertices
         @test rewritten.sat_evaluations <= 8
+        @test rewritten.unresolved_sat_evaluations < rewritten.sat_evaluations
         @test [step.rule for step in rewritten.steps] == [
             :even_boundary_tail_contraction,
             :frame_rewrite_resynthesis,
@@ -321,100 +323,111 @@ end
         @test isempty(rewrite_budget.steps)
         @test rewrite_budget.sat_evaluations == 1
         @test rewrite_budget.termination_reason == :sat_budget
-        if !Sys.iswindows()
-            canonical_coordinates = [
-                (0,-5),(-1,-4),(-1,-3),(1,-5),(0,-3),(3,-7),(2,-6),
-                (2,-5),(1,-4),(1,-3),(0,-2),(0,-1),(3,-6),(2,-4),
-                (1,-2),(0,0),(5,-7),(4,-6),(3,-4),(3,-3),(2,-2),
-                (6,-7),(4,-4),(4,-3),(6,-6),(6,-5),(5,-4),(4,-2),
-            ]
-            joint_frame = [
-                ((0,0),(1,0)), ((-1,-3),(-1,1)),
-                ((3,-7),(0,-1)), ((4,-2),(1,0)),
-            ]
-            joint_solution = GadgetSearch._from_canonical.(
-                Ref(Triangular()), canonical_coordinates,
-            )
-            joint_pins = GadgetSearch._from_canonical.(
-                Ref(Triangular()), first.(joint_frame),
-            )
-            directions = GadgetSearch._lattice_directions(Triangular())
-            joint_rays = [findfirst(==(ray), directions) for ray in last.(joint_frame)]
-            joint_analysis = GadgetSearch._analyze_crossing_candidate(
-                target_reduced, Triangular(), joint_solution, joint_pins, joint_rays,
-            )
-            @test joint_analysis.solved
-            @test joint_analysis.offset == 10
-            joint_cnf, joint_selected, joint_choices, joint_coordinates =
-                GadgetSearch._joint_crossing_sat_cnf(
-                    target_reduced, Triangular(), (8,8), 28, 10,
-                )
-            selected_coordinates = Set(joint_solution)
-            for (vertex, coordinate) in enumerate(joint_coordinates)
-                GadgetSearch._sat_clause!(
-                    joint_cnf, coordinate in selected_coordinates ?
-                    joint_selected[vertex] : -joint_selected[vertex],
-                )
-            end
-            for label in 1:4,
-                (vertex, direction, variable) in joint_choices[label]
-                chosen = joint_coordinates[vertex] == joint_pins[label] &&
-                    direction == joint_rays[label]
-                GadgetSearch._sat_clause!(
-                    joint_cnf, chosen ? variable : -variable,
-                )
-            end
-            status, _ = GadgetSearch._next_selected_assignment_limited!(
-                GadgetSearch._new_sat_solver(joint_cnf), joint_selected, 100_000,
-            )
-            @test status == :sat
 
-            cross23_sites = [
-                (0,0),(3,-7),(0,-1),(-2,-1),(-1,-1),(0,-2),(-2,-2),
-                (0,-3),(1,-3),(2,-4),(-2,-3),(-1,-3),(1,-4),(2,-5),
-                (-2,-4),(-1,-4),(0,-5),(1,-5),(2,-6),(-1,-5),(0,-6),
-                (2,-7),(1,-7),
-            ]
-            cross23_pins = [(0,0),(-2,-4),(3,-7),(2,-4)]
-            cross23_rays = [1,4,6,1]
-            cross23_solution = GadgetSearch._from_canonical.(
-                Ref(Triangular()), cross23_sites,
+        rewrite_unknown = optimize_unweighted_gadget(
+            GadgetSearch._unweighted_gadget(
+                cross_graph(), Triangular(), analysis,
+            ),
+            [1,2,3,4];
+            min_vertices=22, max_sat_evaluations=10_000,
+            max_sat_conflicts=0, host_radius=0,
+        )
+        @test isempty(rewrite_unknown.steps)
+        @test rewrite_unknown.sat_evaluations < 10_000
+        @test rewrite_unknown.unresolved_sat_evaluations > 0
+        @test rewrite_unknown.termination_reason == :sat_unknown
+        canonical_coordinates = [
+            (0,-5),(-1,-4),(-1,-3),(1,-5),(0,-3),(3,-7),(2,-6),
+            (2,-5),(1,-4),(1,-3),(0,-2),(0,-1),(3,-6),(2,-4),
+            (1,-2),(0,0),(5,-7),(4,-6),(3,-4),(3,-3),(2,-2),
+            (6,-7),(4,-4),(4,-3),(6,-6),(6,-5),(5,-4),(4,-2),
+        ]
+        joint_frame = [
+            ((0,0),(1,0)), ((-1,-3),(-1,1)),
+            ((3,-7),(0,-1)), ((4,-2),(1,0)),
+        ]
+        joint_solution = GadgetSearch._from_canonical.(
+            Ref(Triangular()), canonical_coordinates,
+        )
+        joint_pins = GadgetSearch._from_canonical.(
+            Ref(Triangular()), first.(joint_frame),
+        )
+        directions = GadgetSearch._lattice_directions(Triangular())
+        joint_rays = [findfirst(==(ray), directions) for ray in last.(joint_frame)]
+        joint_analysis = GadgetSearch._analyze_crossing_candidate(
+            target_reduced, Triangular(), joint_solution, joint_pins, joint_rays,
+        )
+        @test joint_analysis.solved
+        @test joint_analysis.offset == 10
+        joint_cnf, joint_selected, joint_choices, joint_coordinates =
+            GadgetSearch._joint_crossing_sat_cnf(
+                target_reduced, Triangular(), (8,8), 28, 10,
             )
-            cross23_boundary = GadgetSearch._from_canonical.(
-                Ref(Triangular()), cross23_pins,
+        selected_coordinates = Set(joint_solution)
+        for (vertex, coordinate) in enumerate(joint_coordinates)
+            GadgetSearch._sat_clause!(
+                joint_cnf, coordinate in selected_coordinates ?
+                joint_selected[vertex] : -joint_selected[vertex],
             )
-            cross23_cnf, cross23_selected, cross23_choices, cross23_coordinates =
-                GadgetSearch._joint_crossing_sat_cnf(
-                    target_reduced, Triangular(), (8,8), 23, 7;
-                    canonical_shift=(-1,0),
-                )
-            selected_coordinates = Set(cross23_solution)
-            for (vertex, coordinate) in enumerate(cross23_coordinates)
-                GadgetSearch._sat_clause!(
-                    cross23_cnf, coordinate in selected_coordinates ?
-                    cross23_selected[vertex] : -cross23_selected[vertex],
-                )
-            end
-            for label in 1:4,
-                (vertex, direction, variable) in cross23_choices[label]
-                chosen = cross23_coordinates[vertex] == cross23_boundary[label] &&
-                    direction == cross23_rays[label]
-                GadgetSearch._sat_clause!(
-                    cross23_cnf, chosen ? variable : -variable,
-                )
-            end
-            status, _ = GadgetSearch._next_selected_assignment_limited!(
-                GadgetSearch._new_sat_solver(cross23_cnf), cross23_selected,
-                100_000,
-            )
-            @test status == :sat
-            cross23_analysis = GadgetSearch._analyze_crossing_candidate(
-                target_reduced, Triangular(), cross23_solution,
-                cross23_boundary, cross23_rays,
-            )
-            @test cross23_analysis.solved
-            @test cross23_analysis.offset == 7
         end
+        for label in 1:4,
+            (vertex, direction, variable) in joint_choices[label]
+            chosen = joint_coordinates[vertex] == joint_pins[label] &&
+                direction == joint_rays[label]
+            GadgetSearch._sat_clause!(
+                joint_cnf, chosen ? variable : -variable,
+            )
+        end
+        status, _ = GadgetSearch._next_selected_assignment_limited!(
+            GadgetSearch._new_sat_solver(joint_cnf), joint_selected, 100_000,
+        )
+        @test status == :sat
+
+        cross23_sites = [
+            (0,0),(3,-7),(0,-1),(-2,-1),(-1,-1),(0,-2),(-2,-2),
+            (0,-3),(1,-3),(2,-4),(-2,-3),(-1,-3),(1,-4),(2,-5),
+            (-2,-4),(-1,-4),(0,-5),(1,-5),(2,-6),(-1,-5),(0,-6),
+            (2,-7),(1,-7),
+        ]
+        cross23_pins = [(0,0),(-2,-4),(3,-7),(2,-4)]
+        cross23_rays = [1,4,6,1]
+        cross23_solution = GadgetSearch._from_canonical.(
+            Ref(Triangular()), cross23_sites,
+        )
+        cross23_boundary = GadgetSearch._from_canonical.(
+            Ref(Triangular()), cross23_pins,
+        )
+        cross23_cnf, cross23_selected, cross23_choices, cross23_coordinates =
+            GadgetSearch._joint_crossing_sat_cnf(
+                target_reduced, Triangular(), (8,8), 23, 7;
+                canonical_shift=(-1,0),
+            )
+        selected_coordinates = Set(cross23_solution)
+        for (vertex, coordinate) in enumerate(cross23_coordinates)
+            GadgetSearch._sat_clause!(
+                cross23_cnf, coordinate in selected_coordinates ?
+                cross23_selected[vertex] : -cross23_selected[vertex],
+            )
+        end
+        for label in 1:4,
+            (vertex, direction, variable) in cross23_choices[label]
+            chosen = cross23_coordinates[vertex] == cross23_boundary[label] &&
+                direction == cross23_rays[label]
+            GadgetSearch._sat_clause!(
+                cross23_cnf, chosen ? variable : -variable,
+            )
+        end
+        status, _ = GadgetSearch._next_selected_assignment_limited!(
+            GadgetSearch._new_sat_solver(cross23_cnf), cross23_selected,
+            100_000,
+        )
+        @test status == :sat
+        cross23_analysis = GadgetSearch._analyze_crossing_candidate(
+            target_reduced, Triangular(), cross23_solution,
+            cross23_boundary, cross23_rays,
+        )
+        @test cross23_analysis.solved
+        @test cross23_analysis.offset == 7
         shifted_target = map(value -> isfinite(value) ? value + 8 : value, target_reduced)
         negative_offset = GadgetSearch._solve_fixed_crossing_sat(
             shifted_target, Triangular(), frame, 23, -1,
@@ -482,7 +495,8 @@ end
         ))
         optimized_cross_edge = optimize_unweighted_gadget(
             cross_edge, collect(1:4);
-            min_vertices=4, max_sat_evaluations=256, host_radius=1,
+            min_vertices=4, max_sat_evaluations=256,
+            max_sat_conflicts=100_000, host_radius=1,
         )
         @test nv(optimized_cross_edge.gadget.replacement_graph) == 9
         @test isempty(optimized_cross_edge.steps)
@@ -528,26 +542,24 @@ end
         @test assignments == Set([
             (false, false), (false, true), (true, false), (true, true),
         ])
-        if !Sys.iswindows()
-            sat_cnf = GadgetSearch._SatCnf()
-            variable = GadgetSearch._sat_variable!(sat_cnf)
-            GadgetSearch._sat_clause!(sat_cnf, variable)
-            status, assignment = GadgetSearch._next_selected_assignment_limited!(
-                GadgetSearch._new_sat_solver(sat_cnf), [variable], 10,
-            )
-            @test status == :sat
-            @test assignment == [true]
+        sat_cnf = GadgetSearch._SatCnf()
+        variable = GadgetSearch._sat_variable!(sat_cnf)
+        GadgetSearch._sat_clause!(sat_cnf, variable)
+        status, assignment = GadgetSearch._next_selected_assignment_limited!(
+            GadgetSearch._new_sat_solver(sat_cnf), [variable], 10,
+        )
+        @test status == :sat
+        @test assignment == [true]
 
-            unsat_cnf = GadgetSearch._SatCnf()
-            variable = GadgetSearch._sat_variable!(unsat_cnf)
-            GadgetSearch._sat_clause!(unsat_cnf, variable)
-            GadgetSearch._sat_clause!(unsat_cnf, -variable)
-            status, assignment = GadgetSearch._next_selected_assignment_limited!(
-                GadgetSearch._new_sat_solver(unsat_cnf), [variable], 10,
-            )
-            @test status == :unsat
-            @test assignment === nothing
-        end
+        unsat_cnf = GadgetSearch._SatCnf()
+        variable = GadgetSearch._sat_variable!(unsat_cnf)
+        GadgetSearch._sat_clause!(unsat_cnf, variable)
+        GadgetSearch._sat_clause!(unsat_cnf, -variable)
+        status, assignment = GadgetSearch._next_selected_assignment_limited!(
+            GadgetSearch._new_sat_solver(unsat_cnf), [variable], 10,
+        )
+        @test status == :unsat
+        @test assignment === nothing
     end
 
     @testset "public bounded search" begin

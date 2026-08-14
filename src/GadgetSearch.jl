@@ -9,11 +9,7 @@ using IterTools
 using Combinatorics
 using Random
 using Serialization
-@static if Sys.iswindows()
-    import CryptoMiniSat
-else
-    import Kissat_jll
-end
+import Kissat_jll
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve

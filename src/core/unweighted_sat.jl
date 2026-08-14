@@ -748,156 +748,113 @@ function _solve_next_fixed_crossing_sat!(
     return analysis
 end
 
-@static if Sys.iswindows()
-    function _new_sat_solver(cnf::_SatCnf)
-        solver = CryptoMiniSat.CMS(cnf.variables; num_threads=1)
-        foreach(clause -> CryptoMiniSat.add_clause(solver, clause), cnf.clauses)
-        return solver
+mutable struct _KissatEnumerator
+    variables::Int
+    clauses::Vector{Vector{Int}}
+end
+
+_new_sat_solver(cnf::_SatCnf) =
+    _KissatEnumerator(cnf.variables, copy(cnf.clauses))
+_add_solver_clause!(solver::_KissatEnumerator, clause) =
+    push!(solver.clauses, collect(clause))
+_kissat_init() = ccall((:kissat_init, Kissat_jll.libkissat), Ptr{Cvoid}, ())
+_kissat_add(solver, literal) = ccall((:kissat_add, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid}, Cint), solver, literal)
+_kissat_solve(solver) = ccall((:kissat_solve, Kissat_jll.libkissat), Cint, (Ptr{Cvoid},), solver)
+_kissat_value(solver, variable) = ccall((:kissat_value, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cint), solver, variable)
+_kissat_release(solver) = ccall((:kissat_release, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid},), solver)
+_kissat_quiet(solver) = ccall((:kissat_set_option, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cstring, Cint), solver, "quiet", 1)
+_kissat_seed(solver, seed) = ccall(
+    (:kissat_set_option, Kissat_jll.libkissat), Cint,
+    (Ptr{Cvoid}, Cstring, Cint), solver, "seed", seed,
+)
+_kissat_walkinitially(solver) = ccall(
+    (:kissat_set_option, Kissat_jll.libkissat), Cint,
+    (Ptr{Cvoid}, Cstring, Cint), solver, "walkinitially", 1,
+)
+_kissat_set_conflict_limit(solver, limit) = ccall(
+    (:kissat_set_conflict_limit, Kissat_jll.libkissat), Cint,
+    (Ptr{Cvoid}, Cuint), solver, limit,
+)
+
+function _next_selected_assignment!(enumerator::_KissatEnumerator, selected)
+    solver = _kissat_init()
+    _kissat_quiet(solver)
+    for clause in enumerator.clauses
+        foreach(literal -> _kissat_add(solver, literal), clause)
+        _kissat_add(solver, 0)
     end
+    status = _kissat_solve(solver)
+    assignment = status == 10 ?
+        Bool[_kissat_value(solver, variable) > 0 for variable in selected] : nothing
+    _kissat_release(solver)
+    status == 20 && return nothing
+    status == 10 || error("SAT solver returned an undefined result")
+    push!(enumerator.clauses, [
+        assignment[index] ? -variable : variable
+        for (index, variable) in enumerate(selected)
+    ])
+    return assignment
+end
 
-    function _next_selected_assignment!(solver, selected)
-        status = CryptoMiniSat.solve(solver)
-        status === false && return nothing
-        status === true || error("SAT solver returned an undefined result")
-        model = CryptoMiniSat.get_model(solver)
-        assignment = Bool[model[variable] for variable in selected]
-        blocking_clause = [
-            assignment[index] ? -variable : variable
-            for (index, variable) in enumerate(selected)
-        ]
-        CryptoMiniSat.add_clause(solver, blocking_clause)
-        return assignment
-    end
-
-    function _next_joint_assignment!(
-        solver, variables; seed, seconds, kissat_executable,
-    )
-        isnothing(kissat_executable) ||
-            error("an external Kissat executable is not supported on Windows")
-        status = CryptoMiniSat.solve(solver)
-        status === false && return :unsat, nothing
-        status === true || error("SAT solver returned an undefined result")
-        model = CryptoMiniSat.get_model(solver)
-        return :sat, Bool[model[variable] for variable in variables]
-    end
-
-    _add_solver_clause!(solver, clause) = CryptoMiniSat.add_clause(solver, clause)
-
-
-    function _next_selected_assignment_limited!(
-        solver, selected, conflict_limit; seed=1,
-    )
-        error("conflict-limited frame scheduling requires Kissat")
-    end
-else
-    mutable struct _KissatEnumerator
-        variables::Int
-        clauses::Vector{Vector{Int}}
-    end
-
-    _new_sat_solver(cnf::_SatCnf) =
-        _KissatEnumerator(cnf.variables, copy(cnf.clauses))
-    _add_solver_clause!(solver::_KissatEnumerator, clause) =
-        push!(solver.clauses, collect(clause))
-    _kissat_init() = ccall((:kissat_init, Kissat_jll.libkissat), Ptr{Cvoid}, ())
-    _kissat_add(solver, literal) = ccall((:kissat_add, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid}, Cint), solver, literal)
-    _kissat_solve(solver) = ccall((:kissat_solve, Kissat_jll.libkissat), Cint, (Ptr{Cvoid},), solver)
-    _kissat_value(solver, variable) = ccall((:kissat_value, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cint), solver, variable)
-    _kissat_release(solver) = ccall((:kissat_release, Kissat_jll.libkissat), Cvoid, (Ptr{Cvoid},), solver)
-    _kissat_quiet(solver) = ccall((:kissat_set_option, Kissat_jll.libkissat), Cint, (Ptr{Cvoid}, Cstring, Cint), solver, "quiet", 1)
-    _kissat_seed(solver, seed) = ccall(
-        (:kissat_set_option, Kissat_jll.libkissat), Cint,
-        (Ptr{Cvoid}, Cstring, Cint), solver, "seed", seed,
-    )
-    _kissat_walkinitially(solver) = ccall(
-        (:kissat_set_option, Kissat_jll.libkissat), Cint,
-        (Ptr{Cvoid}, Cstring, Cint), solver, "walkinitially", 1,
-    )
-    _kissat_set_conflict_limit(solver, limit) = ccall(
-        (:kissat_set_conflict_limit, Kissat_jll.libkissat), Cint,
-        (Ptr{Cvoid}, Cuint), solver, limit,
-    )
-
-    function _next_selected_assignment!(enumerator::_KissatEnumerator, selected)
-        solver = _kissat_init()
-        _kissat_quiet(solver)
+function _next_joint_assignment!(
+    enumerator::_KissatEnumerator, variables;
+    seed, seconds, kissat_executable,
+)
+    path, stream = mktemp()
+    try
+        println(stream, "p cnf $(enumerator.variables) $(length(enumerator.clauses))")
         for clause in enumerator.clauses
-            foreach(literal -> _kissat_add(solver, literal), clause)
-            _kissat_add(solver, 0)
+            println(stream, join(clause, ' '), " 0")
         end
-        status = _kissat_solve(solver)
-        assignment = status == 10 ?
-            Bool[_kissat_value(solver, variable) > 0 for variable in selected] : nothing
-        _kissat_release(solver)
-        status == 20 && return nothing
-        status == 10 || error("SAT solver returned an undefined result")
-        push!(enumerator.clauses, [
-            assignment[index] ? -variable : variable
-            for (index, variable) in enumerate(selected)
-        ])
-        return assignment
-    end
-
-    function _next_joint_assignment!(
-        enumerator::_KissatEnumerator, variables;
-        seed, seconds, kissat_executable,
-    )
-        path, stream = mktemp()
-        try
-            println(stream, "p cnf $(enumerator.variables) $(length(enumerator.clauses))")
-            for clause in enumerator.clauses
-                println(stream, join(clause, ' '), " 0")
-            end
-            close(stream)
-            output = IOBuffer()
-            executable = isnothing(kissat_executable) ?
-                Kissat_jll.kissat() : kissat_executable
-            command = `$executable --sat --walkinitially --seed=$seed -q --time=$seconds $path`
-            process = run(pipeline(ignorestatus(command), stdout=output, stderr=stderr))
-            status = process.exitcode
-            status == 20 && return :unsat, nothing
-            status == 0 && return :unknown, nothing
-            status == 10 || error("Kissat exited with status $status")
-            positive = Set{Int}()
-            for line in eachline(seekstart(output))
-                startswith(line, "v ") || continue
-                for literal in split(line)[2:end]
-                    value = parse(Int, literal)
-                    value > 0 && push!(positive, value)
-                end
-            end
-            return :sat, Bool[variable in positive for variable in variables]
-        finally
-            isopen(stream) && close(stream)
-            rm(path)
-        end
-    end
-
-
-    function _next_selected_assignment_limited!(
-        enumerator::_KissatEnumerator, selected, conflict_limit; seed=1,
-    )
-        solver = _kissat_init()
-        _kissat_quiet(solver)
-        _kissat_seed(solver, seed)
-        for clause in enumerator.clauses
-            foreach(literal -> _kissat_add(solver, literal), clause)
-            _kissat_add(solver, 0)
-        end
-        _kissat_set_conflict_limit(solver, conflict_limit)
-        status = _kissat_solve(solver)
-        assignment = status == 10 ?
-            Bool[_kissat_value(solver, variable) > 0 for variable in selected] : nothing
-        _kissat_release(solver)
-        status == 0 && return :unknown, nothing
+        close(stream)
+        output = IOBuffer()
+        executable = isnothing(kissat_executable) ?
+            Kissat_jll.kissat() : kissat_executable
+        command = `$executable --sat --walkinitially --seed=$seed -q --time=$seconds $path`
+        process = run(pipeline(ignorestatus(command), stdout=output, stderr=stderr))
+        status = process.exitcode
         status == 20 && return :unsat, nothing
-        status == 10 || error("SAT solver returned an undefined result")
-        push!(enumerator.clauses, [
-            assignment[index] ? -variable : variable
-            for (index, variable) in enumerate(selected)
-        ])
-        return :sat, assignment
+        status == 0 && return :unknown, nothing
+        status == 10 || error("Kissat exited with status $status")
+        positive = Set{Int}()
+        for line in eachline(seekstart(output))
+            startswith(line, "v ") || continue
+            for literal in split(line)[2:end]
+                value = parse(Int, literal)
+                value > 0 && push!(positive, value)
+            end
+        end
+        return :sat, Bool[variable in positive for variable in variables]
+    finally
+        isopen(stream) && close(stream)
+        rm(path)
     end
+end
+
+
+function _next_selected_assignment_limited!(
+    enumerator::_KissatEnumerator, selected, conflict_limit; seed=1,
+)
+    solver = _kissat_init()
+    _kissat_quiet(solver)
+    _kissat_seed(solver, seed)
+    for clause in enumerator.clauses
+        foreach(literal -> _kissat_add(solver, literal), clause)
+        _kissat_add(solver, 0)
+    end
+    _kissat_set_conflict_limit(solver, conflict_limit)
+    status = _kissat_solve(solver)
+    assignment = status == 10 ?
+        Bool[_kissat_value(solver, variable) > 0 for variable in selected] : nothing
+    _kissat_release(solver)
+    status == 0 && return :unknown, nothing
+    status == 20 && return :unsat, nothing
+    status == 10 || error("SAT solver returned an undefined result")
+    push!(enumerator.clauses, [
+        assignment[index] ? -variable : variable
+        for (index, variable) in enumerate(selected)
+    ])
+    return :sat, assignment
 end
 
 function _search_crossing_sat(

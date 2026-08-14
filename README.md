@@ -47,9 +47,7 @@ Unweighted mode ignores vertex weights, treats the pins as open vertices, and
 computes the reduced alpha tensor. The lattice dimensions can be adjusted from
 2×2 to 20×20 and are preserved in exported JSON.
 
-The unweighted SAT search uses Kissat on Linux and macOS. Windows uses
-CryptoMiniSat because the Julia Kissat binary is unavailable there. Windows is
-supported for tests, but not recommended for long searches; use Linux or macOS.
+The unweighted SAT search uses Kissat and supports Linux and macOS.
 
 ### Rydberg Model (MIS-based)
 
