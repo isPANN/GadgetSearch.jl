@@ -313,7 +313,6 @@ end
         # Check that save file is created when results are found
         all_results = vcat(results...)
         if !isempty(all_results) && isfile(temp_file)
-            # Windows: avoid holding an open file handle during cleanup
             saved_data = JSON3.read(read(temp_file, String))
             @test saved_data isa Union{Vector, JSON3.Array}
             @test length(saved_data) > 0
@@ -321,7 +320,7 @@ end
         
     finally
         # Clean up temp file
-        isfile(temp_file) && rm(temp_file; force=true, allow_delayed_delete=true)
+        isfile(temp_file) && rm(temp_file; force=true)
     end
 end
 

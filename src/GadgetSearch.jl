@@ -9,6 +9,7 @@ using IterTools
 using Combinatorics
 using Random
 using Serialization
+import Kissat_jll
 
 # Tensor network dependencies for alpha tensor computation
 using GenericTensorNetworks: GenericTensorNetwork, IndependentSet, SizeMax, solve
@@ -26,6 +27,7 @@ include("graphio/savegraph.jl")
 include("graphio/udg.jl")
 include("utils/ruleio.jl")
 include("core/unweighted_search.jl")
+include("core/unweighted_sat.jl")
 include("core/search.jl")
 include("utils/gadget.jl")
 include("utils/visualize.jl")
@@ -72,6 +74,13 @@ export is_gadget_replacement
 
 # Unweighted search
 export UnweightedGadget
+export UnweightedSearchResult
+export UnweightedRewriteStep
+export UnweightedOptimizationResult
 export search_unweighted_gadgets
+export search_unweighted_gadget_joint
+export optimize_unweighted_gadget
+export read_unweighted_search_checkpoint
+export check_crossing_frame
 
 end # module
