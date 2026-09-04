@@ -26,8 +26,150 @@ abstract type LatticeType end
 struct Square <: LatticeType end
 struct Triangular <: LatticeType end
 
+"""
+    triangular_adjacency(i1::Int, j1::Int, i2::Int, j2::Int) -> Bool
+
+Return whether two sites of the triangular lattice are nearest neighbors using
+only integer lattice coordinates.
+
+# Arguments
+- `i1::Int`: Column index of the first site.
+- `j1::Int`: Row index of the first site.
+- `i2::Int`: Column index of the second site.
+- `j2::Int`: Row index of the second site.
+
+# Returns
+- `Bool`: `true` if the two lattice sites share an edge in the triangular lattice.
+"""
+function triangular_adjacency(i1::Int, j1::Int, i2::Int, j2::Int)
+    j1 == j2 && return abs(i1 - i2) == 1
+    abs(j1 - j2) == 1 || return false
+
+    if j1 > j2
+        return triangular_adjacency(i2, j2, i1, j1)
+    end
+
+    return isodd(j1) ? (i2 == i1 || i2 == i1 + 1) : (i2 == i1 || i2 == i1 - 1)
+end
+
+"""
+    triangular_lattice_graph(nx::Int, ny::Int) -> SimpleGraph{Int}
+
+Build the full nearest-neighbor triangular lattice graph on an `nx × ny` grid
+of lattice sites.
+
+# Arguments
+- `nx::Int`: Number of lattice columns.
+- `ny::Int`: Number of lattice rows.
+
+# Returns
+- `SimpleGraph{Int}`: The graph whose vertices are lattice sites and whose
+  edges connect nearest neighbors.
+"""
+function triangular_lattice_graph(nx::Int, ny::Int)
+    if nx <= 0 || ny <= 0
+        return SimpleGraph(0)
+    end
+
+    vertex_index(i, j) = i + (j - 1) * nx
+    g = SimpleGraph(nx * ny)
+
+    for j = 1:ny, i = 1:nx
+        v = vertex_index(i, j)
+
+        if i < nx
+            add_edge!(g, v, vertex_index(i + 1, j))
+        end
+
+        if j < ny
+            add_edge!(g, v, vertex_index(i, j + 1))
+
+            if isodd(j) && i < nx
+                add_edge!(g, v, vertex_index(i + 1, j + 1))
+            elseif iseven(j) && i > 1
+                add_edge!(g, v, vertex_index(i - 1, j + 1))
+            end
+        end
+    end
+
+    return g
+end
+
+"""
+    get_radius(lattice::LatticeType) -> Float64
+
+Return the unit-disk radius used for the chosen lattice geometry.
+
+# Arguments
+- `lattice::LatticeType`: Lattice family whose physical spacing determines the
+  unit-disk threshold.
+
+# Returns
+- `Float64`: The interaction radius used when constructing unit-disk graphs.
+"""
 get_radius(::Square) = 1.5
 get_radius(::Triangular) = 1.1
+
+_triangular_grid_coordinates(nx::Int, ny::Int) = vec(Tuple{Int, Int}[(i, j) for i in 1:nx, j in 1:ny])
+
+function _all_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer)
+    return [collect(subset) for subset in Combinatorics.combinations(vertices(inner_grid), k)]
+end
+
+function _dedup_subsets_by_g6(inner_grid::SimpleGraph{Int}, subsets::Vector{Vector{Int}})
+    seen = Set{String}()
+    deduped = Vector{Vector{Int}}()
+    for subset in subsets
+        subgraph, _ = Graphs.induced_subgraph(inner_grid, subset)
+        g6 = GraphIO.Graph6._graphToG6String(subgraph)[11:end]
+        if !(g6 in seen)
+            push!(seen, g6)
+            push!(deduped, subset)
+        end
+    end
+    return deduped
+end
+
+"""
+    dedup_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer; use_shortg::Bool=true) -> Vector{Vector{Int}}
+
+Enumerate all `k`-vertex subsets of `inner_grid` and retain one representative
+per class.
+
+When `use_shortg=true`, deduplication is by graph isomorphism via `shortg`.
+When `use_shortg=false`, deduplication uses g6-string equality (same labeled
+graph encoding).
+"""
+function dedup_inner_subsets(inner_grid::SimpleGraph{Int}, k::Integer; use_shortg::Bool=true)
+    0 <= k <= nv(inner_grid) || throw(ArgumentError("subset size k must satisfy 0 <= k <= nv(inner_grid)"))
+
+    subsets = _all_inner_subsets(inner_grid, k)
+    isempty(subsets) && return subsets
+    if !use_shortg
+        return _dedup_subsets_by_g6(inner_grid, subsets)
+    end
+    Sys.which("shortg") === nothing && throw(ArgumentError("use_shortg=true requires `shortg` in PATH"))
+
+    subgraphs = SimpleGraph{Int}[]
+    for subset in subsets
+        subgraph, _ = Graphs.induced_subgraph(inner_grid, subset)
+        push!(subgraphs, subgraph)
+    end
+
+    mapping_file = tempname()
+    temp_path = tempname()
+
+    try
+        save_graph(subgraphs, temp_path)
+        _call_shortg(temp_path, mapping_file)
+
+        canonical_to_original, _ = _parse_shortg_mapping(mapping_file)
+        return [subsets[canonical_to_original[idx][1]] for idx in sort!(collect(keys(canonical_to_original)))]
+    finally
+        isfile(mapping_file) && rm(mapping_file)
+        isfile(temp_path) && rm(temp_path)
+    end
+end
 
 get_physical_positions(::Square, pos::Vector{Tuple{Int, Int}}) = Vector{Tuple{Float64, Float64}}(pos)
 function get_physical_positions(::Triangular, pos::Vector{Tuple{Int, Int}})
@@ -46,6 +188,21 @@ end
 function get_inner_points(lattice::LatticeType, nx::Int, ny::Int)
     original_points = Tuple{Int, Int}[(x, y) for x in 2:nx+1, y in 2:ny+1]
     return get_physical_positions(lattice, vec(original_points))
+end
+
+"""
+    canonical_crossing_pins(top, bottom, left, right)
+
+Return the four boundary pin positions in the canonical crossing order used by
+the unweighted crossing search:
+
+- pin `1`: left
+- pin `2`: top
+- pin `3`: right
+- pin `4`: bottom
+"""
+function canonical_crossing_pins(top, bottom, left, right)
+    return [left, top, right, bottom]
 end
 
 """
@@ -133,26 +290,84 @@ function generate_full_grid_udg(lattice::LatticeType, nx::Int, ny::Int; path::St
     for top in top_candidates, bottom in bottom_candidates,
         left in left_candidates, right in right_candidates
 
-        selected = vcat([top, right, bottom, left], inner_points)
+        selected = vcat(canonical_crossing_pins(top, bottom, left, right), inner_points)
 
         g = unit_disk_graph(selected, radius)
 
         push!(results, (g, selected))
     end
-    @info "pinset in generated graphs: [1,2,3,4]"
+    @info "pinset in generated graphs follows canonical crossing roles: [left, top, right, bottom]"
     return _process_and_save_graphs(results, path)
 end
 
-function _call_shortg(temp_path::String, mapping_file::String)
-    if Sys.which("shortg") === nothing
-        # Make shortg optional: log and signal caller to fallback
-        @warn "Optional tool `shortg` not found; skipping canonicalization/dedup."
-        return false
-    else
-        @info "shortg found in PATH; running canonicalization"
+"""
+    generate_triangular_udg_subsets(nx::Int, ny::Int;
+                                    subset_sizes=0:(nx * ny),
+                                    deduplicate::Bool=true,
+                                    use_shortg::Bool=true,
+                                    strict_dedup::Bool=false,
+                                    path::String="triangular_udg_subsets.g6") -> String
+
+Generate all triangular-lattice unit-disk graphs obtained by selecting subsets
+of the `nx × ny` inner lattice sites and save them to disk.
+
+# Arguments
+- `nx::Int`: Number of lattice columns in the inner triangular grid.
+- `ny::Int`: Number of lattice rows in the inner triangular grid.
+- `subset_sizes=0:(nx * ny)`: Iterable of subset sizes to enumerate.
+- `deduplicate::Bool=true`: Whether to collapse isomorphic inner subsets before saving.
+- `use_shortg::Bool=true`: Whether `shortg` may be used for deduplication when available.
+- `strict_dedup::Bool=false`: When `true`, require `shortg` and throw if unavailable.
+- `path::String="triangular_udg_subsets.g6"`: Output file path.
+
+# Returns
+- `String`: The path where the generated dataset was written.
+"""
+function generate_triangular_udg_subsets(
+    nx::Int,
+    ny::Int;
+    subset_sizes=0:(nx * ny),
+    deduplicate::Bool=true,
+    use_shortg::Bool=true,
+    strict_dedup::Bool=false,
+    path::String="triangular_udg_subsets.g6",
+)
+    inner_grid = triangular_lattice_graph(nx, ny)
+    grid_coords = _triangular_grid_coordinates(nx, ny)
+    physical_positions = get_physical_positions(Triangular(), grid_coords)
+    results = Tuple{SimpleGraph{Int}, Vector{Tuple{Float64, Float64}}}[]
+    shortg_available = Sys.which("shortg") !== nothing
+    do_shortg_dedup = deduplicate && use_shortg && shortg_available
+
+    if strict_dedup && deduplicate && !do_shortg_dedup
+        throw(ArgumentError("strict_dedup=true requires use_shortg=true and `shortg` available in PATH"))
     end
+
+    if deduplicate && use_shortg && !shortg_available
+        @warn "`shortg` not found; falling back to g6-string deduplication."
+    end
+
+    for k in subset_sizes
+        0 <= k <= nv(inner_grid) || throw(ArgumentError("subset sizes must satisfy 0 <= k <= nx * ny"))
+
+        subsets = deduplicate ?
+            dedup_inner_subsets(inner_grid, k; use_shortg=do_shortg_dedup) :
+            _all_inner_subsets(inner_grid, k)
+
+        for subset in subsets
+            subset_positions = physical_positions[subset]
+            subset_graph = unit_disk_graph(subset_positions, get_radius(Triangular()))
+            push!(results, (subset_graph, subset_positions))
+        end
+    end
+
+    save_graph(results, path)
+    return path
+end
+
+function _call_shortg(temp_path::String, mapping_file::String)
+    @info "shortg found in PATH; running canonicalization"
     run(pipeline(`shortg -v -u $(temp_path)`, stderr=mapping_file))
-    return true
 end
 
 function _process_and_save_graphs(results::Vector{Tuple{SimpleGraph{T}, Vector{Tuple{Float64, Float64}}}}, path::String) where T
