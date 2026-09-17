@@ -699,7 +699,7 @@ function _solve_joint_crossing_sat(
         end
         selected_indices = findall(identity, selected_assignment)
         sites = coordinates[selected_indices]
-        checks = _check_crossing_frame(lattice, _LatticePatch(sites, pins, rays))
+        checks = _check_gadget_geometry(lattice, _LatticePatch(sites, pins, rays))
         if all(checks)
             analysis = _analyze_crossing_candidate(
                 target, lattice, sites, pins, rays,
@@ -708,7 +708,7 @@ function _solve_joint_crossing_sat(
             error("joint SAT candidate failed a non-geometric encoded constraint")
         end
         chosen_ports = last.(chosen_choices)
-        intrinsic = _check_crossing_frame(
+        intrinsic = _check_gadget_geometry(
             lattice, _LatticePatch(pins, pins, rays),
         )
         clause = all(intrinsic) ?
@@ -1201,7 +1201,7 @@ function _foreach_crossing_frame_clique(
         evaluated[] += 1
         pins = first.(ports)
         rays = last.(ports)
-        checks = _check_crossing_frame(
+        checks = _check_gadget_geometry(
             lattice, _LatticePatch(pins, pins, rays),
         )
         checks[1] && checks[3] && checks[4] || return nothing

@@ -3,7 +3,7 @@
 `search_unweighted_gadgets` searches a finite lattice window for a four-pin
 gadget whose reduced alpha tensor differs from the target by one constant. The
 four pins and their outward directions must form the crossing geometry checked
-by `check_crossing_frame`.
+by `check_gadget_geometry`.
 
 The target graph is used only to obtain the target reduced alpha tensor and for
 the unchanged final verifier. The search chooses the concrete pin locations,
@@ -23,7 +23,7 @@ larger atom count means all scheduled smaller cases have already been rejected.
 layout, atom count, and offset, satisfying site selections are blocked and the
 solver is called again until that case is unsatisfiable. Every returned
 candidate is independently checked by both `is_gadget_replacement` and
-`check_crossing_frame`.
+`check_gadget_geometry`.
 
 `max_frame_evaluations` separately bounds pin-and-ray geometry checks. Increase
 it together with `window_side` for exhaustive searches in larger windows.

@@ -497,7 +497,7 @@ function _analyze_crossing_candidate(target_reduced, lattice, sites, pins, rays)
     graph, boundary, positions = _materialize_lattice_patch(lattice, patch)
     reduced = vec(calculate_reduced_alpha_tensor(graph, boundary))
     tensor_valid, offset = is_diff_by_constant(reduced, target_reduced)
-    geometry_valid = all(_check_crossing_frame(lattice, patch))
+    geometry_valid = all(_check_gadget_geometry(lattice, patch))
     solved = tensor_valid && geometry_valid && is_connected(graph)
     return (;
         graph, boundary, positions, patch, solved, offset=Float64(offset),
@@ -614,31 +614,31 @@ _patch_ray_directions(lattice::LatticeType, patch::_LatticePatch) =
     _lattice_directions(lattice)[patch.rays]
 
 """
-    check_crossing_frame(lattice, coordinates, pins, pin_rays)
+    check_gadget_geometry(lattice, coordinates, pins, pin_rays)
 
-Check the four geometric crossing-frame conditions. `pin_rays[i]` is the
+Check the four gadget geometry conditions. `pin_rays[i]` is the
 outward lattice direction attached to `pins[i]`. The returned named tuple reports
 G1 (strict hull interfaces), G2 (alternating channels), G3 (outward rays), and
 G4 (clear pairwise non-adjacent exterior corridors).
 """
-function check_crossing_frame(
+function check_gadget_geometry(
     lattice::LatticeType,
     coordinates::Vector{_LatticeCoordinate},
     pins::Vector{_LatticeCoordinate},
     pin_rays::Vector{_LatticeCoordinate},
 )
-    length(pins) == 4 || throw(ArgumentError("a crossing frame requires four ordered pins"))
-    length(pin_rays) == 4 || throw(ArgumentError("a crossing frame requires four pin rays"))
+    length(pins) == 4 || throw(ArgumentError("gadget geometry requires four ordered pins"))
+    length(pin_rays) == 4 || throw(ArgumentError("gadget geometry requires four pin rays"))
     length(unique(coordinates)) == length(coordinates) ||
-        throw(ArgumentError("crossing-frame coordinates must be unique"))
+        throw(ArgumentError("gadget geometry coordinates must be unique"))
     length(unique(pins)) == 4 ||
-        throw(ArgumentError("crossing-frame pins must be distinct"))
+        throw(ArgumentError("gadget geometry pins must be distinct"))
     all(in(Set(coordinates)), pins) ||
-        throw(ArgumentError("every crossing-frame pin must be present in coordinates"))
+        throw(ArgumentError("every gadget geometry pin must be present in coordinates"))
     directions = _lattice_directions(lattice)
     ray_indices = [_lattice_direction_index(directions, ray) for ray in pin_rays]
     patch = _normalize_lattice_patch(lattice, coordinates, pins, ray_indices)
-    checks = _check_crossing_frame(lattice, patch)
+    checks = _check_gadget_geometry(lattice, patch)
     return (G1=checks[1], G2=checks[2], G3=checks[3], G4=checks[4])
 end
 
@@ -648,7 +648,7 @@ function _lattice_direction_index(directions, ray)
     return index
 end
 
-function _check_crossing_frame(lattice::LatticeType, patch::_LatticePatch)
+function _check_gadget_geometry(lattice::LatticeType, patch::_LatticePatch)
     length(patch.pins) == 4 || return (true, true, true, true)
     directions = _patch_ray_directions(lattice, patch)
     interfaces = [
