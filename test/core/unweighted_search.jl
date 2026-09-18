@@ -516,6 +516,39 @@ end
             target_reduced, Square(), (2,2), 4, 1,
         ))
 
+        @testset "joint SAT blocks non-alternating pins" begin
+            _, selected, choices, coordinates = GadgetSearch._joint_crossing_sat_cnf(
+                target_reduced, Square(), (2,2), 4, 0,
+            )
+            rays = [1, 6, 3, 8]
+            ports = [only(variable for (vertex, direction, variable) in choices[label]
+                if vertex == label && direction == rays[label]) for label in 1:4]
+            @test !check_gadget_geometry(
+                Square(), coordinates, coordinates,
+                GadgetSearch._lattice_directions(Square())[rays],
+            ).G2
+            mktempdir() do directory
+                executable = joinpath(directory, "kissat.sh")
+                blocker = joinpath(directory, "blocker")
+                # Supply an invalid candidate, then record the clause used to reject it.
+                write(executable, """
+                    for argument do input="\$argument"; done
+                    if [ -f '$blocker' ]; then
+                        tail -n 1 "\$input" > '$blocker'
+                        exit 20
+                    fi
+                    touch '$blocker'
+                    echo 'v $(join([selected; ports], ' ')) 0'
+                    exit 10
+                    """)
+                @test isnothing(GadgetSearch._solve_joint_crossing_sat(
+                    target_reduced, Square(), (2,2), 4, 0;
+                    kissat_executable=`sh $executable`, seconds=30,
+                ))
+                @test parse.(Int, split(read(blocker, String))) == [-ports; 0]
+            end
+        end
+
         crossing_points = [(0,0), (0,2), (2,0), (2,2)]
         for chosen in Iterators.product(ntuple(_ -> 1:4, 4)...)
             points = crossing_points[collect(chosen)]
