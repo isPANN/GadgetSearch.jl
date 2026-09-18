@@ -54,24 +54,24 @@ end
         @test is_diff_by_constant(reduced .+ 3, reduced) == (true, 3.0)
     end
 
-    @testset "crossing frame" begin
+    @testset "gadget geometry" begin
         square = [(0, 0), (-1, 0), (0, 1), (1, 0), (0, -1)]
         pins = square[2:5]
         rays = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-        @test all(check_crossing_frame(Square(), square, pins, rays))
-        @test !check_crossing_frame(Square(), [square; (-2, 1)], pins, rays).G4
-        @test_throws ArgumentError check_crossing_frame(
+        @test all(check_gadget_geometry(Square(), square, pins, rays))
+        @test !check_gadget_geometry(Square(), [square; (-2, 1)], pins, rays).G4
+        @test_throws ArgumentError check_gadget_geometry(
             Square(), [(0, 0)], pins, rays,
         )
-        @test_throws ArgumentError check_crossing_frame(
+        @test_throws ArgumentError check_gadget_geometry(
             Square(), [square; square[1]], pins, rays,
         )
-        @test_throws ArgumentError check_crossing_frame(
+        @test_throws ArgumentError check_gadget_geometry(
             Square(), square, [pins[1], pins[1], pins[3], pins[4]], rays,
         )
         triangular = [(0, 0), (-1, 0), (0, 1), (1, 0), (-1, -1)]
         triangular_pins = triangular[2:5]
-        @test all(check_crossing_frame(
+        @test all(check_gadget_geometry(
             Triangular(), triangular, triangular_pins, rays,
         ))
     end
@@ -84,7 +84,7 @@ end
         for order in permutations(1:4)
             ordered_pins = pins[collect(order)]
             for rays in Iterators.product(ntuple(_ -> ray_indices, 4)...)
-                all(GadgetSearch._check_crossing_frame(
+                all(GadgetSearch._check_gadget_geometry(
                     lattice,
                     GadgetSearch._LatticePatch(
                         ordered_pins, ordered_pins, collect(rays),
@@ -105,7 +105,7 @@ end
                 lattice, pins, rays_tuple,
             ) || continue
             physical_rays = collect(rays_tuple)
-            checks = GadgetSearch._check_crossing_frame(
+            checks = GadgetSearch._check_gadget_geometry(
                 lattice, GadgetSearch._LatticePatch(pins, pins, physical_rays),
             )
             checks[1] && checks[3] && checks[4] || continue
@@ -176,7 +176,7 @@ end
                 for column in 0:side-1 for row in 0:side-1]
             expected = sort([site for site in window
                 if site in candidate_pins || begin
-                    checks = GadgetSearch._check_crossing_frame(
+                    checks = GadgetSearch._check_gadget_geometry(
                         lattice, GadgetSearch._LatticePatch(
                             [candidate_pins; site], candidate_pins, candidate_rays,
                         ),
@@ -221,7 +221,7 @@ end
         @test is_gadget_replacement(
             cross_graph(), analysis.graph, [1,2,3,4], analysis.boundary,
         ) == (true, 7.0)
-        @test all(check_crossing_frame(
+        @test all(check_gadget_geometry(
             Triangular(), analysis.patch.coordinates, analysis.patch.pins,
             GadgetSearch._patch_ray_directions(Triangular(), analysis.patch),
         ))
@@ -453,7 +453,7 @@ end
         )
         @test ksg_analysis !== nothing
         @test nv(ksg_analysis.graph) == 5
-        @test all(check_crossing_frame(
+        @test all(check_gadget_geometry(
             Square(), ksg_analysis.patch.coordinates, ksg_analysis.patch.pins,
             GadgetSearch._patch_ray_directions(Square(), ksg_analysis.patch),
         ))
@@ -477,7 +477,7 @@ end
             target, public_joint.replacement_graph, collect(1:4),
             public_joint.boundary_vertices,
         ))
-        @test all(check_crossing_frame(
+        @test all(check_gadget_geometry(
             Square(), public_joint.lattice_coordinates,
             public_joint.lattice_coordinates[public_joint.boundary_vertices],
             public_joint.pin_rays,
@@ -515,6 +515,39 @@ end
         @test isnothing(GadgetSearch._solve_joint_crossing_sat(
             target_reduced, Square(), (2,2), 4, 1,
         ))
+
+        @testset "joint SAT blocks non-alternating pins" begin
+            _, selected, choices, coordinates = GadgetSearch._joint_crossing_sat_cnf(
+                target_reduced, Square(), (2,2), 4, 0,
+            )
+            rays = [1, 6, 3, 8]
+            ports = [only(variable for (vertex, direction, variable) in choices[label]
+                if vertex == label && direction == rays[label]) for label in 1:4]
+            @test !check_gadget_geometry(
+                Square(), coordinates, coordinates,
+                GadgetSearch._lattice_directions(Square())[rays],
+            ).G2
+            mktempdir() do directory
+                executable = joinpath(directory, "kissat.sh")
+                blocker = joinpath(directory, "blocker")
+                # Supply an invalid candidate, then record the clause used to reject it.
+                write(executable, """
+                    for argument do input="\$argument"; done
+                    if [ -f '$blocker' ]; then
+                        tail -n 1 "\$input" > '$blocker'
+                        exit 20
+                    fi
+                    touch '$blocker'
+                    echo 'v $(join([selected; ports], ' ')) 0'
+                    exit 10
+                    """)
+                @test isnothing(GadgetSearch._solve_joint_crossing_sat(
+                    target_reduced, Square(), (2,2), 4, 0;
+                    kissat_executable=`sh $executable`, seconds=30,
+                ))
+                @test parse.(Int, split(read(blocker, String))) == [-ports; 0]
+            end
+        end
 
         crossing_points = [(0,0), (0,2), (2,0), (2,2)]
         for chosen in Iterators.product(ntuple(_ -> 1:4, 4)...)

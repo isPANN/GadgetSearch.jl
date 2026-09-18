@@ -81,6 +81,6 @@ export search_unweighted_gadgets
 export search_unweighted_gadget_joint
 export optimize_unweighted_gadget
 export read_unweighted_search_checkpoint
-export check_crossing_frame
+export check_gadget_geometry
 
 end # module

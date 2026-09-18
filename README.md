@@ -47,6 +47,16 @@ Unweighted mode ignores vertex weights, treats the pins as open vertices, and
 computes the reduced alpha tensor. The lattice dimensions can be adjusted from
 2×2 to 20×20 and are preserved in exported JSON.
 
+Exported nodes use integer lattice indices `q/r`. The lattice records
+`index_base: 0`, two Cartesian `basis` vectors, and an `odd_row_offset` vector.
+Position is `q * basis[0] + r * basis[1] + (r % 2) * odd_row_offset`,
+in units of the nearest-neighbor spacing. TLSG uses basis vectors
+`[1, 0]`, `[0, "sqrt(3)/2"]` and offset `["1/2", 0]`; strings denote exact
+expressions, so odd rows shift right by half a spacing. KSG uses `[1, 0]`,
+`[0, 1]` and zero offset. The editor displays `x` rightward and `y` downward.
+Exported `edges` reference node IDs through `source/target`. Import uses `q/r`
+and `lattice.shape`; geometry metadata and edges are recalculated on export.
+
 The unweighted SAT search uses Kissat and supports Linux and macOS.
 
 ### Rydberg Model (MIS-based)

@@ -340,8 +340,12 @@ function payload() {
       shape: state.latticeShape,
       columns: state.columns,
       rows: state.rows,
+      index_base: 0,
+      basis: [[1, 0], [0, state.latticeShape === "KSG" ? 1 : "sqrt(3)/2"]],
+      odd_row_offset: state.latticeShape === "KSG" ? [0, 0] : ["1/2", 0],
     },
-    nodes: [...state.nodes.values()],
+    nodes: [...state.nodes.values()].map(({ id, q, r, weight }) => ({ id, q, r, weight })),
+    edges: edges().map(({ source, target }) => ({ source: source.id, target: target.id })),
     pins: state.pins,
   };
 }
