@@ -16,16 +16,6 @@ struct UnweightedGadget
     pin_rays::Vector{_LatticeCoordinate}
 end
 
-"""Outcome of a bounded direct SAT search on one concrete lattice."""
-struct UnweightedSearchResult
-    target_graph::SimpleGraph{Int}
-    target_boundary::Vector{Int}
-    lattice::Symbol
-    gadgets::Vector{UnweightedGadget}
-    evaluated::Int
-    termination_reason::Symbol
-end
-
 """One verifier-certified atom-reducing rewrite."""
 struct UnweightedRewriteStep
     rule::Symbol
@@ -49,61 +39,23 @@ struct _LatticePatch
 end
 
 """
-Search a four-pin unweighted gadget in a finite window of `lattice`.
-Every returned gadget satisfies the reduced-alpha target up to a constant and
-the four-direction crossing geometry.
+    search_unweighted_gadgets(target_graph, target_boundary, lattice=Triangular();
+        window_shape, atom_count, offset, seconds=600, seed=1,
+        canonical_shift=(0, 0), first_ray=1, kissat_executable=nothing)
+
+Search one unweighted four-pin gadget in a fixed lattice window. A single SAT
+formulation chooses occupied sites, ordered pins, and outward rays together.
+The first pin is fixed at the canonical origin with direction `first_ray`;
+`canonical_shift` positions the window relative to that origin.
+
+The replacement must have exactly `atom_count` vertices and its reduced alpha
+tensor must equal the target's plus `offset`, with the same `-Inf` entries.
+Every result passes the tensor verifier, connectivity, and crossing geometry
+checks. Return an `UnweightedGadget`, or `nothing` if the instance is
+unsatisfiable or the SAT-solving budget expires. CNF construction and final
+verification are outside the `seconds` budget.
 """
 function search_unweighted_gadgets(
-    target_graph::SimpleGraph{Int},
-    target_boundary::Vector{Int},
-    lattice::LatticeType=Triangular();
-    min_vertices::Int=length(target_boundary) + 1,
-    max_vertices::Int=min_vertices + 8,
-    max_evaluations::Int=2_000,
-    max_frame_evaluations::Int=1_000_000,
-    max_results::Int=1,
-    window_side::Int=4,
-    checkpoint_path::Union{Nothing, String}=nothing,
-    checkpoint_interval::Int=10_000,
-)
-    boundary_count = length(target_boundary)
-    boundary_count == 4 ||
-        throw(ArgumentError("unweighted lattice search requires four boundary vertices"))
-    min_vertices >= boundary_count ||
-        throw(ArgumentError("min_vertices must be at least the number of boundary vertices"))
-    max_vertices >= min_vertices ||
-        throw(ArgumentError("max_vertices must be at least min_vertices"))
-    max_evaluations > 0 ||
-        throw(ArgumentError("max_evaluations must be positive"))
-    max_frame_evaluations > 0 ||
-        throw(ArgumentError("max_frame_evaluations must be positive"))
-    max_results > 0 || throw(ArgumentError("max_results must be positive"))
-    window_side >= 2 || throw(ArgumentError("window_side must be at least 2"))
-    checkpoint_interval > 0 ||
-        throw(ArgumentError("checkpoint_interval must be positive"))
-
-    target_reduced = vec(calculate_reduced_alpha_tensor(target_graph, target_boundary))
-    all(isinf, target_reduced) &&
-        error("target graph has an entirely -Inf reduced alpha tensor")
-    gadgets, evaluated, reason = _search_crossing_sat(
-        target_graph, target_boundary, target_reduced, lattice;
-        min_vertices, max_vertices, max_evaluations, max_frame_evaluations,
-        max_results, window_side, checkpoint_path, checkpoint_interval,
-    )
-    return UnweightedSearchResult(
-        target_graph, copy(target_boundary), _lattice_symbol(lattice),
-        gadgets, evaluated, reason,
-    )
-end
-
-"""
-Search one joint occupancy-and-frame SAT instance in a fixed lattice window.
-
-Unlike `search_unweighted_gadgets`, this formulation chooses the occupied sites,
-four pins, and four outward rays in one CNF. `atom_count` and `offset` identify
-the exact instance to solve. The unchanged gadget verifier checks every result.
-"""
-function search_unweighted_gadget_joint(
     target_graph::SimpleGraph{Int},
     target_boundary::Vector{Int},
     lattice::LatticeType=Triangular();
@@ -117,7 +69,7 @@ function search_unweighted_gadget_joint(
     first_ray::Int=1,
 )
     length(target_boundary) == 4 ||
-        throw(ArgumentError("joint unweighted search requires four boundary vertices"))
+        throw(ArgumentError("unweighted search requires four boundary vertices"))
     all(>=(2), window_shape) ||
         throw(ArgumentError("window dimensions must be at least 2"))
     length(target_boundary) <= atom_count <= prod(window_shape) ||
@@ -510,45 +462,6 @@ function _unweighted_gadget(target_graph, lattice, analysis)
         _lattice_symbol(lattice), copy(analysis.patch.coordinates),
         analysis.positions, _patch_ray_directions(lattice, analysis.patch),
     )
-end
-
-_rotate_lattice_coordinate(::Triangular, point) = (-point[2], point[1] + point[2])
-_reflect_lattice_coordinate(::Triangular, point) = (point[2], point[1])
-_rotate_lattice_coordinate(::Square, point) = (-point[2], point[1])
-_reflect_lattice_coordinate(::Square, point) = (point[1], -point[2])
-
-function _transform_lattice_coordinate(lattice, point, rotations, reflected)
-    transformed = reflected ? _reflect_lattice_coordinate(lattice, point) : point
-    for _ in 1:rotations
-        transformed = _rotate_lattice_coordinate(lattice, transformed)
-    end
-    return transformed
-end
-
-function _canonical_crossing_frame_key(lattice, frame)
-    allowed = _canonical_coordinate.(Ref(lattice), frame.allowed)
-    pins = _canonical_coordinate.(Ref(lattice), frame.pins)
-    rays = _lattice_directions(lattice)[frame.rays]
-    return minimum((begin
-        transformed_allowed = _transform_lattice_coordinate.(
-            Ref(lattice), allowed, rotations, reflected,
-        )
-        transformed_pins = _transform_lattice_coordinate.(
-            Ref(lattice), pins, rotations, reflected,
-        )
-        transformed_rays = _transform_lattice_coordinate.(
-            Ref(lattice), rays, rotations, reflected,
-        )
-        minimum_first = minimum(first, transformed_allowed)
-        minimum_last = minimum(last, transformed_allowed)
-        normalize(point) = (point[1] - minimum_first, point[2] - minimum_last)
-        (
-            Tuple(sort(normalize.(transformed_allowed))),
-            Tuple(normalize.(transformed_pins)),
-            Tuple(transformed_rays),
-        )
-    end for reflected in (false, true) for rotations in
-        0:(lattice isa Triangular ? 5 : 3)))
 end
 
 function _materialize_lattice_patch(lattice::LatticeType, patch::_LatticePatch)

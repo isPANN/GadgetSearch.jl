@@ -76,7 +76,7 @@ end
         ))
     end
 
-    @testset "pruned frame generation preserves geometric candidates" begin
+    @testset "rewrite frame filtering preserves geometric candidates" begin
         lattice = Triangular()
         pins = [(2,0),(2,3),(0,1),(1,0)]
         ray_indices = eachindex(GadgetSearch._lattice_directions(lattice))
@@ -95,12 +95,7 @@ end
         end
 
         pruned = Set{Tuple}()
-        ray_options = [
-            [ray for ray in ray_indices if GadgetSearch._single_pin_corridor_clear(
-                lattice, pins, index, ray,
-            )] for index in eachindex(pins)
-        ]
-        for rays_tuple in Iterators.product(ray_options...)
+        for rays_tuple in Iterators.product(ntuple(_ -> ray_indices, 4)...)
             GadgetSearch._pin_rays_are_compatible(
                 lattice, pins, rays_tuple,
             ) || continue
@@ -120,53 +115,6 @@ end
             end
         end
         @test pruned == brute_force
-
-        clique_frames = Set{Tuple}()
-        expected_prefixed_frames = Set{Tuple}()
-        clique_evaluated = Ref(0)
-        candidates = GadgetSearch._crossing_port_candidates(
-            lattice, [(column, row) for column in 0:2 for row in 0:2],
-        )
-        GadgetSearch._foreach_crossing_frame_clique(
-            lattice, (3,3), clique_evaluated, typemax(Int); min_allowed=4,
-        ) do frame, _, _
-            key = GadgetSearch._canonical_crossing_frame_key(lattice, frame)
-            push!(clique_frames, key)
-            indices = sort([findfirst(==(port), candidates)
-                for port in zip(frame.pins, frame.rays)])
-            indices[1:2] == [1, 9] && push!(expected_prefixed_frames, key)
-            return nothing
-        end
-        sharded_frames = Set{Tuple}()
-        for shard_index in 0:2
-            evaluated = Ref(0)
-            GadgetSearch._foreach_crossing_frame_clique(
-                lattice, (3,3), evaluated, typemax(Int);
-                min_allowed=4, shard_index, shard_count=3,
-            ) do frame, _, _
-                push!(sharded_frames,
-                    GadgetSearch._canonical_crossing_frame_key(lattice, frame))
-                return nothing
-            end
-        end
-        @test sharded_frames == clique_frames
-
-        prefixed_frames = Set{Tuple}()
-        prefixed_evaluated = Ref(0)
-        GadgetSearch._foreach_crossing_frame_clique(
-            lattice, (3,3), prefixed_evaluated, typemax(Int);
-            min_allowed=4, port_prefix=(1, 9),
-        ) do frame, _, _
-            push!(prefixed_frames,
-                GadgetSearch._canonical_crossing_frame_key(lattice, frame))
-            return nothing
-        end
-        @test prefixed_frames == expected_prefixed_frames
-        cross23_window = [(column, row)
-            for column in 0:7 for row in 0:7]
-        @test GadgetSearch._crossing_port_prefix(
-            Triangular(), cross23_window, 5117,
-        ) == (21, 177)
 
         for (candidate_pins, candidate_rays, side) in (
             (pins, [6,2,4,5], 4),
@@ -209,14 +157,6 @@ end
         )
         @test analysis !== nothing
         @test analysis.offset == 7
-        context = GadgetSearch._prepare_sat_frame(Triangular(), frame)
-        filter_solver, filter_selected = GadgetSearch._lower_state_filter_problem(
-            target_reduced, context, 23, 7,
-            first(GadgetSearch._essential_lower_states(target_reduced)),
-        )
-        @test GadgetSearch._next_selected_assignment!(
-            filter_solver, filter_selected,
-        ) !== nothing
         @test nv(analysis.graph) == 23
         @test is_gadget_replacement(
             cross_graph(), analysis.graph, [1,2,3,4], analysis.boundary,
@@ -462,28 +402,48 @@ end
         ))
     end
 
+    @testset "public unweighted search" begin
+        target = complete_graph(4)
+        gadget = search_unweighted_gadgets(
+            target, collect(1:4), Square();
+            window_shape=(2,2), atom_count=4, offset=0, seconds=30,
+        )
+        @test gadget isa UnweightedGadget
+        @test nv(gadget.replacement_graph) == 4
+        @test is_gadget_replacement(
+            target, gadget.replacement_graph, collect(1:4),
+            gadget.boundary_vertices,
+        ) == (true, 0.0)
+        @test all(check_gadget_geometry(
+            Square(), gadget.lattice_coordinates,
+            gadget.lattice_coordinates[gadget.boundary_vertices],
+            gadget.pin_rays,
+        ))
+        @test isnothing(search_unweighted_gadgets(
+            target, collect(1:4), Square();
+            window_shape=(2,2), atom_count=4, offset=1, seconds=30,
+        ))
+        @test_throws ArgumentError search_unweighted_gadgets(
+            path_graph(3), [1,2,3];
+            window_shape=(2,2), atom_count=4, offset=0,
+        )
+        @test_throws ArgumentError search_unweighted_gadgets(
+            target, collect(1:4);
+            window_shape=(1,2), atom_count=4, offset=0,
+        )
+        @test_throws ArgumentError search_unweighted_gadgets(
+            target, collect(1:4);
+            window_shape=(2,2), atom_count=5, offset=0,
+        )
+    end
+
     @testset "joint frame and occupancy SAT" begin
         target = complete_graph(4)
         target_reduced = vec(calculate_reduced_alpha_tensor(
             target, collect(1:4),
         ))
-        public_joint = search_unweighted_gadget_joint(
-            target, collect(1:4), Square();
-            window_shape=(2,2), atom_count=4, offset=0, seconds=30,
-        )
-        @test public_joint !== nothing
-        @test nv(public_joint.replacement_graph) == 4
-        @test first(is_gadget_replacement(
-            target, public_joint.replacement_graph, collect(1:4),
-            public_joint.boundary_vertices,
-        ))
-        @test all(check_gadget_geometry(
-            Square(), public_joint.lattice_coordinates,
-            public_joint.lattice_coordinates[public_joint.boundary_vertices],
-            public_joint.pin_rays,
-        ))
         cross_edge_target = cross_edge_graph()
-        cross_edge = search_unweighted_gadget_joint(
+        cross_edge = search_unweighted_gadgets(
             cross_edge_target, collect(1:4), Triangular();
             window_shape=(3,4), atom_count=9, offset=1, seconds=30,
             canonical_shift=(-1,1), first_ray=1,
@@ -502,7 +462,7 @@ end
         @test isempty(optimized_cross_edge.steps)
         @test optimized_cross_edge.sat_evaluations == 256
         @test optimized_cross_edge.termination_reason == :sat_budget
-        rotated_cross_edge = search_unweighted_gadget_joint(
+        rotated_cross_edge = search_unweighted_gadgets(
             cross_edge_target, collect(1:4), Triangular();
             window_shape=(3,4), atom_count=9, offset=1, seconds=30,
             canonical_shift=(0,0), first_ray=2,
@@ -512,12 +472,8 @@ end
             cross_edge_target, rotated_cross_edge.replacement_graph,
             collect(1:4), rotated_cross_edge.boundary_vertices,
         ))
-        @test isnothing(GadgetSearch._solve_joint_crossing_sat(
-            target_reduced, Square(), (2,2), 4, 1,
-        ))
-
         @testset "joint SAT blocks non-alternating pins" begin
-            _, selected, choices, coordinates = GadgetSearch._joint_crossing_sat_cnf(
+            cnf, selected, choices, coordinates = GadgetSearch._joint_crossing_sat_cnf(
                 target_reduced, Square(), (2,2), 4, 0,
             )
             rays = [1, 6, 3, 8]
@@ -527,26 +483,12 @@ end
                 Square(), coordinates, coordinates,
                 GadgetSearch._lattice_directions(Square())[rays],
             ).G2
-            mktempdir() do directory
-                executable = joinpath(directory, "kissat.sh")
-                blocker = joinpath(directory, "blocker")
-                # Supply an invalid candidate, then record the clause used to reject it.
-                write(executable, """
-                    for argument do input="\$argument"; done
-                    if [ -f '$blocker' ]; then
-                        tail -n 1 "\$input" > '$blocker'
-                        exit 20
-                    fi
-                    touch '$blocker'
-                    echo 'v $(join([selected; ports], ' ')) 0'
-                    exit 10
-                    """)
-                @test isnothing(GadgetSearch._solve_joint_crossing_sat(
-                    target_reduced, Square(), (2,2), 4, 0;
-                    kissat_executable=`sh $executable`, seconds=30,
-                ))
-                @test parse.(Int, split(read(blocker, String))) == [-ports; 0]
+            for port in ports
+                GadgetSearch._sat_clause!(cnf, port)
             end
+            @test isnothing(GadgetSearch._next_selected_assignment!(
+                GadgetSearch._new_sat_solver(cnf), selected,
+            ))
         end
 
         crossing_points = [(0,0), (0,2), (2,0), (2,2)]
@@ -595,82 +537,7 @@ end
         @test assignment === nothing
     end
 
-    @testset "public bounded search" begin
-        @test GadgetSearch._crossing_window_shapes(8, 23) == [
-            (8,8), (8,7), (7,8), (8,6), (6,8),
-            (8,5), (5,8), (8,4), (4,8), (8,3), (3,8),
-        ]
-        @test_throws ArgumentError search_unweighted_gadgets(
-            path_graph(3), [1,2,3], Triangular(),
-        )
-        @test_throws ArgumentError search_unweighted_gadgets(
-            path_graph(4), [1,2,3,4]; window_side=1,
-        )
-        @test_throws ArgumentError search_unweighted_gadgets(
-            path_graph(4), [1,2,3,4]; checkpoint_interval=0,
-        )
-        ksg = search_unweighted_gadgets(
-            cross_graph(), [1,2,3,4], Square();
-            min_vertices=4, max_vertices=4, max_evaluations=1,
-        )
-        @test ksg.lattice == :KSG
-        @test ksg.evaluated <= 1
-        @test ksg.termination_reason in (:budget, :frame_budget)
-
-        exhausted = search_unweighted_gadgets(
-            cross_graph(), [1,2,3,4], Triangular();
-            min_vertices=4, max_vertices=4, max_evaluations=1,
-        )
-        @test exhausted.evaluated == 1
-        @test isempty(exhausted.gadgets)
-        @test exhausted.termination_reason in (:budget, :frame_budget)
-
-        ksg_target = complete_graph(4)
-        solved = search_unweighted_gadgets(
-            ksg_target, collect(1:4), Square();
-            min_vertices=4, max_vertices=4, max_evaluations=50, max_results=1,
-            max_frame_evaluations=100_000, window_side=2,
-        )
-        @test solved.termination_reason == :solution
-        @test length(solved.gadgets) == 1
-        @test is_gadget_replacement(
-            ksg_target, solved.gadgets[1].replacement_graph,
-            collect(1:4), solved.gadgets[1].boundary_vertices,
-        )[1]
-
-        fully_enumerated = search_unweighted_gadgets(
-            ksg_target, collect(1:4), Square();
-            min_vertices=4, max_vertices=4, max_evaluations=50, max_results=2,
-            max_frame_evaluations=100_000, window_side=2,
-        )
-        @test fully_enumerated.termination_reason == :search_space_exhausted
-        @test length(fully_enumerated.gadgets) == 1
-        @test fully_enumerated.evaluated > solved.evaluated
-
-        mktempdir() do directory
-            checkpoint_path = joinpath(directory, "search.checkpoint")
-            interrupted = search_unweighted_gadgets(
-                ksg_target, collect(1:4), Square();
-                min_vertices=4, max_vertices=4, max_evaluations=3,
-                max_results=2, max_frame_evaluations=100_000,
-                window_side=2, checkpoint_path, checkpoint_interval=1,
-            )
-            @test interrupted.termination_reason == :budget
-            @test isfile(checkpoint_path)
-            checkpoint = read_unweighted_search_checkpoint(checkpoint_path)
-            @test checkpoint.window_shape == (2, 2)
-            @test checkpoint.frame_cursor >= 1
-            @test checkpoint.order_cursor >= 1
-            @test checkpoint.offset_cursor >= 0
-            resumed = search_unweighted_gadgets(
-                ksg_target, collect(1:4), Square();
-                min_vertices=4, max_vertices=4, max_evaluations=20,
-                max_results=2, max_frame_evaluations=100_000,
-                window_side=2, checkpoint_path, checkpoint_interval=1,
-            )
-            @test resumed.termination_reason == :search_space_exhausted
-            @test length(resumed.gadgets) == 1
-        end
+    @testset "lattice coordinates" begin
         point = (3, 4)
         @test GadgetSearch._from_canonical(Square(), point) == point
         canonical = GadgetSearch._canonical_coordinate(Triangular(), point)
