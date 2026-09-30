@@ -72,13 +72,10 @@ export is_gadget_replacement
 
 # Unweighted search
 export UnweightedGadget
-export UnweightedSearchResult
 export UnweightedRewriteStep
 export UnweightedOptimizationResult
 export search_unweighted_gadgets
-export search_unweighted_gadget_joint
 export optimize_unweighted_gadget
-export read_unweighted_search_checkpoint
 export check_gadget_geometry
 
 end # module
