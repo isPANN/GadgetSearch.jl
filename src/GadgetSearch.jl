@@ -2,7 +2,6 @@ module GadgetSearch
 
 # Core dependencies
 using JuMP
-# using Suppressor
 using Graphs, GraphIO
 using ProgressMeter
 using IterTools
@@ -56,7 +55,6 @@ export GadgetConstraint, TruthTableConstraint
 
 # Search functions
 export search_gadgets
-export search_by_truth_tables
 
 # Visualization
 export get_radius
