@@ -7,12 +7,10 @@
 #
 # Notes:
 # - QUBO search is more general but computationally more expensive
-# - State constraints are specified directly as ground state strings
+# - Truth table rows specify the required ground states on the pins
 
 using GadgetSearch
 using HiGHS
-using Combinatorics
-using FileIO, ImageShow
 
 # Define truth table constraints for QUBO
 # Each constraint specifies which pin configurations should be ground states

@@ -94,10 +94,10 @@ using GadgetSearch, HiGHS
 generate_full_grid_graph(Triangular(), 2, 3; path="qubo_graphs.g6")
 loader = GraphLoader("qubo_graphs.g6")
 
-# Define state constraints (explicit ground states)
+# Define truth table constraints (each row is a ground state on the pins)
 constraints = [
-    StateConstraint(["001", "011", "101", "111"]),  # OR-like
-    StateConstraint(["000", "010", "100", "111"])   # AND-like
+    TruthTableConstraint(BitMatrix([0 0 0; 0 1 1; 1 0 1; 1 1 1])),  # OR
+    TruthTableConstraint(BitMatrix([0 0 0; 0 1 0; 1 0 0; 1 1 1]))   # AND
 ]
 
 # Search using QUBO model
@@ -106,7 +106,6 @@ results, failed = search_gadgets(
     loader, 
     constraints;
     optimizer=HiGHS.Optimizer,
-    objective=(h, J) -> sum(h) + sum(J),  # Vertex + edge weights
     max_result_num=5
 )
 
@@ -126,7 +125,6 @@ end
 
 ### Constraint Types
 - `TruthTableConstraint(::BitMatrix)`: Define ground states via truth table
-- `StateConstraint(::Vector{String})`: Define ground states explicitly (e.g., `["00", "11"]`)
 
 ### Gadget
 ```julia
@@ -148,9 +146,8 @@ end
 # Unified search interface
 search_gadgets(ModelType, loader, constraints; kwargs...)
 
-# Convenience wrappers
-search_by_truth_tables(loader, truth_tables; ...)      # Rydberg
-search_by_state_constraints(loader, constraints; ...)  # QUBO
+# Convenience wrapper for Rydberg truth tables
+search_by_truth_tables(loader, truth_tables; ...)
 ```
 
 ### Graph Generation

@@ -23,6 +23,7 @@ mainNotes.bib
 /Manifest.toml
 /docs/Manifest.toml
 /docs/build/
+/docs/src/generated/
 /data/graphplot/
 /data/graphs/
 /datasets/plots/

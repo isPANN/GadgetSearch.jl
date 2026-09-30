@@ -2,9 +2,7 @@ using GadgetSearch
 using Documenter
 using Literate
 
-# Literate
-# Keep docs examples explicit so standalone pipeline scripts under `examples/`
-# are not implicitly executed by docs CI.
+# Generate example pages from their Julia sources.
 doc_example_files = [
     "trangular_Rydberg_example.jl",
     "triangular_QUBO_example.jl",

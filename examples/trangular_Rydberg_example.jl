@@ -11,7 +11,6 @@
 using GadgetSearch
 using HiGHS
 using Combinatorics
-using FileIO, ImageShow
 
 # Define truth tables for 2-input, 1-output logic gates
 truth_tables = [
