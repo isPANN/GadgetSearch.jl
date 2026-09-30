@@ -38,22 +38,12 @@ function save_results_to_json(results::Vector{<:Gadget}, file_path::String)
 end
 
 """
-    check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:EnergyModel}=RydbergModel)
+    analyze_gadget(gadget::Gadget; model::Type{<:EnergyModel}=RydbergModel)
 
-Validate a `Gadget` by computing energies for its state space and
-reporting the ground state configurations on pins.
-
-# Arguments
-- `gadget::Gadget`: The gadget to check.
-
-# Keyword Arguments
-- `_return_info::Bool=false`: If `true`, return a string; otherwise log with `@info`.
-- `model::Type{<:EnergyModel}=RydbergModel`: Energy model to use for validation.
-
-# Returns
-- When `_return_info` is `true`, returns a formatted `String`; otherwise returns `nothing`.
+Compute the maximum-energy states of a gadget and return structured data for
+programmatic consumers such as the visual editor.
 """
-function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:EnergyModel}=RydbergModel)
+function analyze_gadget(gadget::Gadget; model::Type{<:EnergyModel}=RydbergModel)
     g = gadget.graph
     vertex_weights = gadget.vertex_weights
     edge_weights = gadget.edge_weights
@@ -66,7 +56,7 @@ function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:En
 
     # Get state space based on model
     states, state_count = get_state_space(model, g)
-    state_count > 0 || return _return_info ? "No states found." : (@info "No states found."; nothing)
+    state_count > 0 || error("No states found.")
 
     # Helper to compute energy of a state
     function _energy_of_config(config::Unsigned)
@@ -101,13 +91,39 @@ function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:En
     # Use approximate equality for floating point comparison (tolerance 1e-6)
     max_indices = findall(e -> abs(e - max_energy) < 1e-6, energy_values)
 
-    # Format report
     model_name = model === RydbergModel ? "Rydberg (MIS)" : "QUBO (Full)"
-    lines = ["Model: $model_name", "Max energy value: $(max_energy)", "Ground states (max energy):"]
-    for idx in max_indices
+    ground_states = map(max_indices) do idx
         config = states[idx]
-        pin_values = @inbounds Int[((config >> (p - 1)) & 0x1) for p in pins]
-        push!(lines, "  State index=$(idx), pins=$(pin_values)")
+        (
+            state_index=idx,
+            configuration=Int[((config >> (v - 1)) & 0x1) for v in 1:num_vertices],
+            pins=Int[((config >> (p - 1)) & 0x1) for p in pins],
+        )
+    end
+
+    return (
+        model=model_name,
+        state_count=state_count,
+        max_energy=max_energy,
+        ground_states=ground_states,
+    )
+end
+
+"""
+    check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:EnergyModel}=RydbergModel)
+
+Validate a `Gadget` by computing energies for its state space and
+reporting the ground state configurations on pins.
+"""
+function check_gadget(gadget::Gadget; _return_info::Bool=false, model::Type{<:EnergyModel}=RydbergModel)
+    report = analyze_gadget(gadget; model=model)
+    lines = [
+        "Model: $(report.model)",
+        "Max energy value: $(report.max_energy)",
+        "Ground states (max energy):",
+    ]
+    for state in report.ground_states
+        push!(lines, "  State index=$(state.state_index), pins=$(state.pins)")
     end
 
     msg = join(lines, "\n")
